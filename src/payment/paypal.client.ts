@@ -104,6 +104,10 @@ export class PaypalClient {
 
     if (!response.ok) {
       const errorText = await response.text();
+      if (response.status === 422 && errorText.includes('ORDER_ALREADY_CAPTURED')) {
+        this.logger.log(`[PayPal] Order ${orderId} đã được capture từ trước (via Webhook hoặc tự động). Tiếp tục xử lý thành công.`);
+        return { status: 'COMPLETED', id: orderId };
+      }
       this.logger.error(`PayPal captureOrder failed: ${response.status} ${errorText}`);
       throw new Error(`PayPal captureOrder failed: ${response.status}`);
     }
