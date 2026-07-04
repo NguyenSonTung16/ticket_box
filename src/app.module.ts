@@ -27,7 +27,6 @@ const coreModules = [
   RedisModule,
   RabbitMQModule,
   MeilisearchModule,
-  NotificationsModule,
   ServeStaticModule.forRoot({
     rootPath: join(__dirname, '..', 'ticketbox-client', 'dist'),
   }),
@@ -45,10 +44,10 @@ if (serviceName === 'auth') {
 } else if (serviceName === 'payment') {
   serviceModules = [PaymentModule];
 } else if (serviceName === 'worker') {
-  serviceModules = [WorkerModule];
+  serviceModules = [WorkerModule, NotificationsModule];
 } else {
   // Monolithic fallback
-  serviceModules = [AuthModule, BookingModule, InfoModule, SearchModule, PaymentModule, WorkerModule];
+  serviceModules = [AuthModule, BookingModule, InfoModule, SearchModule, PaymentModule, WorkerModule, NotificationsModule];
 }
 
 @Module({

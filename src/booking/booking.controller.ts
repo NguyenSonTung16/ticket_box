@@ -4,6 +4,8 @@ import { SseService } from './sse.service';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { BookingPassGuard } from './guards/booking-pass.guard';
+import { RateLimitGuard } from './guards/rate-limit.guard';
 
 @Controller('booking')
 export class BookingController {
@@ -24,6 +26,12 @@ export class BookingController {
 
 
   @UseGuards(JwtAuthGuard)
+  @Post('enter-queue')
+  async enterQueue(@Req() req, @Body() body: { concert_id: number }) {
+    return this.bookingService.enterQueue(req.user.userId, Number(body.concert_id));
+  }
+
+  @UseGuards(JwtAuthGuard, BookingPassGuard)
   @Post('ga')
   async bookGA(@Req() req, @Body() body: { concert_id: number; quantity: number; zoneType?: string }) {
     const zoneType = body.zoneType || 'Normal';
@@ -31,14 +39,14 @@ export class BookingController {
     return this.bookingService.bookGATicket(body.concert_id, userId, body.quantity, zoneType);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, BookingPassGuard)
   @Post('svip')
   async bookSVIP(@Req() req, @Body() body: { concert_id: number; seatNo: string }) {
     const userId = req.user.userId;
     return this.bookingService.bookSVIPTicket(body.concert_id, userId, body.seatNo);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, BookingPassGuard, RateLimitGuard)
   @Post('hold')
   async bookHold(@Req() req, @Body() body: { concert_id: number; seats: string[]; ticketCounts: Record<string, number> }) {
     const userId = req.user.userId;
@@ -54,7 +62,7 @@ export class BookingController {
     return { success: true };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, BookingPassGuard)
   @Post('pay')
   async payTickets(@Body() body: any, @Req() req) {
     return this.bookingService.payTickets(body.concert_id, req.user.userId, body);
