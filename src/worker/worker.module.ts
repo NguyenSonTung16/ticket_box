@@ -7,7 +7,7 @@ import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
 import { IdempotencyKey } from '../payment/entities/idempotency-key.entity';
 import { User } from '../auth/entities/user.entity';
-import { EmailService } from '../notifications/email.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 import { WorkerController } from './worker.controller';
 
@@ -21,8 +21,9 @@ import { WorkerController } from './worker.controller';
       IdempotencyKey,
       User,
     ]),
+    NotificationsModule,
   ],
   controllers: [WorkerController],
-  providers: [WorkerService, EmailService],
+  providers: [WorkerService],
 })
 export class WorkerModule {}
