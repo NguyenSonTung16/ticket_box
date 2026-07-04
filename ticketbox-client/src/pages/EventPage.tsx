@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import debounce from 'lodash.debounce';
-import { useTicketEvents } from '../hooks/useTicketEvents';
 import { useAuth } from '../context/AuthContext';
 import { LoginModal } from '../components/LoginModal';
+import { WaitingRoomModal } from '../components/WaitingRoomModal';
 
 import { useSearchParams } from 'react-router-dom';
 import axiosClient from '../utils/axiosClient';
@@ -15,8 +15,17 @@ export const EventPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const { user, logout } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isWaitingRoomOpen, setIsWaitingRoomOpen] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleBuyClick = () => {
+    if (!user) {
+      setIsLoginModalOpen(true);
+    } else {
+      setIsWaitingRoomOpen(true);
+    }
+  };
 
   // Bọc API call trong Debounce 300ms
   const fetchSearchResults = useMemo(
@@ -41,14 +50,7 @@ export const EventPage: React.FC = () => {
     fetchSearchResults(e.target.value);
   };
 
-  const { lastEvent } = useTicketEvents(eventId);
-  const [availableVip, setAvailableVip] = useState(45); // Fake ban đầu
-
-  useEffect(() => {
-    if (lastEvent && lastEvent.availableTickets !== undefined) {
-      setAvailableVip(lastEvent.availableTickets);
-    }
-  }, [lastEvent]);
+  // Đã gỡ bỏ hook useTicketEvents khỏi EventPage để tối ưu hóa, không mở 80.000 kết nối SSE khi xem show
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -201,7 +203,7 @@ export const EventPage: React.FC = () => {
                       <p className="font-headline-md text-primary-container">{eventData?.status || 'ON_SALE'}</p>
                     </div>
                   </div>
-                  <button onClick={() => window.location.href = `/seat.html?id=${eventId}`} className="w-full bg-primary-container text-on-primary-container font-headline-md py-4 rounded-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-container/20 relative overflow-hidden">
+                  <button onClick={handleBuyClick} className="w-full bg-primary-container text-on-primary-container font-headline-md py-4 rounded-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-container/20 relative overflow-hidden">
                     Mua vé ngay
                   </button>
                 </div>
@@ -267,7 +269,7 @@ export const EventPage: React.FC = () => {
                     <p className="font-label-md text-primary">06 Tháng 06, 2026</p>
                   </div>
                 </div>
-                <button onClick={() => window.location.href = '/seat.html'} className="bg-primary text-on-primary px-8 py-2.5 rounded-lg font-headline-md hover:brightness-110">
+                <button onClick={handleBuyClick} className="bg-primary text-on-primary px-8 py-2.5 rounded-lg font-headline-md hover:brightness-110">
                   Mua vé ngay
                 </button>
               </div>
@@ -312,7 +314,7 @@ export const EventPage: React.FC = () => {
 
       {/* FAB for quick booking (Mobile) */}
       <div className="md:hidden fixed bottom-6 right-6 z-50">
-        <button className="bg-primary-container text-on-primary-container w-16 h-16 rounded-full shadow-2xl flex items-center justify-center active:scale-95 duration-200">
+        <button onClick={handleBuyClick} className="bg-primary-container text-on-primary-container w-16 h-16 rounded-full shadow-2xl flex items-center justify-center active:scale-95 duration-200">
           <span className="material-symbols-outlined text-3xl">confirmation_number</span>
         </button>
       </div>
@@ -320,6 +322,12 @@ export const EventPage: React.FC = () => {
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
+      />
+      <WaitingRoomModal
+        isOpen={isWaitingRoomOpen}
+        onClose={() => setIsWaitingRoomOpen(false)}
+        concertId={eventId}
+        onSuccess={() => window.location.href = `/seat.html?id=${eventId}`}
       />
     </div>
   );

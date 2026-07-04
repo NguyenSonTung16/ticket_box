@@ -102,6 +102,7 @@ export const PaymentPage: React.FC = () => {
   const handleApprove = async (data: any) => {
     try {
       isProcessingRef.current = true;
+      /* Tạm thời disable theo yêu cầu: hệ thống chỉ xài webhook của paypal để capture
       const res = await axiosClient.post('/payment/capture', {
         paypalOrderId: data.orderID,
         idempotencyKey: idempotencyKey || sessionStorage.getItem('idempotency_key'),
@@ -115,6 +116,10 @@ export const PaymentPage: React.FC = () => {
         isProcessingRef.current = false;
         navigate('/payment-success.html', { replace: true });
       }
+      */
+      // Chuyển hướng luôn, để backend tự lo webhook capture
+      isProcessingRef.current = false;
+      navigate('/payment-success.html', { replace: true });
     } catch (error: any) {
       isProcessingRef.current = false;
       alert(error.response?.data?.message || 'Thanh toán không thành công');

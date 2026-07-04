@@ -9,7 +9,6 @@ import { PaypalClient } from './paypal.client';
 import { IdempotencyKey } from './entities/idempotency-key.entity';
 import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
-import { SseService } from '../booking/sse.service';
 
 @Injectable()
 export class PaymentService implements OnModuleInit {
@@ -24,7 +23,6 @@ export class PaymentService implements OnModuleInit {
     @InjectRepository(SeatInventory) private readonly seatInventoryRepo: Repository<SeatInventory>,
     @InjectRepository(ZoneInventory) private readonly zoneInventoryRepo: Repository<ZoneInventory>,
     private readonly paypalClient: PaypalClient,
-    private readonly sseService: SseService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -201,6 +199,7 @@ export class PaymentService implements OnModuleInit {
     );
 
     const response = { orderId: paypalOrder.id, status: 'CREATED' };
+    this.logger.log(`[Create Order] Đã tạo PayPal Order thành công. Order ID: ${paypalOrder.id}`);
     return response;
   }
 
@@ -326,10 +325,10 @@ export class PaymentService implements OnModuleInit {
 
       // 5. SSE broadcast ghế đã thanh toán
       for (const seatNo of svipSeats) {
-        await this.sseService.broadcast({
+        await this.redis.publish('ticketbox_sse_broadcast', JSON.stringify({
           concert_id, seatNo, status: 'booked', userId,
           message: `Ghế SVIP ${seatNo} đã được thanh toán.`,
-        });
+        }));
       }
 
       // 6. Đẩy vào RabbitMQ để Worker tạo Invoice + gửi email bất đồng bộ
