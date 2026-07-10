@@ -401,6 +401,8 @@ export class EventService {
   private async _invalidateConcertCache(eventId: number) {
     await this._invalidateEventListCache();
     await this.redis.del(`event:${eventId}`);
-    await this.redis.del(`slug_check:*`);
+    // redis.del() không hỗ trợ wildcard — phải dùng keys() trước
+    const slugKeys = await this.redis.keys('slug_check:*');
+    if (slugKeys.length) await this.redis.del(...slugKeys);
   }
 }
