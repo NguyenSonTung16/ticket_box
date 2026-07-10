@@ -1,12 +1,46 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { TicketTypeData } from '../../../features/events/eventService';
 
 interface TicketModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave: (ticket: TicketTypeData) => void;
 }
 
-export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose }) => {
+export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose, onSave }) => {
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [error, setError] = useState('');
+
   if (!isOpen) return null;
+
+  const handleSave = () => {
+    if (!name) {
+      setError('Vui lòng nhập tên loại vé');
+      return;
+    }
+    const parsedPrice = parseInt(price) || 0;
+    const parsedQuantity = parseInt(quantity) || 0;
+    
+    if (parsedQuantity <= 0) {
+      setError('Số lượng phải lớn hơn 0');
+      return;
+    }
+
+    onSave({
+      name,
+      price: parsedPrice,
+      total_quantity: parsedQuantity,
+      is_free: parsedPrice === 0
+    });
+    
+    // Reset form
+    setName('');
+    setPrice('');
+    setQuantity('');
+    setError('');
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -21,6 +55,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose }) => 
           </button>
         </div>
         <div className="p-6 md:p-8 space-y-6">
+          {error && <p className="text-error-red text-sm font-bold">{error}</p>}
           <div>
             <label className="block text-sm font-bold mb-2">
               Tên loại vé <span className="text-error-red">*</span>
@@ -29,6 +64,8 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose }) => 
               className="w-full h-11 px-4 bg-surface-container-high border border-outline-variant/30 rounded-lg text-white focus:ring-primary focus:border-primary outline-none"
               placeholder="VD: Vé VIP sớm..."
               type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -36,16 +73,20 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose }) => 
               <label className="block text-sm font-bold mb-2">Giá (VNĐ)</label>
               <input
                 className="w-full h-11 px-4 bg-surface-container-high border border-outline-variant/30 rounded-lg text-white focus:ring-primary focus:border-primary outline-none"
-                placeholder="500000"
+                placeholder="0 cho vé miễn phí"
                 type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-sm font-bold mb-2">Số lượng</label>
+              <label className="block text-sm font-bold mb-2">Số lượng <span className="text-error-red">*</span></label>
               <input
                 className="w-full h-11 px-4 bg-surface-container-high border border-outline-variant/30 rounded-lg text-white focus:ring-primary focus:border-primary outline-none"
                 placeholder="100"
                 type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
               />
             </div>
           </div>
@@ -58,7 +99,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({ isOpen, onClose }) => 
             Hủy
           </button>
           <button
-            onClick={onClose}
+            onClick={handleSave}
             className="bg-primary text-on-primary px-8 py-2.5 rounded-lg font-bold hover:brightness-110 transition-all"
           >
             Lưu loại vé

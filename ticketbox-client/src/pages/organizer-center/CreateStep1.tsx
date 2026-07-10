@@ -1,9 +1,55 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
+import { eventService, EventData } from '../../features/events/eventService';
 
 export const CreateStep1: React.FC = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  // States cho form
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('Âm nhạc');
+  const [addressType, setAddressType] = useState<'OFFLINE' | 'ONLINE'>('OFFLINE');
+  const [venueName, setVenueName] = useState('');
+  const [province, setProvince] = useState('');
+  // Giả lập organizer (trong thực tế có thể lấy từ UserProfile API)
+  const organizer_name = 'TicketBox Organizer';
+
+  const handleNext = async () => {
+    if (!name || !venueName || !province) {
+      setError('Vui lòng điền các trường bắt buộc (*)');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError('');
+      // Bước 0: Khởi tạo draft lấy ID
+      const { event_id } = await eventService.createDraft();
+      
+      // Bước 1: Lưu thông tin
+      const step1Data: EventData = {
+        name,
+        category,
+        address_type: addressType,
+        venue_name: venueName,
+        province,
+        organizer_name
+      };
+      
+      await eventService.saveStep1(event_id, step1Data);
+      
+      // Thành công, chuyển sang step 2 với eventId
+      navigate(`/organizer/create/step-2?eventId=${event_id}`);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi lưu thông tin');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="lg:ml-64 pt-24 md:pt-28 pb-32 px-4 md:px-6 min-h-screen">
@@ -19,6 +65,11 @@ export const CreateStep1: React.FC = () => {
                 Thông tin cơ bản
               </h2>
             </div>
+            {error && (
+              <div className="bg-error-red/10 text-error-red px-4 py-3 mx-4 mt-4 rounded-lg text-sm font-bold border border-error-red/20">
+                {error}
+              </div>
+            )}
             <div className="p-4 md:p-6 flex flex-col gap-6">
               <div>
                 <label className="block text-xs font-bold text-text-medium-emphasis mb-2 uppercase">
@@ -28,6 +79,8 @@ export const CreateStep1: React.FC = () => {
                   className="w-full h-11 px-4 border border-outline-variant rounded-lg bg-input-level-2 text-on-surface focus:ring-primary focus:border-primary outline-none"
                   placeholder="Nhập tên sự kiện hấp dẫn của bạn"
                   type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -35,10 +88,14 @@ export const CreateStep1: React.FC = () => {
                   <label className="block text-xs font-bold text-text-medium-emphasis mb-2 uppercase">
                     Thể loại
                   </label>
-                  <select className="w-full h-11 px-4 border border-outline-variant rounded-lg bg-input-level-2 text-on-surface focus:ring-primary outline-none">
-                    <option>Âm nhạc</option>
-                    <option>Thể thao</option>
-                    <option>Hội thảo</option>
+                  <select 
+                    className="w-full h-11 px-4 border border-outline-variant rounded-lg bg-input-level-2 text-on-surface focus:ring-primary outline-none"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    <option value="Âm nhạc">Âm nhạc</option>
+                    <option value="Thể thao">Thể thao</option>
+                    <option value="Hội thảo">Hội thảo</option>
                   </select>
                 </div>
                 <div>
@@ -66,31 +123,40 @@ export const CreateStep1: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-text-medium-emphasis mb-2 uppercase">
-                    Bắt đầu
+                    Hình thức
                   </label>
-                  <input
+                  <select 
                     className="w-full h-11 px-4 border border-outline-variant rounded-lg bg-input-level-2 text-on-surface outline-none"
-                    type="datetime-local"
-                  />
+                    value={addressType}
+                    onChange={(e) => setAddressType(e.target.value as 'OFFLINE'|'ONLINE')}
+                  >
+                    <option value="OFFLINE">Offline (Trực tiếp)</option>
+                    <option value="ONLINE">Online (Trực tuyến)</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-text-medium-emphasis mb-2 uppercase">
-                    Kết thúc
+                    Thành phố / Tỉnh <span className="text-error-red">*</span>
                   </label>
                   <input
                     className="w-full h-11 px-4 border border-outline-variant rounded-lg bg-input-level-2 text-on-surface outline-none"
-                    type="datetime-local"
+                    placeholder="VD: TP. Hồ Chí Minh"
+                    type="text"
+                    value={province}
+                    onChange={(e) => setProvince(e.target.value)}
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-text-medium-emphasis mb-2 uppercase">
-                  Địa chỉ tổ chức
+                  Địa điểm cụ thể <span className="text-error-red">*</span>
                 </label>
                 <input
                   className="w-full h-11 px-4 border border-outline-variant rounded-lg bg-input-level-2 text-on-surface outline-none"
-                  placeholder="Địa chỉ cụ thể..."
+                  placeholder="Nhà thi đấu Quân Khu 7..."
                   type="text"
+                  value={venueName}
+                  onChange={(e) => setVenueName(e.target.value)}
                 />
               </div>
             </div>
@@ -126,10 +192,13 @@ export const CreateStep1: React.FC = () => {
             Lưu bản nháp
           </button>
           <button
-            onClick={() => navigate('/organizer/create/step-2')}
-            className="h-11 px-6 md:px-8 bg-primary text-on-primary font-bold rounded-lg text-sm flex items-center gap-2 shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
+            onClick={handleNext}
+            disabled={loading}
+            className={`h-11 px-6 md:px-8 font-bold rounded-lg text-sm flex items-center gap-2 shadow-lg transition-all ${
+              loading ? 'bg-surface-container-high text-text-medium-emphasis cursor-not-allowed' : 'bg-primary text-on-primary shadow-primary/20 hover:brightness-110'
+            }`}
           >
-            Bước tiếp theo
+            {loading ? 'Đang lưu...' : 'Bước tiếp theo'}
             <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </button>
         </div>
