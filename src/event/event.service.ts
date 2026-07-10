@@ -19,7 +19,7 @@ import { REDIS_CLIENT } from '../config/redis.config';
 import { EVENT_PUBLISHER, IEventPublisher } from './interfaces/event-publisher.interface';
 import { Concert, ConcertStatus } from '../info/entities/concert.entity';
 import { EventTicketType } from '../info/entities/event-ticket-type.entity';
-import { SeatInventory } from '../info/entities/seat-inventory.entity';
+import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { ShowInfo, ShowInfoDocument } from '../info/schemas/show-info.schema';
 
 import { SaveStep1Dto } from './dto/save-step1.dto';
@@ -59,7 +59,7 @@ export class EventService {
     };
   }
 
-  async saveStep(eventId: string, step: number, data: any, organizerId: string) {
+  async saveStep(eventId: number, step: number, data: any, organizerId: string) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
     if (!concert) throw new NotFoundException('Event not found.');
     if (concert.organizer_id !== organizerId)
@@ -103,11 +103,11 @@ export class EventService {
     };
   }
 
-  private async _saveStep1(eventId: string, data: SaveStep1Dto) {
+  private async _saveStep1(eventId: number, data: SaveStep1Dto) {
     await this.showInfoModel.updateOne({ showId: eventId }, { $set: { ...data } }, { upsert: true });
   }
 
-  private async _saveStep2(eventId: string, data: SaveStep2Dto) {
+  private async _saveStep2(eventId: number, data: SaveStep2Dto) {
     await this.concertRepo.update(eventId, { performanceDate: new Date(data.start_time) });
     await this.ticketTypeRepo.delete({ showId: eventId });
     if (data.ticket_types?.length) {
@@ -131,22 +131,22 @@ export class EventService {
     }
   }
 
-  private async _saveStep3(eventId: string, data: SaveStep3Dto) {
+  private async _saveStep3(eventId: number, data: SaveStep3Dto) {
     const isAvailable = await this.checkSlugAvailability(data.slug, eventId);
     if (!isAvailable) throw new ConflictException({ error: 'slug_taken' });
     await this.concertRepo.update(eventId, { slug: data.slug });
-    await this.showInfoModel.updateOne(
+    await this.showInfoModel.findOneAndUpdate(
       { showId: eventId },
       { $set: { privacy: data.privacy, confirmation_message: data.confirmation_message } },
       { upsert: true },
     );
   }
 
-  private async _saveStep4(eventId: string, data: SaveStep4Dto) {
+  private async _saveStep4(eventId: number, data: SaveStep4Dto) {
     await this.showInfoModel.updateOne({ showId: eventId }, { $set: { ...data } }, { upsert: true });
   }
 
-  async getDraft(eventId: string, organizerId: string) {
+  async getDraft(eventId: number, organizerId: string) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
     if (!concert) throw new NotFoundException('Event not found.');
     if (concert.organizer_id !== organizerId)
@@ -191,7 +191,7 @@ export class EventService {
    * GET /api/organizer/concerts/:id/upload-url?type=<type>&ext=<ext>
    * This method is retained only so the deprecated controller endpoint compiles.
    */
-  async saveImageFile(_eventId: string, _file: Express.Multer.File, _type: string): Promise<{ url: string; type: string }> {
+  async saveImageFile(_eventId: number, _file: Express.Multer.File, _type: string): Promise<{ url: string; type: string }> {
     throw new GoneException(
       'Local-disk image upload has been removed. Use GET /api/organizer/concerts/:id/upload-url to obtain a MinIO presigned upload URL.',
     );
@@ -236,7 +236,7 @@ export class EventService {
     return result;
   }
 
-  async getEventDetail(eventId: string): Promise<any> {
+  async getEventDetail(eventId: number): Promise<any> {
     const cacheKey = `event:${eventId}`;
     const cached = await this.redis.get(cacheKey);
     if (cached) return { ...JSON.parse(cached), cache_hit: true, cache_ttl: 600 };
@@ -326,7 +326,7 @@ export class EventService {
     }
   }
 
-  async updateEvent(eventId: string, data: UpdateEventDto, userId: string) {
+  async updateEvent(eventId: number, data: UpdateEventDto, userId: string) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
     if (!concert) throw new NotFoundException('Event not found.');
 
@@ -345,7 +345,7 @@ export class EventService {
     return this.getEventDetail(eventId);
   }
 
-  async cancelEvent(eventId: string) {
+  async cancelEvent(eventId: number) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
     if (!concert) throw new NotFoundException('Event not found.');
 
@@ -356,7 +356,7 @@ export class EventService {
     return { id: eventId, status: ConcertStatus.CANCELLED, message: 'Event cancelled. Refund process initiated.' };
   }
 
-  async checkSlugAvailability(slug: string, eventId: string): Promise<boolean> {
+  async checkSlugAvailability(slug: string, eventId: number): Promise<boolean> {
     const cacheKey = `slug_check:${slug}`;
     const cached = await this.redis.get(cacheKey);
     if (cached) return cached === 'available';
@@ -367,7 +367,7 @@ export class EventService {
     return available;
   }
 
-  async updateGASeatCounts(eventId: string, zone: string, available: number, reserved: number, sold: number) {
+  async updateGASeatCounts(eventId: number, zone: string, available: number, reserved: number, sold: number) {
     const key = `seat_counts:${eventId}:${zone}`;
     await this.redis.hmset(key, { available: String(available), reserved: String(reserved), sold: String(sold) });
     await this.redis.expire(key, 10);
@@ -398,7 +398,7 @@ export class EventService {
     if (keys.length) await this.redis.del(...keys);
   }
 
-  private async _invalidateConcertCache(eventId: string) {
+  private async _invalidateConcertCache(eventId: number) {
     await this._invalidateEventListCache();
     await this.redis.del(`event:${eventId}`);
     await this.redis.del(`slug_check:*`);

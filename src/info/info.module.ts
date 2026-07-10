@@ -5,7 +5,7 @@ import { InfoController } from './info.controller';
 import { InfoService } from './info.service';
 import { Concert } from './entities/concert.entity';
 import { EventTicketType } from './entities/event-ticket-type.entity';
-import { SeatInventory } from './entities/seat-inventory.entity';
+import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { ShowInfo, ShowInfoSchema } from './schemas/show-info.schema';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
 

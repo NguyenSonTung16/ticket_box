@@ -5,7 +5,7 @@ import { SeatInventory } from './seat-inventory.entity';
 import { ZoneInventory } from './zone-inventory.entity';
 
 @Entity('tickets')
-@Unique(['showId', 'seatNo'])
+@Unique(['concert_id', 'seatNo'])
 export class Ticket {
   @PrimaryGeneratedColumn('uuid')
   id: string;

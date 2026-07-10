@@ -1,6 +1,13 @@
 import { Injectable, OnModuleInit, Inject, Logger } from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { RABBITMQ_CHANNEL } from '../config/rabbitmq.config';
+import { REDIS_CLIENT } from '../config/redis.config';
+import Redis from 'ioredis';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { SeatInventory } from '../booking/entities/seat-inventory.entity';
+import { Invoice } from '../booking/entities/invoice.entity';
+import { Ticket } from '../booking/entities/ticket.entity';
 import * as QRCode from 'qrcode';
 
 @Injectable()
@@ -9,6 +16,10 @@ export class NotificationsService implements OnModuleInit {
 
   constructor(
     @Inject(RABBITMQ_CHANNEL) private readonly rabbitChannel: amqp.Channel,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    @InjectRepository(SeatInventory) private readonly seatInventoryRepo: Repository<SeatInventory>,
+    @InjectRepository(Invoice) private readonly invoiceRepository: Repository<Invoice>,
+    @InjectRepository(Ticket) private readonly ticketRepository: Repository<Ticket>,
   ) {}
 
   onModuleInit() {
@@ -129,7 +140,7 @@ export class NotificationsService implements OnModuleInit {
           // Tạo Invoice
           const invoice = this.invoiceRepository.create({
             userId: data.userId,
-            showId: data.showId,
+            concert_id: data.showId,
             totalAmount: data.totalAmount,
             status: 'PAID',
           });
@@ -139,7 +150,7 @@ export class NotificationsService implements OnModuleInit {
           const ticketsToSave = data.tickets.map((t: any) => {
             return this.ticketRepository.create({
               invoice: savedInvoice,
-              showId: data.showId,
+              concert_id: data.showId,
               seatNo: t.seatNo || null,
               zone: t.zone || null,
               price: t.price,

@@ -34,10 +34,8 @@ export class BookingService implements OnModuleInit {
       const cols = 20; // 20 columns = 200 seats
       for (const row of rows) {
         for (let i = 1; i <= cols; i++) {
-          seats.push({ row, number: String(i), showId: '11111111-1111-1111-1111-111111111111', status: 'AVAILABLE', zone: 'SVIP' });
+          seats.push({ row, number: String(i), showId: 1, status: 'AVAILABLE', zone: 'SVIP' });
         }
-        await this.seatInventoryRepo.insert(seats);
-        this.logger.log(`Seeded 40 SVIP seats for concert ${cid} successfully.`);
       }
       await this.seatInventoryRepo.insert(seats);
       this.logger.log('Seeded 200 SVIP seats successfully.');
@@ -45,11 +43,11 @@ export class BookingService implements OnModuleInit {
       // Pre-allocate A-1 and A-2 to 'sponsor-test' for VIP CSV import testing.
       // In production, this is done by an admin via a seat-allocation API (post-MVP).
       await this.seatInventoryRepo.update(
-        { row: 'A', number: '1', showId: '11111111-1111-1111-1111-111111111111' },
+        { row: 'A', number: '1', showId: 1 },
         { sponsorId: 'sponsor-test' },
       );
       await this.seatInventoryRepo.update(
-        { row: 'A', number: '2', showId: '11111111-1111-1111-1111-111111111111' },
+        { row: 'A', number: '2', showId: 1 },
         { sponsorId: 'sponsor-test' },
       );
       this.logger.log('Seeded sponsorId=sponsor-test on seats A-1 and A-2.');
@@ -59,8 +57,8 @@ export class BookingService implements OnModuleInit {
     const zoneCount = await this.zoneInventoryRepo.count();
     if (zoneCount === 0) {
       await this.zoneInventoryRepo.insert([
-        { zone: 'VIP', showId: '11111111-1111-1111-1111-111111111111', totalCapacity: 75, availableSlots: 75 },
-        { zone: 'Normal', showId: '11111111-1111-1111-1111-111111111111', totalCapacity: 100, availableSlots: 100 },
+        { zone: 'VIP', concert_id: 1, totalCapacity: 75, availableSlots: 75 },
+        { zone: 'Normal', concert_id: 1, totalCapacity: 100, availableSlots: 100 },
       ]);
       this.logger.log('Seeded 75 VIP and 100 Normal zones successfully.');
     }
@@ -220,7 +218,7 @@ export class BookingService implements OnModuleInit {
 
     // 2.5 DB Sync Write: Cập nhật Database đồng bộ để chặn Data Loss
     const dbUpdate = await this.seatInventoryRepo.update(
-      { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId, status: 'AVAILABLE' },
+      { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId: concert_id, status: 'AVAILABLE' },
       { status: 'RESERVED', reservedBy: userId, expiryTime: new Date(Date.now() + 10 * 60 * 1000) } // 10 mins
     );
 
@@ -230,7 +228,7 @@ export class BookingService implements OnModuleInit {
       await this.redis.decr(userQuotaKey);
       
       // Repair sync: DB state might be out of sync with Redis
-      const actualDbSeat = await this.seatInventoryRepo.findOne({ where: { seatNo, concert_id } });
+      const actualDbSeat = await this.seatInventoryRepo.findOne({ where: { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId: concert_id } });
       if (actualDbSeat) {
         this.logger.warn(`[Sync Warning] Redis hold failed sync for ${seatNo}. DB state: ${actualDbSeat.status} by ${actualDbSeat.reservedBy}`);
         if (actualDbSeat.status === 'BOOKED' && actualDbSeat.reservedBy) {
@@ -255,14 +253,14 @@ export class BookingService implements OnModuleInit {
   }
 
   // API Mô phỏng thanh toán
-  async payTickets(showId: string, userId: string, payload: any) {
+  async payTickets(concert_id: number, userId: string, payload: any) {
     const { svipSeats, ticketCounts = {}, totalAmount } = payload;
     
     const tickets = [];
 
     // Chốt ghế SVIP
     if (svipSeats && svipSeats.length > 0) {
-      const seatHashKey = `show:${showId}:svip_seats`;
+      const seatHashKey = `concert:${concert_id}:svip_seats`;
       for (const seatNo of svipSeats) {
         // Chỉ để chắc chắn người này thực sự đang giữ ghế trên Redis
         const owner = await this.redis.hget(seatHashKey, seatNo);
@@ -270,7 +268,7 @@ export class BookingService implements OnModuleInit {
           
           // Double Check trên Database để chốt giao dịch
           const dbUpdate = await this.seatInventoryRepo.update(
-            { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId, reservedBy: userId, status: 'RESERVED' },
+            { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId: concert_id, reservedBy: userId, status: 'RESERVED' },
             { status: 'BOOKED' }
           );
 
@@ -278,8 +276,8 @@ export class BookingService implements OnModuleInit {
             tickets.push({ seatNo, zone: 'SVIP', price: 2650000 });
             await this.redis.hset(seatHashKey, seatNo, `${userId}:PAID`);
             // Cập nhật trạng thái SSE thành booked
-            this.sseService.broadcast({ showId, seatNo, status: 'booked', userId, message: `Ghế SVIP ${seatNo} đã được thanh toán.` });
-            this.updateLocalSeatCache({ showId, seatNo, status: 'booked', userId });
+            this.sseService.broadcast({ concert_id, seatNo, status: 'booked', userId, message: `Ghế SVIP ${seatNo} đã được thanh toán.` });
+            this.updateLocalSeatCache({ concert_id, seatNo, status: 'booked', userId });
           } else {
             // Lỗi lệch pha hoặc giao dịch hết hạn (DB đã nhả)
             if (tickets.length === 0) {
@@ -287,23 +285,29 @@ export class BookingService implements OnModuleInit {
             }
           }
         }
+      }
+    }
+    return { success: true, tickets };
+  }
+
   /**
    * Đồng bộ lại toàn bộ trạng thái ghế SVIP từ DB lên Redis
    */
   async repairSeatSync(concert_id: number) {
     this.logger.log(`[Repair Sync] Bắt đầu đồng bộ lại trạng thái ghế cho show ${concert_id}`);
-    const dbSeats = await this.seatInventoryRepo.find({ where: { concert_id } });
+    const dbSeats = await this.seatInventoryRepo.find({ where: { showId: concert_id } });
     const pipeline = this.redis.pipeline();
     const seatHashKey = `concert:${concert_id}:svip_seats`;
 
     for (const seat of dbSeats) {
+      const seatNo = `${seat.row}-${seat.number}`;
       if (seat.status === 'BOOKED' && seat.reservedBy) {
-        pipeline.hset(seatHashKey, seat.seatNo, `${seat.reservedBy}:PAID`);
+        pipeline.hset(seatHashKey, seatNo, `${seat.reservedBy}:PAID`);
       } else if (seat.status === 'RESERVED' && seat.reservedBy) {
         // Kiểm tra xem Redis có giữ đúng người không, nếu không thì ghi đè
-        pipeline.hset(seatHashKey, seat.seatNo, seat.reservedBy);
+        pipeline.hset(seatHashKey, seatNo, seat.reservedBy);
       } else if (seat.status === 'AVAILABLE') {
-        pipeline.hdel(seatHashKey, seat.seatNo);
+        pipeline.hdel(seatHashKey, seatNo);
       }
     }
     await pipeline.exec();
@@ -314,7 +318,7 @@ export class BookingService implements OnModuleInit {
   /**
    * @deprecated Sử dụng PaymentController.createOrder và captureOrder thay thế
    */
-  async payTickets(concert_id: number, userId: string, payload: any) {
+  async payTicketsOld(concert_id: number, userId: string, payload: any) {
     this.logger.warn(`[Deprecated] Gọi hàm payTickets cũ. Vui lòng chuyển sang dùng PaymentModule.`);
     throw new BadRequestException('Endpoint thanh toán cũ đã bị vô hiệu hóa. Vui lòng cập nhật ứng dụng.');
   }

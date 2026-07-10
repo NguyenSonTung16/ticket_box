@@ -13,8 +13,8 @@ export class SeatInventory {
   @PrimaryGeneratedColumn('uuid')
   seatId: string;
 
-  @Column({ type: 'uuid' })
-  showId: string;
+  @Column({ type: 'int' })
+  showId: number;
 
   @Column({ type: 'varchar', length: 100 })
   zone: string; // Maps to EventTicketType.name

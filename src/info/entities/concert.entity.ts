@@ -18,8 +18,8 @@ export enum ConcertStatus {
 @Index('idx_concerts_status', ['status'])
 @Index('idx_concerts_slug', ['slug'])
 export class Concert {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn('increment')
+  id: number;
 
   @Column({ type: 'uuid' })
   organizer_id: string;

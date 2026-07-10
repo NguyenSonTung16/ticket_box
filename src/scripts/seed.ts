@@ -26,36 +26,10 @@ async function bootstrap() {
   }
 
   // 2. Redis Seed: SVIP Seat Matrix và GA Inventory
-  const showId = '11111111-1111-1111-1111-111111111111';
-  const gaKey = `show:${showId}:inventory`;
-  const svipHashKey = `show:${showId}:svip_seats`;
-
-    const zoneCount = await zoneInventoryRepo.count({ where: { concert_id: cData.id } });
-    if (zoneCount === 0) {
-      await zoneInventoryRepo.insert([
-        { zone: 'VIP', concert_id: cData.id, totalCapacity: 75, availableSlots: 75 },
-        { zone: 'Normal', concert_id: cData.id, totalCapacity: 100, availableSlots: 100 },
-      ]);
-      console.log(`Đã Seed 75 VIP và 100 Normal zones cho Concert ${cData.id} vào Postgres.`);
-    }
-
-    // 2. Redis Seed: SVIP Seat Matrix    // Set up Redis keys
-    const inventoryKey = `concert:${cData.id}:inventory`;
-    const svipHashKey = `concert:${cData.id}:svip_seats`;
-
-    // Xoá dữ liệu cũ
-    await redisClient.del(inventoryKey);
-    await redisClient.del(svipHashKey);
-
-    // Set vé GA, VIP, CAT, v.v. vào Redis
-    const zones = await zoneInventoryRepo.find({ where: { concert_id: cData.id } });
-    for (const zone of zones) {
-      if (zone.zone !== 'SVIP') {
-        await redisClient.hset(inventoryKey, zone.zone, zone.totalCapacity);
-      }
-    }
-    console.log(`Đã nạp vé các khu vực cho Concert ${cData.id} vào Redis.`);
-  }
+  // Chú ý: Concert.id giờ là number (auto-increment). showId=1 là concert mặc định để seed.
+  const showId = 1;
+  const inventoryKey = `concert:${showId}:inventory`;
+  const svipHashKey = `concert:${showId}:svip_seats`;
 
   // Tạo CSV mẫu cho VIP Guest Import
   const csvPath = 'vip_guests.csv';

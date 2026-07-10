@@ -103,7 +103,7 @@ export class InfoService {
   }
 
   // Lấy thông tin Show với Cache-Aside và SingleFlight (Mutex Lock cục bộ)
-  async getShowInfo(showId: string) {
+  async getShowInfo(showId: number) {
     const cacheKey = `show_info:${showId}`;
 
     // 1. Kiểm tra trên Redis (Cache-Aside)
@@ -125,7 +125,7 @@ export class InfoService {
         // 3. Phân tách DB: Truy vấn đồng thời PostgreSQL và MongoDB
         const [postgresData, postgresZones, mongoData] = await Promise.all([
           this.showRepo.findOne({ where: { id: showId } }),
-          this.zoneRepo.find({ where: { showId } }),
+          this.zoneRepo.find({ where: { concert_id: showId } }),
           this.showInfoModel.findOne({ showId }).lean(),
         ]);
 
@@ -157,9 +157,9 @@ export class InfoService {
       } finally {
         this.activePromises.delete(cacheKey);
       }
-    }
-    }
+    })();
 
-    return showInfo;
+    this.activePromises.set(cacheKey, promise);
+    return promise;
   }
 }

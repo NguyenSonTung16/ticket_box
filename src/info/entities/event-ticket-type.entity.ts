@@ -13,8 +13,8 @@ export class EventTicketType {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
-  showId: string;
+  @Column({ type: 'int' })
+  showId: number;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;

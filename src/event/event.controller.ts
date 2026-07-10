@@ -29,31 +29,31 @@ export class EventController {
 
   @Put('organizer/concerts/:id/step/1')
   @UseGuards(JwtAuthGuard)
-  async saveStep1(@Param('id') eventId: string, @Body() body: SaveStep1Dto, @Request() req: any) {
+  async saveStep1(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep1Dto, @Request() req: any) {
     return this.eventService.saveStep(eventId, 1, body, req.user.userId);
   }
 
   @Put('organizer/concerts/:id/step/2')
   @UseGuards(JwtAuthGuard)
-  async saveStep2(@Param('id') eventId: string, @Body() body: SaveStep2Dto, @Request() req: any) {
+  async saveStep2(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep2Dto, @Request() req: any) {
     return this.eventService.saveStep(eventId, 2, body, req.user.userId);
   }
 
   @Put('organizer/concerts/:id/step/3')
   @UseGuards(JwtAuthGuard)
-  async saveStep3(@Param('id') eventId: string, @Body() body: SaveStep3Dto, @Request() req: any) {
+  async saveStep3(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep3Dto, @Request() req: any) {
     return this.eventService.saveStep(eventId, 3, body, req.user.userId);
   }
 
   @Put('organizer/concerts/:id/step/4')
   @UseGuards(JwtAuthGuard)
-  async saveStep4(@Param('id') eventId: string, @Body() body: SaveStep4Dto, @Request() req: any) {
+  async saveStep4(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep4Dto, @Request() req: any) {
     return this.eventService.saveStep(eventId, 4, body, req.user.userId);
   }
 
   @Get('organizer/concerts/:id/draft')
   @UseGuards(JwtAuthGuard)
-  async getDraft(@Param('id') eventId: string, @Request() req: any) {
+  async getDraft(@Param('id', ParseIntPipe) eventId: number, @Request() req: any) {
     return this.eventService.getDraft(eventId, req.user.userId);
   }
 
@@ -69,7 +69,7 @@ export class EventController {
   @Get('organizer/concerts/:id/upload-url')
   @UseGuards(JwtAuthGuard)
   async getImageUploadUrl(
-    @Param('id') eventId: string,
+    @Param('id', ParseIntPipe) eventId: number,
     @Query('type') type: string,
     @Query('ext') ext = 'jpg',
   ) {
@@ -93,7 +93,7 @@ export class EventController {
       },
     }),
   )
-  async uploadImage(@Param('id') eventId: string, @UploadedFile() file: Express.Multer.File, @Body('type') type: string) {
+  async uploadImage(@Param('id', ParseIntPipe) eventId: number, @UploadedFile() file: Express.Multer.File, @Body('type') type: string) {
     return this.eventService.saveImageFile(eventId, file, type);
   }
 
@@ -106,24 +106,24 @@ export class EventController {
   }
 
   @Get('concerts/:id')
-  async getEventDetail(@Param('id') eventId: string) {
+  async getEventDetail(@Param('id', ParseIntPipe) eventId: number) {
     return this.eventService.getEventDetail(eventId);
   }
 
   @Put('admin/concerts/:id')
   @UseGuards(JwtAuthGuard)
-  async updateEvent(@Param('id') eventId: string, @Body() body: UpdateEventDto, @Request() req: any) {
+  async updateEvent(@Param('id', ParseIntPipe) eventId: number, @Body() body: UpdateEventDto, @Request() req: any) {
     return this.eventService.updateEvent(eventId, body, req.user.userId);
   }
 
   @Delete('admin/concerts/:id')
   @UseGuards(JwtAuthGuard)
-  async cancelEvent(@Param('id') eventId: string) {
+  async cancelEvent(@Param('id', ParseIntPipe) eventId: number) {
     return this.eventService.cancelEvent(eventId);
   }
 
   @Put('internal/concerts/:id/seat-counts/:zone')
-  async updateGASeatCounts(@Param('id') eventId: string, @Param('zone') zone: string, @Body() body: { available: number; reserved: number; sold: number }) {
+  async updateGASeatCounts(@Param('id', ParseIntPipe) eventId: number, @Param('zone') zone: string, @Body() body: { available: number; reserved: number; sold: number }) {
     return this.eventService.updateGASeatCounts(eventId, zone, body.available, body.reserved, body.sold);
   }
 }

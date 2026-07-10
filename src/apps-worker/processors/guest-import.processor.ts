@@ -250,7 +250,7 @@ export class GuestImportProcessor implements OnModuleInit {
 
     try {
       const seat = await this.seatRepo.findOne({
-        where: { row: seatRow, number: seatNum, showId },
+        where: { row: seatRow, number: seatNum, showId: Number(showId) },
       });
 
       if (!seat) {
@@ -276,7 +276,7 @@ export class GuestImportProcessor implements OnModuleInit {
         .insert()
         .into(Ticket)
         .values({
-          showId,
+          concert_id: Number(showId),
           seatNo,
           zone: 'SVIP',
           price: 0,
@@ -287,7 +287,7 @@ export class GuestImportProcessor implements OnModuleInit {
         })
         .orUpdate(
           ['guestName', 'guestEmail', 'sponsorId', 'importJobId', 'updatedAt'],
-          ['showId', 'seatNo'],
+          ['concert_id', 'seatNo'],
         )
         .execute();
 

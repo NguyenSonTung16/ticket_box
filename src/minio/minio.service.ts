@@ -44,7 +44,7 @@ export class MinioService {
    *  - TTL = MINIO_PRESIGN_TTL_IMAGES (default 900s / 15 min) (Q2 decision)
    */
   async getImagePresignedUploadUrl(
-    eventId: string,
+    eventId: number | string,
     type: string,
     ext: string,
   ): Promise<PresignedUploadResult> {
