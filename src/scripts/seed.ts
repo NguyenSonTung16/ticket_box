@@ -25,47 +25,10 @@ async function bootstrap() {
     console.log('Đã tạo Admin User trong Postgres.');
   }
 
-  const dummyConcerts = [
-    { id: 1, name: 'Anh Trai Say Hi - Live Concert', location: 'Hà Nội', performanceDate: new Date('2026-10-10') },
-    { id: 2, name: 'Rap Việt All Star', location: 'TPHCM', performanceDate: new Date('2026-11-20') },
-    { id: 3, name: 'Đen Vâu - Show Của Đen', location: 'Đà Nẵng', performanceDate: new Date('2026-12-05') },
-    { id: 4, name: 'Anh Trai "Say Hi" 2025', location: 'Hà Nội', performanceDate: new Date('2026-12-20') },
-  ];
-
-  const { Concert } = require('../info/entities/concert.entity');
-  const concertRepository = app.get(getRepositoryToken(Concert));
-  const { SeatInventory } = require('../booking/entities/seat-inventory.entity');
-  const { ZoneInventory } = require('../booking/entities/zone-inventory.entity');
-  const seatInventoryRepo = app.get(getRepositoryToken(SeatInventory));
-  const zoneInventoryRepo = app.get(getRepositoryToken(ZoneInventory));
-
-  for (const cData of dummyConcerts) {
-    let concert = await concertRepository.findOne({ where: { id: cData.id } });
-    if (!concert) {
-      concert = concertRepository.create({
-        id: cData.id,
-        name: cData.name,
-        performanceDate: cData.performanceDate,
-        location: cData.location,
-        status: 'UPCOMING'
-      });
-      await concertRepository.save(concert);
-      console.log(`Đã tạo Concert ID ${cData.id} trong Postgres.`);
-    }
-
-    const seatCount = await seatInventoryRepo.count({ where: { concert_id: cData.id } });
-    if (seatCount === 0) {
-      const seats = [];
-      const rows = ['A', 'B'];
-      const cols = 20;
-      for (const row of rows) {
-        for (let i = 1; i <= cols; i++) {
-          seats.push({ seatNo: `${row}-${i}`, concert_id: cData.id, status: 'AVAILABLE', zone: 'SVIP' });
-        }
-      }
-      await seatInventoryRepo.insert(seats);
-      console.log(`Đã Seed 200 SVIP seats cho Concert ${cData.id} vào Postgres.`);
-    }
+  // 2. Redis Seed: SVIP Seat Matrix và GA Inventory
+  const showId = '11111111-1111-1111-1111-111111111111';
+  const gaKey = `show:${showId}:inventory`;
+  const svipHashKey = `show:${showId}:svip_seats`;
 
     const zoneCount = await zoneInventoryRepo.count({ where: { concert_id: cData.id } });
     if (zoneCount === 0) {
@@ -118,10 +81,9 @@ async function bootstrap() {
   // 4. Meilisearch Seed: Dummy shows
   const index = meiliClient.index('shows');
   const dummyShows = [
-    { id: '1', name: 'Anh Trai Say Hi - Live Concert', location: 'Hà Nội', date: '2026-10-10' },
-    { id: '2', name: 'Rap Việt All Star', location: 'TPHCM', date: '2026-11-20' },
-    { id: '3', name: 'Đen Vâu - Show Của Đen', location: 'Đà Nẵng', date: '2026-12-05' },
-    { id: '4', name: 'Anh Trai "Say Hi" 2025', location: 'Hà Nội', date: '2026-12-20' },
+    { id: '11111111-1111-1111-1111-111111111111', name: 'Anh Trai Say Hi - Live Concert', location: 'Hà Nội', date: '2026-10-10' },
+    { id: '22222222-2222-2222-2222-222222222222', name: 'Rap Việt All Star', location: 'TPHCM', date: '2026-11-20' },
+    { id: '33333333-3333-3333-3333-333333333333', name: 'Đen Vâu - Show Của Đen', location: 'Đà Nẵng', date: '2026-12-05' },
   ];
   await index.addDocuments(dummyShows);
   console.log('Đã nạp Dummy Shows vào Meilisearch.');

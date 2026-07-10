@@ -11,49 +11,43 @@ export const RABBITMQ_CHANNEL = 'RABBITMQ_CHANNEL';
       useFactory: async () => {
         const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672');
         const channel = await conn.createChannel();
-        
+
+        // ── Existing queues (Booking Service) ────────────────────────────────
         await channel.assertQueue('notification_queue', { durable: true });
         await channel.assertQueue('payment_success_queue', { durable: true });
-        
-        // --- New Queues ---
-        await channel.assertQueue('payment_webhook_queue', { durable: true });
-        await channel.assertQueue('payment_confirmed_queue', { durable: true });
-        await channel.assertQueue('internal_capture_queue', { durable: true });
 
-        // Email Notification Queue with DLX
-        const emailDlxExchange = 'email_dlx';
-        await channel.assertExchange(emailDlxExchange, 'direct', { durable: true });
-        await channel.assertQueue('email_notification_dlq', { durable: true });
-        await channel.bindQueue('email_notification_dlq', emailDlxExchange, 'email_dead');
-
-        await channel.assertQueue('email_notification_queue', { 
-          durable: true,
-          arguments: {
-            'x-dead-letter-exchange': emailDlxExchange,
-            'x-dead-letter-routing-key': 'email_dead',
-          }
-        });
-
-        // Cấu hình DLX (Dead Letter Exchange) để giả lập Delayed Messaging cho Timeout Rollback (10 phút)
+        // DLX for hold timeout rollback (10-minute ticket hold)
         const dlxExchange = 'hold_timeout_dlx';
         await channel.assertExchange(dlxExchange, 'direct', { durable: true });
-        
-        // Queue xử lý rollback thực tế khi hết thời gian giữ vé
         const processQueue = 'hold_timeout_queue';
         await channel.assertQueue(processQueue, { durable: true });
         await channel.bindQueue(processQueue, dlxExchange, 'rollback');
-        
-        // Queue chờ duy nhất với TTL = 30s cho tất cả loại vé (giảm để test)
-        const waitQueue = 'hold_timeout_wait_5m_queue';
+        const waitQueue = 'hold_timeout_wait_queue';
         await channel.assertQueue(waitQueue, {
           durable: true,
           arguments: {
             'x-dead-letter-exchange': dlxExchange,
             'x-dead-letter-routing-key': 'rollback',
-            'x-message-ttl': 30000,
-          }
+          },
         });
-        
+
+        // ── Event Service queues ─────────────────────────────────────────────
+        // Consumers: Notification Service, Booking Service (refund on cancel)
+        // Future: when migrating to Kafka, remove these two lines and add
+        // Kafka topic declarations in KafkaEventPublisher instead.
+        await channel.assertQueue('event_published_queue', { durable: true });
+        await channel.assertQueue('event_cancelled_queue', { durable: true });
+
+        // ── Guest Service — VIP CSV Import queues ────────────────────────────
+        // Main queue consumed by GuestImportProcessor (prefetch=1, one file at a time)
+        await channel.assertQueue('vip_guest.import', { durable: true });
+
+        // Dead Letter Exchange: after 3 nacks, failed import messages route here
+        const guestDlx = 'guest_import_dlx';
+        await channel.assertExchange(guestDlx, 'direct', { durable: true });
+        await channel.assertQueue('dead_letter.vip_guest.import', { durable: true });
+        await channel.bindQueue('dead_letter.vip_guest.import', guestDlx, 'failed');
+
         return channel;
       },
     },

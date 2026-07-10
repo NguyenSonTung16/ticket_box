@@ -27,39 +27,42 @@ export class BookingService implements OnModuleInit {
 
   async onModuleInit() {
     this.logger.log('Seeding SVIP seats into database if not exists...');
-    
-    const concertIds = [1, 2, 3, 4];
-
-    for (const cid of concertIds) {
-      const [{ exists }] = await this.seatInventoryRepo.query(`SELECT EXISTS (SELECT 1 FROM concerts WHERE id = $1)`, [cid]);
-      if (!exists) {
-        this.logger.warn(`Concert ID ${cid} does not exist yet. Skipping DB seed for this concert.`);
-        continue;
-      }
-      
-      const count = await this.seatInventoryRepo.count({ where: { concert_id: cid } });
-      if (count === 0) {
-        const seats = [];
-        const rows = ['A', 'B']; // 2 rows
-        const cols = 20; // 20 columns = 40 seats
-        for (const row of rows) {
-          for (let i = 1; i <= cols; i++) {
-            seats.push({ seatNo: `${row}-${i}`, concert_id: cid, status: 'AVAILABLE', zone: 'SVIP' });
-          }
+    const count = await this.seatInventoryRepo.count();
+    if (count === 0) {
+      const seats = [];
+      const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']; // 10 rows
+      const cols = 20; // 20 columns = 200 seats
+      for (const row of rows) {
+        for (let i = 1; i <= cols; i++) {
+          seats.push({ row, number: String(i), showId: '11111111-1111-1111-1111-111111111111', status: 'AVAILABLE', zone: 'SVIP' });
         }
         await this.seatInventoryRepo.insert(seats);
         this.logger.log(`Seeded 40 SVIP seats for concert ${cid} successfully.`);
       }
+      await this.seatInventoryRepo.insert(seats);
+      this.logger.log('Seeded 200 SVIP seats successfully.');
 
-      this.logger.log(`Seeding ZoneInventory for concert ${cid} into database if not exists...`);
-      const zoneCount = await this.zoneInventoryRepo.count({ where: { concert_id: cid } });
-      if (zoneCount === 0) {
-        await this.zoneInventoryRepo.insert([
-          { zone: 'VIP', concert_id: cid, totalCapacity: 75, availableSlots: 75 },
-          { zone: 'Normal', concert_id: cid, totalCapacity: 100, availableSlots: 100 },
-        ]);
-        this.logger.log(`Seeded 75 VIP and 100 Normal zones for concert ${cid} successfully.`);
-      }
+      // Pre-allocate A-1 and A-2 to 'sponsor-test' for VIP CSV import testing.
+      // In production, this is done by an admin via a seat-allocation API (post-MVP).
+      await this.seatInventoryRepo.update(
+        { row: 'A', number: '1', showId: '11111111-1111-1111-1111-111111111111' },
+        { sponsorId: 'sponsor-test' },
+      );
+      await this.seatInventoryRepo.update(
+        { row: 'A', number: '2', showId: '11111111-1111-1111-1111-111111111111' },
+        { sponsorId: 'sponsor-test' },
+      );
+      this.logger.log('Seeded sponsorId=sponsor-test on seats A-1 and A-2.');
+    }
+
+    this.logger.log('Seeding ZoneInventory into database if not exists...');
+    const zoneCount = await this.zoneInventoryRepo.count();
+    if (zoneCount === 0) {
+      await this.zoneInventoryRepo.insert([
+        { zone: 'VIP', showId: '11111111-1111-1111-1111-111111111111', totalCapacity: 75, availableSlots: 75 },
+        { zone: 'Normal', showId: '11111111-1111-1111-1111-111111111111', totalCapacity: 100, availableSlots: 100 },
+      ]);
+      this.logger.log('Seeded 75 VIP and 100 Normal zones successfully.');
     }
   }
 
@@ -217,8 +220,8 @@ export class BookingService implements OnModuleInit {
 
     // 2.5 DB Sync Write: Cập nhật Database đồng bộ để chặn Data Loss
     const dbUpdate = await this.seatInventoryRepo.update(
-      { seatNo, concert_id, status: 'AVAILABLE' },
-      { status: 'RESERVED', reservedBy: userId, expiryTime: new Date(Date.now() + 5 * 60 * 1000) } // 5 mins
+      { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId, status: 'AVAILABLE' },
+      { status: 'RESERVED', reservedBy: userId, expiryTime: new Date(Date.now() + 10 * 60 * 1000) } // 10 mins
     );
 
     if (dbUpdate.affected === 0) {
@@ -251,6 +254,39 @@ export class BookingService implements OnModuleInit {
     return { success: true, seatNo };
   }
 
+  // API Mô phỏng thanh toán
+  async payTickets(showId: string, userId: string, payload: any) {
+    const { svipSeats, ticketCounts = {}, totalAmount } = payload;
+    
+    const tickets = [];
+
+    // Chốt ghế SVIP
+    if (svipSeats && svipSeats.length > 0) {
+      const seatHashKey = `show:${showId}:svip_seats`;
+      for (const seatNo of svipSeats) {
+        // Chỉ để chắc chắn người này thực sự đang giữ ghế trên Redis
+        const owner = await this.redis.hget(seatHashKey, seatNo);
+        if (owner === userId || owner === `${userId}:PAID`) {
+          
+          // Double Check trên Database để chốt giao dịch
+          const dbUpdate = await this.seatInventoryRepo.update(
+            { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId, reservedBy: userId, status: 'RESERVED' },
+            { status: 'BOOKED' }
+          );
+
+          if (dbUpdate.affected > 0) {
+            tickets.push({ seatNo, zone: 'SVIP', price: 2650000 });
+            await this.redis.hset(seatHashKey, seatNo, `${userId}:PAID`);
+            // Cập nhật trạng thái SSE thành booked
+            this.sseService.broadcast({ showId, seatNo, status: 'booked', userId, message: `Ghế SVIP ${seatNo} đã được thanh toán.` });
+            this.updateLocalSeatCache({ showId, seatNo, status: 'booked', userId });
+          } else {
+            // Lỗi lệch pha hoặc giao dịch hết hạn (DB đã nhả)
+            if (tickets.length === 0) {
+              throw new BadRequestException(`Ghế SVIP ${seatNo} của bạn đã bị Database thu hồi hoặc thuộc về người khác.`);
+            }
+          }
+        }
   /**
    * Đồng bộ lại toàn bộ trạng thái ghế SVIP từ DB lên Redis
    */
