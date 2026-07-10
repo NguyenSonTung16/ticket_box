@@ -1,4 +1,5 @@
 import React from 'react';
+import { MOCK_FILES } from './utils/mockData';
 
 export const FilesPage: React.FC = () => {
   return (
@@ -66,36 +67,44 @@ export const FilesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
-                <tr className="hover:bg-surface-container-highest/30 transition-colors">
-                  <td className="px-4 md:px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-surface-container-highest rounded flex items-center justify-center text-primary flex-shrink-0">
-                        <span className="material-symbols-outlined">description</span>
+                {MOCK_FILES.map((file) => (
+                  <tr key={file.id} className="hover:bg-surface-container-highest/30 transition-colors">
+                    <td className="px-4 md:px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-surface-container-highest rounded flex items-center justify-center text-primary flex-shrink-0">
+                          <span className="material-symbols-outlined">description</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-[10px] text-text-medium-emphasis">
+                            {file.size} • {file.type}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-white truncate">
-                          Doanh_thu_t12_2024.csv
-                        </p>
-                        <p className="text-[10px] text-text-medium-emphasis">
-                          1.2 MB • Báo cáo tài chính
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 md:px-6 py-4 text-sm text-on-surface-variant">
-                    15/12/2024 14:30
-                  </td>
-                  <td className="px-4 md:px-6 py-4">
-                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
-                      Hoàn tất
-                    </span>
-                  </td>
-                  <td className="px-4 md:px-6 py-4 text-right">
-                    <button className="text-primary hover:underline text-xs font-bold">
-                      Tải về
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-4 md:px-6 py-4 text-sm text-on-surface-variant">
+                      {file.dateRequested}
+                    </td>
+                    <td className="px-4 md:px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
+                        file.status === 'completed'
+                          ? 'bg-primary/10 text-primary border-primary/20'
+                          : file.status === 'processing'
+                          ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                          : 'bg-red-500/10 text-red-500 border-red-500/20'
+                      }`}>
+                        {file.status === 'completed' ? 'Hoàn tất' : file.status === 'processing' ? 'Đang xử lý' : 'Thất bại'}
+                      </span>
+                    </td>
+                    <td className="px-4 md:px-6 py-4 text-right">
+                      <button className="text-primary hover:underline text-xs font-bold" disabled={file.status !== 'completed'} style={{ opacity: file.status !== 'completed' ? 0.5 : 1 }}>
+                        Tải về
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

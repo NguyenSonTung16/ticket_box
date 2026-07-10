@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
 import { TicketModal } from './components/TicketModal';
+import { MOCK_TICKET_TYPES } from './utils/mockData';
 
 export const CreateStep2: React.FC = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const totalTicketTypes = MOCK_TICKET_TYPES.length;
+  const totalTickets = MOCK_TICKET_TYPES.reduce((sum, type) => sum + type.total, 0);
 
   return (
     <div className="lg:ml-64 pt-24 md:pt-28 pb-32 px-4 md:px-6 min-h-screen">
@@ -35,34 +38,40 @@ export const CreateStep2: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Ticket list */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-surface-container p-4 md:p-6 rounded-xl border border-outline-variant/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-                <span className="material-symbols-outlined">local_activity</span>
+          {MOCK_TICKET_TYPES.map((ticket) => (
+            <div key={ticket.id} className="bg-surface-container p-4 md:p-6 rounded-xl border border-outline-variant/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4 md:gap-6">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                  <span className="material-symbols-outlined">local_activity</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-white">{ticket.name}</h4>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    Số lượng: {ticket.sold} / {ticket.total} •{' '}
+                    <span className="text-primary">
+                      {ticket.status === 'selling' ? 'Đang bán' : ticket.status === 'sold_out' ? 'Hết vé' : 'Đã ẩn'}
+                    </span>
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="font-bold text-white">Vé Phổ thông (Early Bird)</h4>
-                <p className="text-xs text-on-surface-variant mt-1">
-                  Số lượng: 150 / 500 •{' '}
-                  <span className="text-primary">Đang bán</span>
-                </p>
+              <div className="flex items-center gap-4 md:gap-8 w-full sm:w-auto justify-between sm:justify-end">
+                <div className="hidden sm:block">
+                  <p className="text-xs text-on-surface-variant mb-1">Giá vé</p>
+                  <p className="font-bold text-white">
+                    {ticket.price.toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
+                    <span className="material-symbols-outlined">edit</span>
+                  </button>
+                  <button className="p-2 text-on-surface-variant hover:text-error-red transition-colors">
+                    <span className="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-4 md:gap-8 w-full sm:w-auto justify-between sm:justify-end">
-              <div className="hidden sm:block">
-                <p className="text-xs text-on-surface-variant mb-1">Giá vé</p>
-                <p className="font-bold text-white">250.000đ</p>
-              </div>
-              <div className="flex gap-2">
-                <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined">edit</span>
-                </button>
-                <button className="p-2 text-on-surface-variant hover:text-error-red transition-colors">
-                  <span className="material-symbols-outlined">delete</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Right: Summary */}
@@ -74,11 +83,13 @@ export const CreateStep2: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b border-outline-variant/10">
                 <span className="text-on-surface-variant text-sm">Tổng số hạng vé</span>
-                <span className="font-bold text-white">01</span>
+                <span className="font-bold text-white">
+                  {totalTicketTypes.toString().padStart(2, '0')}
+                </span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-on-surface-variant text-sm">Tổng số vé</span>
-                <span className="font-bold text-white">500</span>
+                <span className="font-bold text-white">{totalTickets}</span>
               </div>
             </div>
           </div>

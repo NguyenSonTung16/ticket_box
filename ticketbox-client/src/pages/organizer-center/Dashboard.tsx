@@ -1,30 +1,6 @@
 import React, { useState } from 'react';
 import { EventCard } from './components/EventCard';
-
-const MOCK_EVENTS = [
-  {
-    id: 1,
-    title: 'Electric Forest: Midnight Pulse',
-    date: 'Dec 24, 2024 • 20:00',
-    location: 'Saigon Exhibition Center (SECC)',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuD45MuNv6ym8q_8DqJ5OgH5REAtsjZb5mJ7oV5J38feMF_mYJz_MYuFepMPJIjZtQh_ru1ADauqQ64DGIoY5W2vnyyUc_jvKtGzwfzPk9EnzTU1h2owzt31VYKJHUSOntbkNbkx-ZmQbXRptuD03P3-xsVUysFjIB60AE3RunldN2XmvOEU-001AaP8HELY61Yob973MHf4JCARCd0jDytrwVa462lY6wmNZ47T__nNXYa6XkKmWuDm0-dSWJ8HEvZiDBP4_qGLaz0',
-    status: 'selling' as const,
-    ticketsSold: 1240,
-    totalTickets: 2000,
-  },
-  {
-    id: 2,
-    title: 'Neo-Jazz Evening: Obsidian Series',
-    date: 'Jan 15, 2025 • 19:30',
-    location: 'The Grand Theater, Dist 1',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBPcB-Q1xnXdk0Lkiqv0fwKxvS2nXC8Wnuo7jvBH_bwyj0AGfDQBXTUdsj7lhH14ahGBU-KaA91VqRnI0fyRCoC2zjyXm0W1MD7AOXT81fK9LtbLg6bGmYvJIvLpVWIvjhCvK0GvVkRzF953xxek5Gpu9C4VcKSDofDA352EVp5BNFVEpz7PvUghlxTSP19yjzKaiLIX5gsQiDUzsz2ApdG-w6TYQ_yIGA0cQYqBFNQ5ApQgHlTPRrBZ5av--WZm61DMPsO3937r20',
-    status: 'draft' as const,
-    ticketsSold: 0,
-    totalTickets: 500,
-  },
-];
+import { MOCK_EVENTS } from './utils/mockData';
 
 export const OrganizerDashboard: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'draft'>('all');
