@@ -1,0 +1,337 @@
+openapi: 3.0.0
+info:
+  title: TicketBox Event Service API
+  description: |
+    API documentation for the TicketBox Event Service.
+    
+    ## How to run the API
+    
+    To run this service in development mode with Hot-Reload enabled:
+    
+    ```bash
+    # Ensure you are in the ticket_box root directory
+    cd d:\CNTT\2025-2026\hk2\TKPM\ticket_box_tung\ticket_box
+    
+    # Run the event service
+    npm run start:event
+    ```
+    
+    The service will start on port `3005`. Note that all traffic from the frontend is typically routed through Nginx on port `3000` (e.g., `http://localhost:3000/api/...`).
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api
+    description: Nginx Reverse Proxy
+  - url: http://localhost:3005/api
+    description: Direct Event Service
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /organizer/concerts:
+    post:
+      summary: Create a new draft event
+      tags:
+        - Organizer Events
+      responses:
+        '201':
+          description: Draft created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event_id:
+                    type: integer
+                  status:
+                    type: string
+    get:
+      summary: Get all events for the organizer
+      tags:
+        - Organizer Events
+      responses:
+        '200':
+          description: List of organizer events
+
+  /organizer/concerts/{id}/draft:
+    get:
+      summary: Get an existing draft by ID
+      tags:
+        - Organizer Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Draft event details
+
+  /organizer/concerts/{id}/step/1:
+    put:
+      summary: Save Step 1 (Basic Info)
+      tags:
+        - Organizer Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                address_type:
+                  type: string
+                  enum: [OFFLINE, ONLINE]
+                venue_name:
+                  type: string
+                province:
+                  type: string
+                cover_image_url:
+                  type: string
+                organizer_name:
+                  type: string
+      responses:
+        '200':
+          description: Step 1 saved
+
+  /organizer/concerts/{id}/step/2:
+    put:
+      summary: Save Step 2 (Time & Tickets)
+      tags:
+        - Organizer Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                start_time:
+                  type: string
+                  format: date-time
+                ticket_types:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Step 2 saved
+
+  /organizer/concerts/{id}/step/3:
+    put:
+      summary: Save Step 3 (Settings)
+      tags:
+        - Organizer Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slug:
+                  type: string
+                privacy:
+                  type: string
+                  enum: [PUBLIC, PRIVATE]
+      responses:
+        '200':
+          description: Step 3 saved
+
+  /organizer/concerts/{id}/step/4:
+    put:
+      summary: Save Step 4 (Payment Info & Publish)
+      tags:
+        - Organizer Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bank_account_name:
+                  type: string
+                bank_account_number:
+                  type: string
+                bank_name:
+                  type: string
+                vat_business_type:
+                  type: string
+                  enum: [INDIVIDUAL, COMPANY]
+      responses:
+        '200':
+          description: Event published successfully
+
+  /organizer/concerts/{id}/upload-url:
+    get:
+      summary: Get a presigned URL to upload images directly to MinIO
+      tags:
+        - Organizer Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: type
+          required: true
+          schema:
+            type: string
+            enum: [image_url, cover_image_url, organizer_logo_url, ticket_image_url]
+        - in: query
+          name: ext
+          schema:
+            type: string
+            default: jpg
+      responses:
+        '200':
+          description: Returns a presigned PUT URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  presignedUrl:
+                    type: string
+                  objectKey:
+                    type: string
+                  expiresIn:
+                    type: integer
+                  maxSizeBytes:
+                    type: integer
+
+  /concerts:
+    get:
+      summary: List all public events
+      tags:
+        - Public Events
+      security: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of events
+
+  /concerts/{id}:
+    get:
+      summary: Get event details by ID
+      tags:
+        - Public Events
+      security: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Event details
+
+  /admin/concerts/{id}:
+    put:
+      summary: Admin update event
+      tags:
+        - Admin Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Event updated
+    delete:
+      summary: Admin cancel event
+      tags:
+        - Admin Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Event cancelled
+
+  /internal/concerts/{id}/seat-counts/{zone}:
+    put:
+      summary: Internal update GA seat counts
+      tags:
+        - Internal Events
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: zone
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                available:
+                  type: integer
+                reserved:
+                  type: integer
+                sold:
+                  type: integer
+      responses:
+        '200':
+          description: Seat counts updated

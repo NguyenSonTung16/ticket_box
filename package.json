@@ -8,13 +8,13 @@
   "scripts": {
     "build": "tsc",
     "format": "prettier --write \"src/**/*.ts\"",
-    "start": "ts-node src/main.ts",
-    "start:auth": "cross-env PORT=3001 SERVICE_NAME=auth ts-node src/main.ts",
-    "start:booking": "cross-env PORT=3002 SERVICE_NAME=booking ts-node src/main.ts",
-    "start:info": "cross-env PORT=3003 SERVICE_NAME=info ts-node src/main.ts",
-    "start:event": "cross-env PORT=3005 SERVICE_NAME=event ts-node src/main.ts",
-    "start:payment": "cross-env PORT=3004 SERVICE_NAME=payment ts-node src/main.ts",
-    "start:worker": "cross-env PORT=3006 SERVICE_NAME=worker ts-node src/main.ts"
+    "start": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:auth": "cross-env PORT=3001 SERVICE_NAME=auth ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:booking": "cross-env PORT=3002 SERVICE_NAME=booking ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:info": "cross-env PORT=3003 SERVICE_NAME=info ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:event": "cross-env PORT=3005 SERVICE_NAME=event ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:payment": "cross-env PORT=3004 SERVICE_NAME=payment ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:worker": "cross-env PORT=3006 SERVICE_NAME=worker ts-node-dev --respawn --transpile-only src/main.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",
@@ -70,6 +70,7 @@
     "jest": "^30.4.2",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.1.3"
   }
 }
