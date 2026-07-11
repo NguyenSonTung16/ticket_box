@@ -35,8 +35,8 @@ export const HomePage: React.FC = () => {
   }, []);
 
   // Lọc ra các slide ảnh cho carousel (lấy tối đa 4 shows đầu tiên có ảnh)
-  const carouselShows = shows.filter(s => s.coverImage).slice(0, 4);
-  const slides = carouselShows.length > 0 ? carouselShows.map(s => s.coverImage) : [
+  const carouselShows = shows.filter(s => s.cover_image_url || s.image_url).slice(0, 4);
+  const slides = carouselShows.length > 0 ? carouselShows.map(s => s.cover_image_url || s.image_url) : [
     "https://lh3.googleusercontent.com/aida-public/AB6AXuCbOgf9Dk-adYciUen0WEB_c4KNMIBQg85blTW8D0sNeVyQhhXKlkQdNrXuilhnUM4A8WhwxxuKl3QPQX2Sjiyw5gaURQoxlgWX4m4J-tv9HppzWsqXPJcgH2i4iPTL4jDyn1QGmh26c1MMD15JLghsHCajcSkqy8xQ6n2oZV5El73JeiVsnNQNDLRQaL3t7DzNLKgDf7rtkoMhzK_tgP8EFMjF709U0hfXcbnDORQmYVb-_Bb24QZdrUhYLoFYbSWu47c7z3z4THO3"
   ];
 
@@ -208,7 +208,7 @@ export const HomePage: React.FC = () => {
                   <img
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     alt={show.name}
-                    src={show.coverImage || slides[0]}
+                    src={show.cover_image_url || show.image_url || slides[0]}
                   />
 
                 </div>

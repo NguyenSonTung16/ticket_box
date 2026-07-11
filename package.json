@@ -15,7 +15,9 @@
     "start:event": "cross-env PORT=3005 SERVICE_NAME=event ts-node-dev --respawn --transpile-only src/main.ts",
     "start:payment": "cross-env PORT=3004 SERVICE_NAME=payment ts-node-dev --respawn --transpile-only src/main.ts",
     "start:ai": "cross-env PORT=3008 SERVICE_NAME=ai ts-node-dev --respawn --transpile-only src/main.ts",
-    "start:worker": "cross-env PORT=3006 SERVICE_NAME=worker ts-node-dev --respawn --transpile-only src/main.ts"
+    "start:worker": "cross-env PORT=3006 SERVICE_NAME=worker ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:dev": "npm run clean-ports && npx concurrently -c \"blue,green,yellow,magenta,cyan,red,white\" \"npm run start:auth\" \"npm run start:booking\" \"npm run start:info\" \"npm run start:event\" \"npm run start:payment\" \"npm run start:ai\" \"npm run start:worker\"",
+    "clean-ports": "npx kill-port 3001 3002 3003 3004 3005 3006 3007 3008"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

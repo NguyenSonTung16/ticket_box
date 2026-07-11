@@ -9,6 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ShowInfo, ShowInfoDocument } from './schemas/show-info.schema';
 import { Concert } from './entities/concert.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
+import { EventTicketType } from './entities/event-ticket-type.entity';
 import { ArtistBio } from '../ai/entities/artist-bio.entity';
 
 /**
@@ -32,6 +33,7 @@ export class InfoService {
     @InjectRepository(ZoneInventory) private readonly zoneRepo: Repository<ZoneInventory>,
     @InjectModel(ShowInfo.name) private readonly showInfoModel: Model<ShowInfoDocument>,
     @InjectRepository(ArtistBio) private readonly artistBioRepo: Repository<ArtistBio>,
+    @InjectRepository(EventTicketType) private readonly ticketTypeRepo: Repository<EventTicketType>,
   ) {}
 
   // Lấy danh sách tất cả các show (ACTIVE status)
@@ -125,10 +127,11 @@ export class InfoService {
         if (doubleCheck) return JSON.parse(doubleCheck);
 
         // 3. Phân tách DB: Truy vấn đồng thời PostgreSQL và MongoDB
-        const [postgresData, postgresZones, mongoData] = await Promise.all([
+        const [postgresData, postgresZones, mongoData, ticketTypes] = await Promise.all([
           this.showRepo.findOne({ where: { id: showId } }),
           this.zoneRepo.find({ where: { concert_id: showId } }),
           this.showInfoModel.findOne({ showId }).lean(),
+          this.ticketTypeRepo.find({ where: { showId }, order: { sort_order: 'ASC' } }),
         ]);
 
         const zones = postgresZones.map(pz => ({
@@ -171,6 +174,13 @@ export class InfoService {
           artist_ids: artistIds,
           artists,
           zones,
+          ticket_types: ticketTypes.map(tt => ({
+            id: tt.id,
+            name: tt.name,
+            price: tt.price,
+            is_free: tt.is_free,
+            total_quantity: tt.total_quantity,
+          })),
         };
 
         await this.redis.set(cacheKey, JSON.stringify(finalData), 'EX', 60);

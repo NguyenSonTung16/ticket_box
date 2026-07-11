@@ -259,7 +259,10 @@ export const EventPage: React.FC = () => {
                   {loading ? (
                     <div className="h-24 bg-surface-container-low animate-pulse rounded"></div>
                   ) : (
-                    <p>{eventData?.description}</p>
+                    <div>
+                      <h2 className="text-2xl font-headline-lg font-bold text-on-surface mb-4">Tổng quan</h2>
+                      <p>{eventData?.description}</p>
+                    </div>
                   )}
 
                   {eventData?.artistBio && (
@@ -359,6 +362,22 @@ export const EventPage: React.FC = () => {
                 <div className="space-y-3">
                   {loading ? (
                     <div className="h-16 bg-surface-container-low animate-pulse rounded-xl"></div>
+                  ) : eventData?.ticket_types && eventData.ticket_types.length > 0 ? (
+                    eventData.ticket_types.map((tt: any, idx: number) => (
+                      <div key={idx} className="bg-surface-container-lowest/30 p-4 rounded-xl border border-outline-variant flex justify-between items-center">
+                        <div>
+                          <span className="font-bold text-on-surface">{tt.name}</span>
+                          <p className="text-on-surface-variant text-sm mt-1">Số lượng: {tt.total_quantity}</p>
+                        </div>
+                        <div className="text-right">
+                          {tt.is_free ? (
+                            <p className="text-primary font-bold">Miễn phí</p>
+                          ) : (
+                            <p className="text-primary font-bold">{new Intl.NumberFormat('vi-VN').format(tt.price)} đ</p>
+                          )}
+                        </div>
+                      </div>
+                    ))
                   ) : eventData?.zones && eventData.zones.length > 0 ? (
                     eventData.zones.map((zone: any, idx: number) => (
                       <div key={idx} className="bg-surface-container-lowest/30 p-4 rounded-xl border border-outline-variant flex justify-between items-center">
