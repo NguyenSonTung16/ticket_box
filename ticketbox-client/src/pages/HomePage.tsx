@@ -35,8 +35,8 @@ export const HomePage: React.FC = () => {
   }, []);
 
   // Lọc ra các slide ảnh cho carousel (lấy tối đa 4 shows đầu tiên có ảnh)
-  const carouselShows = shows.filter(s => s.coverImage).slice(0, 4);
-  const slides = carouselShows.length > 0 ? carouselShows.map(s => s.coverImage) : [
+  const carouselShows = shows.filter(s => s.cover_image_url).slice(0, 4);
+  const slides = carouselShows.length > 0 ? carouselShows.map(s => s.cover_image_url) : [
     "https://lh3.googleusercontent.com/aida-public/AB6AXuCbOgf9Dk-adYciUen0WEB_c4KNMIBQg85blTW8D0sNeVyQhhXKlkQdNrXuilhnUM4A8WhwxxuKl3QPQX2Sjiyw5gaURQoxlgWX4m4J-tv9HppzWsqXPJcgH2i4iPTL4jDyn1QGmh26c1MMD15JLghsHCajcSkqy8xQ6n2oZV5El73JeiVsnNQNDLRQaL3t7DzNLKgDf7rtkoMhzK_tgP8EFMjF709U0hfXcbnDORQmYVb-_Bb24QZdrUhYLoFYbSWu47c7z3z4THO3"
   ];
 
@@ -99,6 +99,13 @@ export const HomePage: React.FC = () => {
 
             <a className="text-on-primary-container/80 font-label-md text-label-md hover:text-white transition-colors" href="#">My Tickets</a>
             <div className="flex items-center gap-4 ml-2">
+              <button
+                onClick={() => navigate('/organizer')}
+                className="hidden sm:flex items-center gap-2 border-2 border-on-primary-fixed text-on-primary-fixed px-5 py-1.5 rounded-full font-bold hover:bg-on-primary-fixed hover:text-primary transition-all duration-200"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                Tạo sự kiện
+              </button>
               {user ? (
                 <div className="flex items-center gap-3 bg-white/10 rounded-full px-3 py-1.5 backdrop-blur-sm">
                   <span className="text-xs font-semibold text-white/90 bg-primary/20 px-2 py-0.5 rounded-full">{user.role}</span>
@@ -202,13 +209,13 @@ export const HomePage: React.FC = () => {
                 <SkeletonCard />
                 <SkeletonCard />
               </>
-            ) : shows.map((show) => (
+            ) : shows.filter(show => show.name).map((show) => (
               <div key={show.id} className="flex flex-col gap-4 group cursor-pointer" onClick={() => navigate(`/event.html?id=${show.id}`)}>
                 <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-surface-container-low">
                   <img
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     alt={show.name}
-                    src={show.coverImage || slides[0]}
+                    src={show.cover_image_url || slides[0]}
                   />
 
                 </div>

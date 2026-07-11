@@ -359,7 +359,7 @@ export class BookingService implements OnModuleInit {
     // 2. Tính toán sức chứa động (Dynamic Capacity) = 1.5 * Tổng số vé của concert
     let maxRoomCapacity = 900;
     try {
-      const svipCount = await this.seatInventoryRepo.count({ where: { concert_id } });
+      const svipCount = await this.seatInventoryRepo.count({ where: { showId: concert_id } });
       const zoneSum = await this.zoneInventoryRepo.createQueryBuilder('z')
         .where('z.concert_id = :cid', { cid: concert_id })
         .select('SUM(z.totalCapacity)', 'total')

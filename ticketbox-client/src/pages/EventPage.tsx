@@ -206,9 +206,9 @@ export const EventPage: React.FC = () => {
                         <div className="flex items-start gap-3 text-on-surface-variant">
                           <span className="material-symbols-outlined">location_on</span>
                           <div>
-                            <p className="font-headline-md text-primary">{eventData?.location?.split(',')[0]}</p>
-                            {eventData?.location?.includes(',') && (
-                              <p className="font-body-sm">{eventData.location}</p>
+                            <p className="font-headline-md text-primary">{eventData?.venue_name}</p>
+                            {eventData?.province && eventData.province !== eventData.venue_name && (
+                              <p className="font-body-sm">{eventData.province}</p>
                             )}
                           </div>
                         </div>
@@ -230,7 +230,7 @@ export const EventPage: React.FC = () => {
                   </div>
                   {/* Poster Image (Right) */}
                   <div className="w-full md:w-1/2 h-[400px] md:h-auto relative">
-                    <img alt="Event poster" className="w-full h-full object-cover" src={eventData?.coverImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuABvAGlSse2Xau-2J8KDcHYWpxl46eIzBU6V9Ek1rf41fU1cH07dl7qPt6rMAyKGpEjyspkOZMw9C_Y6f18Sx4zU_ZkUBFWwl410uJ5ai2Qg7WTNb5AkmApYEaN6R_PtcLEE2Mkf-IbqdJEZ198gUzvaVZHfDGH7-oCvhVkyDdKdW3qiFCc82qHsVN9yWcEBXLap0pJTEjEpbzBXT3ZLfQ1PMoGfa-YuCGMSXBxhTTvc_glH-ip0yCIipasrLKv17neupyz7iONm4k-"} />
+                    <img alt="Event poster" className="w-full h-full object-cover" src={eventData?.cover_image_url || eventData?.image_url || "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&q=80&w=1200"} />
                     <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-surface-container-high/60"></div>
 
                   </div>
