@@ -13,7 +13,8 @@ export const useTicketEvents = (userId: string, onEvent?: (payload: SSEventPaylo
 
   useEffect(() => {
     // Kết nối tới SSE endpoint
-    const eventSource = new EventSource(`http://localhost:3000/booking/sse/${userId}`);
+    const sseUrl = import.meta.env.VITE_SSE_URL || 'http://localhost:3000/booking/sse';
+    const eventSource = new EventSource(`${sseUrl}/${userId}`);
 
     eventSource.onmessage = (event) => {
       const parsedData: SSEventPayload = JSON.parse(event.data);
