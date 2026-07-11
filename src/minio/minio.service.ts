@@ -75,10 +75,21 @@ export class MinioService {
       });
       const presignedUrl = await getSignedUrl(this.s3, cmd, { expiresIn: ttl });
 
-      // Replace internal endpoint with public endpoint in the presigned URL
       const publicEndpoint = process.env.MINIO_PUBLIC_ENDPOINT || 'http://localhost:9000';
-      const internalEndpoint = process.env.MINIO_ENDPOINT || 'http://localhost:9000';
-      const finalUrl = presignedUrl.replace(internalEndpoint, publicEndpoint);
+      
+      // Safe URL replacement
+      const urlObj = new URL(presignedUrl);
+      const publicUrlObj = new URL(publicEndpoint);
+      
+      urlObj.protocol = publicUrlObj.protocol;
+      urlObj.host = publicUrlObj.host;
+      urlObj.port = publicUrlObj.port || '';
+      
+      if (publicUrlObj.pathname && publicUrlObj.pathname !== '/') {
+        urlObj.pathname = publicUrlObj.pathname.replace(/\/$/, '') + urlObj.pathname;
+      }
+      
+      const finalUrl = urlObj.toString();
 
       this.logger.log(`Presigned URL generated for ${objectKey} (TTL ${ttl}s)`);
       return { presignedUrl: finalUrl, objectKey, expiresIn: ttl, maxSizeBytes: maxSize };
@@ -116,8 +127,19 @@ export class MinioService {
       const presignedUrl = await getSignedUrl(this.s3, cmd, { expiresIn: ttl });
 
       const publicEndpoint = process.env.MINIO_PUBLIC_ENDPOINT || 'http://localhost:9000';
-      const internalEndpoint = process.env.MINIO_ENDPOINT || 'http://localhost:9000';
-      const finalUrl = presignedUrl.replace(internalEndpoint, publicEndpoint);
+      
+      const urlObj = new URL(presignedUrl);
+      const publicUrlObj = new URL(publicEndpoint);
+      
+      urlObj.protocol = publicUrlObj.protocol;
+      urlObj.host = publicUrlObj.host;
+      urlObj.port = publicUrlObj.port || '';
+      
+      if (publicUrlObj.pathname && publicUrlObj.pathname !== '/') {
+        urlObj.pathname = publicUrlObj.pathname.replace(/\/$/, '') + urlObj.pathname;
+      }
+      
+      const finalUrl = urlObj.toString();
 
       this.logger.log(`CSV presigned URL generated for ${objectKey} (TTL ${ttl}s)`);
       return { presignedUrl: finalUrl, objectKey, expiresIn: ttl, maxSizeBytes: maxSize };

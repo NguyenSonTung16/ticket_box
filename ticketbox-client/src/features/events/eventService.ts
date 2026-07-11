@@ -10,6 +10,8 @@ export interface EventData {
   street?: string;
   organizer_name: string;
   organizer_info?: string;
+  image_url?: string;
+  cover_image_url?: string;
 }
 
 export interface TicketTypeData {
@@ -82,5 +84,13 @@ export const eventService = {
   getOrganizerEvents: async () => {
     const response = await axiosClient.get('/api/organizer/concerts');
     return response.data;
+  },
+
+  // (Upload Image) Lấy presigned URL để upload ảnh trực tiếp lên MinIO
+  getImageUploadUrl: async (eventId: number, type: string, ext: string) => {
+    const response = await axiosClient.get(`/api/organizer/concerts/${eventId}/upload-url`, {
+      params: { type, ext },
+    });
+    return response.data as { presignedUrl: string; objectKey: string; expiresIn: number; maxSizeBytes: number };
   },
 };

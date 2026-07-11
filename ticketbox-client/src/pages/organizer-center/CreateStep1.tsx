@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
 import { eventService, EventData } from '../../features/events/eventService';
@@ -7,6 +7,11 @@ export const CreateStep1: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Image upload states
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // States cho form
   const [name, setName] = useState('');
@@ -29,6 +34,26 @@ export const CreateStep1: React.FC = () => {
       // Bước 0: Khởi tạo draft lấy ID
       const { event_id } = await eventService.createDraft();
       
+      let finalCoverImageUrl = '';
+
+      // Upload ảnh nếu có
+      if (coverImageFile) {
+        const ext = coverImageFile.name.split('.').pop() || 'jpg';
+        const { presignedUrl } = await eventService.getImageUploadUrl(event_id, 'cover_image_url', ext);
+        
+        // Upload trực tiếp lên MinIO
+        await fetch(presignedUrl, {
+          method: 'PUT',
+          body: coverImageFile,
+          headers: {
+            'Content-Type': coverImageFile.type,
+          },
+        });
+
+        // URL public của ảnh là presignedUrl bỏ đi phần query parameters
+        finalCoverImageUrl = presignedUrl.split('?')[0];
+      }
+      
       // Bước 1: Lưu thông tin
       const step1Data: EventData = {
         name,
@@ -36,7 +61,11 @@ export const CreateStep1: React.FC = () => {
         address_type: addressType,
         venue_name: venueName,
         province,
-        organizer_name
+        organizer_name,
+        ...(finalCoverImageUrl && {
+          cover_image_url: finalCoverImageUrl,
+          image_url: finalCoverImageUrl,
+        })
       };
       
       await eventService.saveStep1(event_id, step1Data);
@@ -172,11 +201,39 @@ export const CreateStep1: React.FC = () => {
               </h2>
             </div>
             <div className="p-4 md:p-6">
-              <div className="relative group cursor-pointer border-2 border-dashed border-outline-variant rounded-xl h-48 flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-all bg-input-level-2">
-                <span className="material-symbols-outlined text-4xl text-text-medium-emphasis">
-                  add_photo_alternate
-                </span>
-                <p className="text-xs text-primary font-bold">Tải ảnh lên</p>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/jpeg, image/png, image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                      setError('Kích thước ảnh tối đa là 5MB');
+                      return;
+                    }
+                    setError('');
+                    setCoverImageFile(file);
+                    setCoverImagePreview(URL.createObjectURL(file));
+                  }
+                }}
+              />
+              <div 
+                className="relative group cursor-pointer border-2 border-dashed border-outline-variant rounded-xl h-48 flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-all bg-input-level-2 overflow-hidden"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {coverImagePreview ? (
+                  <img src={coverImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-4xl text-text-medium-emphasis">
+                      add_photo_alternate
+                    </span>
+                    <p className="text-xs text-primary font-bold">Tải ảnh lên</p>
+                    <p className="text-[10px] text-text-medium-emphasis mt-1">Khuyến nghị: 16:9, Tối đa 5MB</p>
+                  </>
+                )}
               </div>
             </div>
           </section>

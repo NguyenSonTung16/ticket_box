@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
 import { eventService } from '../../features/events/eventService';
@@ -12,6 +12,13 @@ export const CreateStep4: React.FC = () => {
   const [published, setPublished] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [draftData, setDraftData] = useState<any>(null);
+
+  useEffect(() => {
+    if (eventId) {
+      eventService.getDraft(parseInt(eventId)).then(setDraftData).catch(console.error);
+    }
+  }, [eventId]);
 
   const handlePublish = async () => {
     if (!eventId) {
@@ -73,7 +80,7 @@ export const CreateStep4: React.FC = () => {
             <div className="relative h-48 bg-surface-container-high">
               <img
                 className="w-full h-full object-cover opacity-60"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZzzGTE1ahkQAFKw24lvDxjnEo2SKA2O0nJGcByRIMDDz8NBWg2mR_qWarxmO7INB5vmTLCL90Ax8ARG1vqb-fvN37S4k_-seRtxz31GhqztCl3vfeRyJN0tKy6RCcCNOVe1L0kQkFhV_yyQj8WS6VsZH65TxolqFhcckfyiqM6XM7Pdy5Xyper1ECuappAr6ynMQIV-xdwUPAa1LEaR5bYlSeo6MFzGAgazlHsXGmc9XyVaedKi5s1N-pFsg5TBP9cXiR0zR-lxg"
+                src={draftData?.step_1?.cover_image_url || draftData?.step_1?.image_url || 'https://images.unsplash.com/photo-1540039155733-d7696d487346?q=80&w=1200&auto=format&fit=crop'}
                 alt="Preview"
               />
               <div className="absolute bottom-4 left-4 md:left-6">
@@ -81,22 +88,28 @@ export const CreateStep4: React.FC = () => {
                   PREVIEW
                 </span>
                 <h2 className="text-lg md:text-xl font-headline-lg font-bold text-white">
-                  Hội nghị Công nghệ 2024
+                  {draftData?.step_1?.name || 'Sự kiện chưa đặt tên'}
                 </h2>
               </div>
             </div>
             <div className="p-4 md:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-outline-variant/20">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">calendar_today</span>
-                <span className="text-xs font-bold">25/12/2024</span>
+                <span className="text-xs font-bold">
+                  {draftData?.step_2?.start_time ? new Date(draftData.step_2.start_time).toLocaleDateString('vi-VN') : 'Chưa có ngày'}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">schedule</span>
-                <span className="text-xs font-bold">09:00 - 17:00</span>
+                <span className="text-xs font-bold">
+                  {draftData?.step_2?.start_time ? new Date(draftData.step_2.start_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Chưa có giờ'}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">location_on</span>
-                <span className="text-xs font-bold truncate">Trung tâm SECC</span>
+                <span className="text-xs font-bold truncate" title={draftData?.step_1?.venue_name || 'Chưa thiết lập'}>
+                  {draftData?.step_1?.venue_name || 'Chưa thiết lập'}
+                </span>
               </div>
             </div>
           </section>
