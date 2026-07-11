@@ -57,8 +57,12 @@ async function bootstrap() {
     });
 
     if (simRes.ok) {
-      console.log('✅ Đã yêu cầu PayPal gửi Webhook thành công!');
-      console.log('Hãy kiểm tra terminal của Backend xem đã nhận được sự kiện chưa.');
+      console.log('\n✅ Đã yêu cầu PayPal gửi Webhook Simulator thành công!');
+      console.log('🎯 MỤC ĐÍCH TEST: Kiểm tra xem hệ thống (Ngrok -> Worker) có NHẬN được Webhook hay không.');
+      console.log('⚠️ CHÚ Ý: PayPal Simulator luôn tự động sinh ra một Order ID ẢO.');
+      console.log('Hệ thống của chúng ta rất BẢO MẬT, nên nó sẽ phát hiện ra đây là ID giả và TỪ CHỐI xử lý.');
+      console.log('👉 Nếu bạn thấy Backend báo lỗi: "Không tìm thấy IdempotencyKey cho order...", thì XIN CHÚC MỪNG!');
+      console.log('Đó chính là dấu hiệu hệ thống hoạt động HOÀN HẢO: Nó đã nhận được Webhook và chặn thành công kẻ gian!');
     } else {
       const err = await simRes.text();
       console.log(`❌ Lỗi gửi Webhook Simulator: ${err}`);

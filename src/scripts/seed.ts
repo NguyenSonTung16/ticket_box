@@ -53,6 +53,16 @@ async function bootstrap() {
       console.log(`Đã tạo Concert ID ${cData.id} trong Postgres.`);
     }
 
+    const zoneCount = await zoneInventoryRepo.count({ where: { concert_id: cData.id } });
+    if (zoneCount === 0) {
+      await zoneInventoryRepo.insert([
+        { zone: 'SVIP', concert_id: cData.id, totalCapacity: 40, availableSlots: 40 },
+        { zone: 'VIP', concert_id: cData.id, totalCapacity: 75, availableSlots: 75 },
+        { zone: 'Normal', concert_id: cData.id, totalCapacity: 100, availableSlots: 100 },
+      ]);
+      console.log(`Đã Seed 40 SVIP, 75 VIP và 100 Normal zones cho Concert ${cData.id} vào Postgres.`);
+    }
+
     const seatCount = await seatInventoryRepo.count({ where: { concert_id: cData.id } });
     if (seatCount === 0) {
       const seats = [];
@@ -64,16 +74,7 @@ async function bootstrap() {
         }
       }
       await seatInventoryRepo.insert(seats);
-      console.log(`Đã Seed 200 SVIP seats cho Concert ${cData.id} vào Postgres.`);
-    }
-
-    const zoneCount = await zoneInventoryRepo.count({ where: { concert_id: cData.id } });
-    if (zoneCount === 0) {
-      await zoneInventoryRepo.insert([
-        { zone: 'VIP', concert_id: cData.id, totalCapacity: 75, availableSlots: 75 },
-        { zone: 'Normal', concert_id: cData.id, totalCapacity: 100, availableSlots: 100 },
-      ]);
-      console.log(`Đã Seed 75 VIP và 100 Normal zones cho Concert ${cData.id} vào Postgres.`);
+      console.log(`Đã Seed 40 SVIP seats cho Concert ${cData.id} vào Postgres.`);
     }
 
     // 2. Redis Seed: SVIP Seat Matrix    // Set up Redis keys

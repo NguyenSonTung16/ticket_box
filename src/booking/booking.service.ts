@@ -26,41 +26,9 @@ export class BookingService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('Seeding SVIP seats into database if not exists...');
-    
-    const concertIds = [1, 2, 3, 4];
-
-    for (const cid of concertIds) {
-      const [{ exists }] = await this.seatInventoryRepo.query(`SELECT EXISTS (SELECT 1 FROM concerts WHERE id = $1)`, [cid]);
-      if (!exists) {
-        this.logger.warn(`Concert ID ${cid} does not exist yet. Skipping DB seed for this concert.`);
-        continue;
-      }
-      
-      const count = await this.seatInventoryRepo.count({ where: { concert_id: cid } });
-      if (count === 0) {
-        const seats = [];
-        const rows = ['A', 'B']; // 2 rows
-        const cols = 20; // 20 columns = 40 seats
-        for (const row of rows) {
-          for (let i = 1; i <= cols; i++) {
-            seats.push({ seatNo: `${row}-${i}`, concert_id: cid, status: 'AVAILABLE', zone: 'SVIP' });
-          }
-        }
-        await this.seatInventoryRepo.insert(seats);
-        this.logger.log(`Seeded 40 SVIP seats for concert ${cid} successfully.`);
-      }
-
-      this.logger.log(`Seeding ZoneInventory for concert ${cid} into database if not exists...`);
-      const zoneCount = await this.zoneInventoryRepo.count({ where: { concert_id: cid } });
-      if (zoneCount === 0) {
-        await this.zoneInventoryRepo.insert([
-          { zone: 'VIP', concert_id: cid, totalCapacity: 75, availableSlots: 75 },
-          { zone: 'Normal', concert_id: cid, totalCapacity: 100, availableSlots: 100 },
-        ]);
-        this.logger.log(`Seeded 75 VIP and 100 Normal zones for concert ${cid} successfully.`);
-      }
-    }
+    this.logger.log('BookingService initialized.');
+    // Note: Database seeding has been moved to src/scripts/seed.ts
+    // to prevent Race Conditions in the Load Balancing cluster.
   }
 
   // Lấy trạng thái tất cả ghế SVIP
