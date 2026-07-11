@@ -27,6 +27,9 @@ export const SeatMapPage: React.FC = () => {
   const [ticketCounts, setTicketCounts] = useState<Record<string, number>>({});
   const [inventory, setInventory] = useState<Record<string, number>>({});
 
+  const [limits, setLimits] = useState<Record<string, number>>({});
+  const [userQuota, setUserQuota] = useState<Record<string, number>>({});
+
   // Removing formatTime as we use formattedTime from hook
 
 
@@ -79,7 +82,16 @@ export const SeatMapPage: React.FC = () => {
         setBookedSeats(booked);
       }
     }).catch(() => setIsBookingDown(true));
-  }, [concert_id, navigate]);
+
+    if (user) {
+      axiosClient.get(`/booking/show/${concert_id}/quota`).then((res) => {
+        if (res.data) {
+          setLimits(res.data.limits || {});
+          setUserQuota(res.data.userQuota || {});
+        }
+      }).catch(err => console.error('Failed to fetch user quota', err));
+    }
+  }, [concert_id, navigate, user]);
 
   useTicketEvents(user?.id || 'guest', (payload) => {
     if (payload.seatNo) {
@@ -122,8 +134,11 @@ export const SeatMapPage: React.FC = () => {
     }
     setSelectedSeats(prev => {
       const next = new Set(prev);
-      if (next.has(seatId)) next.delete(seatId);
-      else next.add(seatId);
+      if (next.has(seatId)) {
+        next.delete(seatId);
+      } else {
+        next.add(seatId);
+      }
       return next;
     });
   };

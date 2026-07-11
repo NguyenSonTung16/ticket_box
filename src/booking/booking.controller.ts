@@ -24,6 +24,18 @@ export class BookingController {
     return this.bookingService.getInventory(Number(concert_id));
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('show/:id/quota')
+  async getQuota(@Param('id') concert_id: string, @Req() req) {
+    const limits = {
+      SVIP: await this.bookingService.getTicketLimit(Number(concert_id), 'SVIP'),
+      VIP: await this.bookingService.getTicketLimit(Number(concert_id), 'VIP'),
+      Normal: await this.bookingService.getTicketLimit(Number(concert_id), 'Normal'),
+    };
+    const userQuota = await this.bookingService.getUserQuota(Number(concert_id), req.user.userId);
+    return { limits, userQuota };
+  }
+
 
   @UseGuards(JwtAuthGuard)
   @Post('enter-queue')

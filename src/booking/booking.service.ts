@@ -119,6 +119,32 @@ export class BookingService implements OnModuleInit {
     }
   }
 
+  // Lấy giới hạn vé của một Zone từ Redis (hoặc DB)
+  async getTicketLimit(concert_id: number, zoneType: string): Promise<number> {
+    const limitsKey = `concert:${concert_id}:zone_limits`;
+    let limit = await this.redis.hget(limitsKey, zoneType);
+    if (!limit) {
+      const zoneInfo = await this.zoneInventoryRepo.findOne({ where: { zone: zoneType, concert_id } });
+      if (!zoneInfo) return 4; // Mặc định nếu không tìm thấy
+      await this.redis.hset(limitsKey, zoneType, zoneInfo.ticketLimit);
+      limit = zoneInfo.ticketLimit.toString();
+    }
+    return parseInt(limit, 10);
+  }
+
+  // Lấy tổng hợp Quota hiện tại của User
+  async getUserQuota(concert_id: number, userId: string) {
+    const zones = ['svip', 'VIP', 'Normal'];
+    const userQuota: Record<string, number> = {};
+    for (const zone of zones) {
+      const quotaStr = await this.redis.get(`user:${userId}:concert:${concert_id}:zone:${zone}`);
+      // Trả về uppercase cho frontend dễ map (SVIP thay vì svip)
+      const mappedZone = zone === 'svip' ? 'SVIP' : zone;
+      userQuota[mappedZone] = quotaStr ? parseInt(quotaStr, 10) : 0;
+    }
+    return userQuota;
+  }
+
   // Đặt vé General Admission (GA) sử dụng HINCRBY
   async bookGATicket(concert_id: number, userId: string, quantity: number, zoneType: string = 'Normal') {
     const inventoryKey = `concert:${concert_id}:inventory`;
@@ -133,7 +159,7 @@ export class BookingService implements OnModuleInit {
 
     // Kiểm tra giới hạn số lượng vé mỗi tài khoản (Per-User Quota)
     const userQuotaKey = `user:${userId}:concert:${concert_id}:zone:${zoneType}`;
-    const maxQuota = 4; // Giới hạn chung là 4 vé cho mỗi zone GA
+    const maxQuota = await this.getTicketLimit(concert_id, zoneType);
     
     const currentUserQuota = await this.redis.incrby(userQuotaKey, quantity);
     if (currentUserQuota > maxQuota) {
@@ -178,8 +204,8 @@ export class BookingService implements OnModuleInit {
     }
 
     // Kiểm tra giới hạn số lượng vé SVIP mỗi tài khoản (Per-User Quota)
-    const userQuotaKey = `user:${userId}:concert:${concert_id}:zone:svip`;
-    const maxSvipPerUser = 2; // SVIP tối đa 2 vé/tài khoản
+    const userQuotaKey = `user:${userId}:concert:${concert_id}:zone:svip`; // 'svip' key
+    const maxSvipPerUser = await this.getTicketLimit(concert_id, 'SVIP');
 
     const currentUserQuota = await this.redis.incr(userQuotaKey);
     if (currentUserQuota > maxSvipPerUser) {

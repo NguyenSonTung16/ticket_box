@@ -56,9 +56,9 @@ async function bootstrap() {
     const zoneCount = await zoneInventoryRepo.count({ where: { concert_id: cData.id } });
     if (zoneCount === 0) {
       await zoneInventoryRepo.insert([
-        { zone: 'SVIP', concert_id: cData.id, totalCapacity: 40, availableSlots: 40 },
-        { zone: 'VIP', concert_id: cData.id, totalCapacity: 75, availableSlots: 75 },
-        { zone: 'Normal', concert_id: cData.id, totalCapacity: 100, availableSlots: 100 },
+        { zone: 'SVIP', concert_id: cData.id, totalCapacity: 40, availableSlots: 40, ticketLimit: 2 },
+        { zone: 'VIP', concert_id: cData.id, totalCapacity: 75, availableSlots: 75, ticketLimit: 5 },
+        { zone: 'Normal', concert_id: cData.id, totalCapacity: 100, availableSlots: 100, ticketLimit: 4 },
       ]);
       console.log(`Đã Seed 40 SVIP, 75 VIP và 100 Normal zones cho Concert ${cData.id} vào Postgres.`);
     }
