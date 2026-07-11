@@ -176,35 +176,46 @@ Hệ thống kết hợp 2 tầng cache để tối ưu hóa hiệu năng:
 *   **Công nghệ:** Redis Cluster đảm bảo phân tán dữ liệu và tính sẵn sàng cao.
 *   **Quy ước Key:**
     *   Thông tin Concert: `concert:{concert_id}:info` (TTL = 1 giờ).
-    *   Số lượng vé còn lại: `concert:{concert_id}:tickets` (Hash key lưu `{ticket_type_id}: {remaining_qty}`). Không đặt TTL (vô hạn) vì Redis đóng vai trò là single source of truth cho số lượng vé trong suốt thời gian mở bán.
+    *   Số lượng vé khu vực tự do: `concert:{concert_id}:inventory` (Hash key lưu `{zone}: {availableSlots}`).
+    *   Trạng thái ghế ngồi SVIP: `concert:{concert_id}:seats` (Hash key lưu `{seatNo}: {userId}` để giữ chỗ bằng lệnh `HSETNX`). Không đặt TTL (vô hạn) vì Redis đóng vai trò là chốt chặn chống Double-booking trong thời gian thực.
 
 ### Cơ chế Invalidation & Push thời gian thực (Redis Pub/Sub + SSE)
 Khi có giao dịch mua vé thành công, hệ thống không đợi 1 giây TTL của Local Cache hết hạn mà thực hiện đồng bộ chủ động:
 
 ```
-[MUA VÉ THÀNH CÔNG]
+[KHÁCH HÀNG BẤM THANH TOÁN (CHECKOUT)]
        │
        ▼
-1. Trừ số lượng vé trên RAM Redis Cluster (Tầng 2) trước.
-   Nếu thành công (còn vé), đẩy message "Đơn hàng" vào Message Queue (RabbitMQ) và nhả kết nối.
+1. Lưu giỏ hàng: Backend chèn 1 dòng `PENDING` kèm `requestPayload` vào bảng `idempotency_keys` trên PostgreSQL để khóa giao dịch chống đúp (Double-charge).
        │
        ▼
-2. Background Worker lấy message từ Queue và cập nhật dữ liệu gốc vào PostgreSQL (Asynchronous Write).
+2. Giữ vé tạm thời: Thực hiện trừ số vé trên RAM Redis Cluster bằng lệnh `HINCRBY` (cho Zone) hoặc `HSETNX` (cho Seat). Trả link PayPal cho khách đi thanh toán.
        │
        ▼
-3. Worker phát một message lên kênh Redis Pub/Sub: `{"concert_id": "1", "ticket_type_id": "A", "remaining": 198}`.
+[PAYPAL BÁO THANH TOÁN THÀNH CÔNG BẰNG WEBHOOK]
        │
        ▼
-4. Tất cả các App Server Node đăng ký kênh này lập tức nhận được message:
-   ├── Xóa dữ liệu cũ trong RAM cục bộ (Local Cache Tầng 1).
-   └── Ghi đè con số mới `198` vào Local Cache ngay lập tức.
+3. Đẩy tin nhắn Webhook vào Message Queue (RabbitMQ) và trả phản hồi ngay cho PayPal.
        │
        ▼
-5. Các App Server chủ động đẩy (push) sự thay đổi này xuống trình duyệt của khách hàng 
+4. Background Worker (Chạy ngầm) bốc tin nhắn từ Queue ra xử lý:
+   ├── Đọc PostgreSQL: Kéo giỏ hàng từ bảng `idempotency_keys` ra.
+   └── Ghi PostgreSQL: Lưu dữ liệu gốc vào các bảng `invoices`, `tickets`. Cập nhật trạng thái ghế sang `BOOKED` tại `seat_inventory` và trừ `availableSlots` tại `zone_inventory`.
+       │
+       ▼
+5. Worker phát một message lên kênh Redis Pub/Sub: `{"concert_id": 1, "zone": "VIP", "availableSlots": 198}` hoặc `{"seatNo": "A-1", "status": "BOOKED"}`.
+       │
+       ▼
+6. Tất cả các App Server Node đăng ký kênh này lập tức nhận được message:
+   ├── Xóa trạng thái ghế/vé cũ trong RAM cục bộ (Local Cache Tầng 1).
+   └── Ghi đè trạng thái mới nhất vào Local Cache.
+       │
+       ▼
+7. Các App Server chủ động đẩy (push) sự thay đổi này xuống trình duyệt của khách hàng 
    đang xem show qua đường ống SSE (Server-Sent Events) đang duy trì.
        │
        ▼
-6. Trình duyệt nhận sự kiện và cập nhật trực tiếp lên UI (Số lượng vé tự động giảm từ 200 -> 198).
+8. Trình duyệt nhận sự kiện và cập nhật trực tiếp lên UI (Ví dụ: Ghế A-1 đột nhiên chuyển sang màu xám).
 ```
 
 ---
