@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Param, UseInterceptors, UploadedFile, UseGuards, Req, HttpStatus, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, Param, UseInterceptors, UploadedFile, UseGuards, Req, HttpStatus, HttpCode } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AiService } from './ai.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -39,17 +39,75 @@ export class AiController {
     return this.aiService.getBio(id);
   }
 
+  @Get('bios')
+  @UseGuards(JwtAuthGuard)
+  async getAllBios() {
+    return this.aiService.getAllBios();
+  }
+
   @Put('bio/:id/approve')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('AI_BIO_UPLOAD')
   @HttpCode(HttpStatus.OK)
   async approveBio(
     @Param('id') id: string,
-    @Body() body: { shortBio?: string; mediumBio?: string; seoBio?: string },
+    @Body() body: {
+      shortBio?: string;
+      mediumBio?: string;
+      seoBio?: string;
+      artistName?: string;
+      stageName?: string;
+      category?: string;
+      avatarUrl?: string;
+      genres?: string[];
+      country?: string;
+    },
     @Req() req: any,
   ) {
     const userId = req.user.userId || req.user.id;
-    const { shortBio, mediumBio, seoBio } = body;
-    return this.aiService.approveBio(id, shortBio || '', mediumBio || '', seoBio || '', userId);
+    const { shortBio, mediumBio, seoBio, artistName, stageName, category, avatarUrl, genres, country } = body;
+    return this.aiService.approveBio(
+      id,
+      shortBio || '',
+      mediumBio || '',
+      seoBio || '',
+      userId,
+      artistName,
+      stageName,
+      category,
+      avatarUrl,
+      genres,
+      country
+    );
+  }
+
+  @Delete('bio/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('AI_BIO_UPLOAD')
+  async deleteBio(@Param('id') id: string) {
+    return this.aiService.deleteBio(id);
+  }
+
+
+  @Post('bio')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('AI_BIO_UPLOAD')
+  async createManualBio(
+    @Body() body: {
+      artistName: string;
+      stageName?: string;
+      category?: string;
+      shortBio?: string;
+      mediumBio?: string;
+      seoBio?: string;
+      genres?: string[];
+      country?: string;
+      avatarUrl?: string;
+      status?: string;
+    },
+    @Req() req: any,
+  ) {
+    const userId = req.user.userId || req.user.id;
+    return this.aiService.createManualBio(body, userId);
   }
 }

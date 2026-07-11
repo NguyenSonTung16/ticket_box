@@ -138,7 +138,8 @@ export const ArtistBioListPage: React.FC = () => {
   const navigate = useNavigate();
 
   // View & Filter state
-  const [bios, setBios]               = useState<ArtistBio[]>(MOCK_BIOS);
+  const [bios, setBios]               = useState<ArtistBio[]>([]);
+  const [loading, setLoading]         = useState(true);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('grid');
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -171,6 +172,30 @@ export const ArtistBioListPage: React.FC = () => {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Fetch real data on mount
+  useEffect(() => {
+    let active = true;
+    const fetchBios = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosClient.get('/artist/bios');
+        if (active) {
+          const data = res.data || [];
+          setBios(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch bios from API:', err);
+        if (active) setBios(MOCK_BIOS);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchBios();
+    return () => {
+      active = false;
+    };
   }, []);
 
   // ── Derived data ────────────────────────────────────────────────────────────
@@ -228,10 +253,17 @@ export const ArtistBioListPage: React.FC = () => {
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
-  const handleDelete = (id: string) => {
-    setBios(prev => prev.filter(b => b.id !== id));
-    setDeleteTarget(null);
-    setSelected(prev => { const next = new Set(prev); next.delete(id); return next; });
+  const handleDelete = async (id: string) => {
+    try {
+      await axiosClient.delete(`/artist/bio/${id}`);
+      setBios(prev => prev.filter(b => b.id !== id));
+      setSelected(prev => { const next = new Set(prev); next.delete(id); return next; });
+    } catch (err) {
+      console.error('Failed to delete bio:', err);
+      alert('Xoá thất bại, vui lòng thử lại.');
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   const handleBulkPublish = () => {
@@ -244,10 +276,19 @@ export const ArtistBioListPage: React.FC = () => {
     setSelected(new Set());
   };
 
-  const handleBulkDelete = () => {
-    setBios(prev => prev.filter(b => !selected.has(b.id)));
-    setSelected(new Set());
-    setBulkDeleteOpen(false);
+  const handleBulkDelete = async () => {
+    try {
+      await Promise.all(
+        Array.from(selected).map(id => axiosClient.delete(`/artist/bio/${id}`))
+      );
+      setBios(prev => prev.filter(b => !selected.has(b.id)));
+      setSelected(new Set());
+    } catch (err) {
+      console.error('Failed to delete multiple bios:', err);
+      alert('Có lỗi xảy ra khi xoá danh sách nghệ sĩ.');
+    } finally {
+      setBulkDeleteOpen(false);
+    }
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -453,8 +494,16 @@ export const ArtistBioListPage: React.FC = () => {
           </div>
         </div>
 
+        {/* ── Loading State ── */}
+  {loading && (
+    <div className="bg-surface-container-low border border-outline-variant rounded-xl py-20 flex flex-col items-center gap-4 justify-center">
+      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-sm text-text-medium-emphasis">Đang tải danh sách nghệ sĩ từ cơ sở dữ liệu...</p>
+    </div>
+  )}
+
         {/* ── Empty State ── */}
-        {paged.length === 0 && (
+        {!loading && paged.length === 0 && (
           <div className="bg-surface-container-low border border-outline-variant rounded-xl py-20 flex flex-col items-center gap-5">
             <div className="w-20 h-20 bg-surface-container-high rounded-full flex items-center justify-center">
               <span className="material-symbols-outlined text-5xl text-on-surface-variant">badge</span>
@@ -474,7 +523,7 @@ export const ArtistBioListPage: React.FC = () => {
         )}
 
         {/* ── Grid View ── */}
-        {displayMode === 'grid' && paged.length > 0 && (
+        {!loading && displayMode === 'grid' && paged.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {paged.map(bio => (
               <GridCard
@@ -484,16 +533,16 @@ export const ArtistBioListPage: React.FC = () => {
                 onSelect={() => toggleOne(bio.id)}
                 openMenuId={openMenuId}
                 setOpenMenuId={setOpenMenuId}
-                onEdit={() => navigate('/organizer/bio')}
+                onEdit={() => navigate(`/organizer/bio?id=${bio.id}`)}
                 onDelete={() => setDeleteTarget(bio.id)}
-                menuRef={menuRef}
+                menuRef={menuRef as any}
               />
             ))}
           </div>
         )}
 
         {/* ── Table View ── */}
-        {displayMode === 'table' && paged.length > 0 && (
+        {!loading && displayMode === 'table' && paged.length > 0 && (
           <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left min-w-[900px]">
@@ -561,7 +610,7 @@ export const ArtistBioListPage: React.FC = () => {
                         <td className="px-4 py-3.5">
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => navigate('/organizer/bio')}
+                              onClick={() => navigate(`/organizer/bio?id=${bio.id}`)}
                               title="Chỉnh sửa"
                               className="w-8 h-8 rounded-lg hover:bg-surface-container-high text-on-surface-variant hover:text-white transition-all flex items-center justify-center"
                             >
@@ -644,7 +693,7 @@ export const ArtistBioListPage: React.FC = () => {
         <CreationModeModal
           onClose={() => setShowCreationModal(false)}
           onSelectAI={() => { setShowCreationModal(false); navigate('/organizer/bio'); }}
-          onSelectManual={() => { setShowCreationModal(false); navigate('/organizer/bio-manual'); }}
+          onSelectManual={() => { setShowCreationModal(false); navigate('/organizer/bio', { state: { tab: 'manual' } }); }}
         />
       )}
     </div>

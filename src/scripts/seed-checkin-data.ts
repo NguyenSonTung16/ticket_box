@@ -11,6 +11,9 @@ import { Concert } from '../info/entities/concert.entity';
 import { Ticket } from '../booking/entities/ticket.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
 import { DEV_PRIVATE_KEY } from '../checkin/checkin.service';
+import { getModelToken } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { ShowInfo, ShowInfoDocument } from '../info/schemas/show-info.schema';
 
 async function bootstrap() {
   console.log('--- KHỞI CHẠY SEED DỮ LIỆU ĐĂNG NHẬP & SOÁT VÉ ---');
@@ -65,6 +68,24 @@ async function bootstrap() {
     });
     await concertRepo.save(concert);
     console.log('[POSTGRES] Đã tạo Concert ID = 1.');
+  }
+
+  // 2.5. Seed MongoDB ShowInfo for Concert 1
+  const showInfoModel = app.get(getModelToken(ShowInfo.name));
+  const showInfo = await showInfoModel.findOne({ showId: 1 });
+  if (!showInfo) {
+    await showInfoModel.create({
+      showId: 1,
+      name: 'Anh Trai Say Hi Concert',
+      category: 'Singer',
+      venue_name: 'Sân vận động Mỹ Đình',
+      province: 'Hà Nội',
+      image_url: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
+      cover_image_url: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=1600',
+      organizer_name: 'TicketBox Entertainment',
+      description: 'Đại nhạc hội Anh Trai Say Hi Live Concert 2026',
+    });
+    console.log('[MONGO] Đã tạo ShowInfo mặc định cho showId = 1.');
   }
 
   // 3. Seed Zone

@@ -249,6 +249,12 @@ Dữ liệu thô của nghệ sĩ:
         seoBio: bio.seoBio,
         status: 'COMPLETED',
         createdAt: bio.createdAt,
+        artistName: bio.artistName,
+        stageName: bio.stageName,
+        category: bio.category,
+        genres: bio.genres,
+        country: bio.country,
+        avatarUrl: bio.avatarUrl,
       };
     }
 
@@ -282,7 +288,19 @@ Dữ liệu thô của nghệ sĩ:
     throw new NotFoundException('Artist Bio or Job not found');
   }
 
-  async approveBio(id: string, shortBio: string, mediumBio: string, seoBio: string, userId: string) {
+  async approveBio(
+    id: string,
+    shortBio: string,
+    mediumBio: string,
+    seoBio: string,
+    userId: string,
+    artistName?: string,
+    stageName?: string,
+    category?: string,
+    avatarUrl?: string,
+    genres?: string[],
+    country?: string,
+  ) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
     let bio = null;
 
@@ -312,6 +330,13 @@ Dữ liệu thô của nghệ sĩ:
     bio.reviewedBy = userId;
     bio.reviewedAt = new Date();
 
+    if (artistName) bio.artistName = artistName;
+    if (stageName) bio.stageName = stageName;
+    if (category) bio.category = category;
+    if (avatarUrl) bio.avatarUrl = avatarUrl;
+    if (genres) bio.genres = genres;
+    if (country) bio.country = country;
+
     const updatedBio = await this.bioRepo.save(bio);
 
     // Publish to Concert details in MongoDB
@@ -327,5 +352,76 @@ Dữ liệu thô của nghệ sĩ:
       status: 'APPROVED',
       publishedAt: updatedBio.reviewedAt,
     };
+  }
+
+  async getAllBios() {
+    const bios = await this.bioRepo.find({
+      order: { createdAt: 'DESC' },
+    });
+
+    return bios.map(bio => {
+      return {
+        id: bio.id,
+        concertId: bio.concertId,
+        artistName: bio.artistName || 'Nghệ sĩ chưa rõ',
+        stageName: bio.stageName || 'Nghệ sĩ chưa rõ',
+        category: bio.category || 'Singer',
+        genres: bio.genres || ['V-Pop'],
+        status: bio.status === 'APPROVED' ? 'published' : 'draft',
+        shortBio: bio.shortBio,
+        country: bio.country || 'Vietnam',
+        avatarUrl: bio.avatarUrl || '',
+        createdAt: bio.createdAt,
+        updatedAt: bio.updatedAt,
+        createdBy: 'Hệ thống',
+      };
+    });
+  }
+
+  async deleteBio(id: string) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+    let bio = null;
+
+    if (isUuid) {
+      bio = await this.bioRepo.findOne({ where: { id } });
+    } else {
+      const concertId = Number(id);
+      if (!isNaN(concertId)) {
+        bio = await this.bioRepo.findOne({ where: { concertId } });
+      }
+    }
+
+    if (!bio) {
+      throw new NotFoundException('Artist Bio not found');
+    }
+
+    await this.bioRepo.remove(bio);
+
+    await this.showInfoModel.updateOne(
+      { showId: bio.concertId },
+      { $unset: { artistBio: '' } }
+    );
+
+    return { message: 'Deleted biography successfully' };
+  }
+
+
+  async createManualBio(body: any, userId: string) {
+    const bio = this.bioRepo.create({
+      artistName: body.artistName,
+      stageName: body.stageName || '',
+      category: body.category || 'Singer',
+      shortBio: body.shortBio || '',
+      mediumBio: body.mediumBio || '',
+      seoBio: body.seoBio || '',
+      genres: body.genres || [],
+      country: body.country || 'Vietnam',
+      avatarUrl: body.avatarUrl || '',
+      status: body.status || 'APPROVED',
+      reviewedBy: userId,
+      reviewedAt: new Date(),
+    });
+
+    return await this.bioRepo.save(bio);
   }
 }

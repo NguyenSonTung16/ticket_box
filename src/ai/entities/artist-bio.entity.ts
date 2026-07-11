@@ -9,14 +9,32 @@ export class ArtistBio {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   concertId: number;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   jobId: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   promptTemplateId: string;
+
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  artistName: string;
+
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  stageName: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  category: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  avatarUrl: string;
+
+  @Column({ type: 'simple-array', nullable: true })
+  genres: string[];
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  country: string;
 
   @Column({ type: 'text' })
   shortBio: string;
