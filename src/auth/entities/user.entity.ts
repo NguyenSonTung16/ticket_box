@@ -20,6 +20,9 @@ export class User {
   @Column({ type: 'varchar', length: 20, default: UserRole.USER })
   role: string;
 
+  @Column({ type: 'varchar', length: 50, default: 'ACTIVE' })
+  status: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }

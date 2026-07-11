@@ -211,4 +211,29 @@ export class MinioService {
       }),
     );
   }
+
+  async uploadBuffer(bucket: string, key: string, buffer: Buffer, contentType: string): Promise<string> {
+    const cmd = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    });
+    await this.s3.send(cmd);
+    const publicEndpoint = process.env.MINIO_PUBLIC_ENDPOINT || 'http://localhost:9000';
+    const internalEndpoint = process.env.MINIO_ENDPOINT || 'http://localhost:9000';
+    return `${publicEndpoint}/${bucket}/${key}`;
+  }
+
+  async downloadBuffer(bucket: string, key: string): Promise<Buffer> {
+    const cmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+    const response = await this.s3.send(cmd);
+    const stream = response.Body as Readable;
+    return new Promise((resolve, reject) => {
+      const chunks: any[] = [];
+      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('error', reject);
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
 }

@@ -37,7 +37,7 @@ export class ImportJob {
   @Column({ name: 'fileKey', type: 'varchar', length: 500 })
   fileKey: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 100 })
   showId: string;
 
   /** Which sponsor triggered this import */

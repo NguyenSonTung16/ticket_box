@@ -80,6 +80,9 @@ export class ShowInfo {
 
   @Prop()
   vat_tax_code: string;
+
+  @Prop()
+  artistBio: string;
 }
 
 export const ShowInfoSchema = SchemaFactory.createForClass(ShowInfo);

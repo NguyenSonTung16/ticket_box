@@ -19,6 +19,13 @@ import { CreateStep1 } from './pages/organizer-center/CreateStep1';
 import { CreateStep2 } from './pages/organizer-center/CreateStep2';
 import { CreateStep3 } from './pages/organizer-center/CreateStep3';
 import { CreateStep4 } from './pages/organizer-center/CreateStep4';
+import { ArtistBiographyPage } from './pages/organizer-center/ArtistBiographyPage';
+import { ArtistBioListPage } from './pages/organizer-center/ArtistBioListPage';
+import { ArtistBioManualPage } from './pages/organizer-center/ArtistBioManualPage';
+
+// Check-in & Admin Approval
+import { CheckinConsolePage } from './pages/CheckinConsolePage';
+import { AdminApprovalPage } from './pages/AdminApprovalPage';
 
 const container = document.getElementById('root');
 if (container) {
@@ -34,6 +41,11 @@ if (container) {
             <Route path="/checkout.html" element={<CheckoutPage />} />
             <Route path="/payment.html" element={<PaymentPage />} />
             <Route path="/payment-success.html" element={<PaymentSuccessPage />} />
+            
+            {/* Check-in & Admin Approval */}
+            <Route path="/checkin" element={<CheckinConsolePage />} />
+            <Route path="/admin" element={<AdminApprovalPage />} />
+
             {/* Organizer Center */}
             <Route path="/organizer" element={<OrganizerLayout />}>
               <Route index element={<OrganizerDashboard />} />
@@ -42,6 +54,9 @@ if (container) {
               <Route path="create/step-2" element={<CreateStep2 />} />
               <Route path="create/step-3" element={<CreateStep3 />} />
               <Route path="create/step-4" element={<CreateStep4 />} />
+              <Route path="bio" element={<ArtistBiographyPage />} />
+              <Route path="bio-manual" element={<ArtistBioManualPage />} />
+              <Route path="artists" element={<ArtistBioListPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

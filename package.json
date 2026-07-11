@@ -13,12 +13,14 @@
     "start:booking": "cross-env PORT=3002 SERVICE_NAME=booking ts-node src/main.ts",
     "start:info": "cross-env PORT=3003 SERVICE_NAME=info ts-node src/main.ts",
     "start:event": "cross-env PORT=3004 SERVICE_NAME=event ts-node src/main.ts",
+    "start:payment": "cross-env PORT=3004 SERVICE_NAME=payment ts-node src/main.ts",
     "start:worker": "ts-node src/apps-worker/processors/order.processor.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",
     "@aws-sdk/s3-request-presigner": "^3.1079.0",
-    "@nestjs/common": "^10.0.0",
+    "@google/generative-ai": "^0.24.1",
+    "@nestjs/common": "^11.1.28",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.28",
     "@nestjs/jwt": "^10.2.0",
