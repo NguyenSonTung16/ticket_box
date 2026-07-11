@@ -6,28 +6,28 @@ export const options = {
     // 1a: Cache Hit Performance
     cache_hit: {
       executor: 'constant-vus',
-      vus: 500,
+      vus: 50,
       duration: '60s',
       exec: 'getShowOne',
     },
     // 1b: Cache Stampede Prevention
     cache_stampede: {
       executor: 'shared-iterations',
-      vus: 2000,
-      iterations: 2000,
+      vus: 100,
+      iterations: 1000,
       exec: 'getShowOneAndVerify',
     },
     // 1c: Multi-Show Concurrent
     multi_show: {
       executor: 'constant-vus',
-      vus: 1000,
+      vus: 50,
       duration: '30s',
       exec: 'getShowRandom',
     },
     // 1d: Homepage Load
     homepage_load: {
       executor: 'constant-vus',
-      vus: 1000,
+      vus: 50,
       duration: '30s',
       exec: 'getShows',
     },

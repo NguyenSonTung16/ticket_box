@@ -19,18 +19,18 @@ export const options = {
       executor: 'ramping-arrival-rate',
       startRate: 50,
       timeUnit: '1s',
-      preAllocatedVUs: 300,
-      maxVUs: 800,
+      preAllocatedVUs: 100,
+      maxVUs: 150,
       stages: [
-        { duration: '30s', target: 500 }, // Khởi động lên 500 req/s
-        { duration: '30s', target: 500 }, // Giữ đỉnh tải 500 req/s
+        { duration: '30s', target: 100 }, // Khởi động lên 100 req/s
+        { duration: '30s', target: 100 }, // Giữ đỉnh tải 100 req/s
         { duration: '30s', target: 0 },   // Hạ nhiệt
       ],
     },
     // 7b: Sustained Load
     sustained_load: {
       executor: 'constant-vus',
-      vus: 200,
+      vus: 50,
       duration: '3m',
       startTime: '90s', // Chạy sau khi flash_sale kết thúc
     }

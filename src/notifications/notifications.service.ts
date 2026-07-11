@@ -1,7 +1,10 @@
 import { Injectable, OnModuleInit, Inject, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as amqp from 'amqplib';
 import { RABBITMQ_CHANNEL } from '../config/rabbitmq.config';
-import * as QRCode from 'qrcode';
+import { User } from '../auth/entities/user.entity';
+import { EmailService } from './email.service';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -9,6 +12,8 @@ export class NotificationsService implements OnModuleInit {
 
   constructor(
     @Inject(RABBITMQ_CHANNEL) private readonly rabbitChannel: amqp.Channel,
+    @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly emailService: EmailService,
   ) {}
 
   onModuleInit() {
@@ -18,7 +23,6 @@ export class NotificationsService implements OnModuleInit {
   // Worker Pooling: Khởi tạo 10 Consumer chạy song song cho hàng đợi notification
   private startWorkerPool() {
     const numWorkers = 10;
-    // Prefetch giúp điều tiết tốc độ tiêu thụ (mỗi worker lấy max 5 message cùng lúc để tránh quá tải)
     this.rabbitChannel.prefetch(5); 
 
     for (let i = 0; i < numWorkers; i++) {
@@ -27,11 +31,9 @@ export class NotificationsService implements OnModuleInit {
           try {
             const data = JSON.parse(msg.content.toString());
             await this.processNotification(data, i);
-            // Xử lý thành công -> Ack (xác nhận để xóa khỏi queue)
             this.rabbitChannel.ack(msg);
           } catch (err) {
             this.logger.error(`Worker ${i} lỗi xử lý: ${err.message}`);
-            // Nack: đưa lại vào queue hoặc đẩy xuống DLQ tuỳ cấu hình (ở đây false = không requeue -> vào DLQ nếu có)
             this.rabbitChannel.nack(msg, false, false);
           }
         }
@@ -42,16 +44,32 @@ export class NotificationsService implements OnModuleInit {
 
   private async processNotification(data: any, workerId: number) {
     if (data.type === 'BULK_REMINDER') {
-      // Xử lý luồng Bulk-Notification (Batching)
-      this.logger.log(`[Worker ${workerId}] Đang xử lý Bulk Message gồm ${data.batchSize} users. Chuẩn bị gọi 1 API Request duy nhất...`);
-      // Giả lập 1 lệnh gọi API Batch (ví dụ SendGrid Bulk Email API)
-      await new Promise(resolve => setTimeout(resolve, 500)); 
-      this.logger.log(`[Worker ${workerId}] Đã GỬI THÀNH CÔNG 1 Bulk API Request chứa ${data.batchSize} email nhắc nhở.`);
+      this.logger.log(`[Worker ${workerId}] Đang xử lý Bulk Message gồm ${data.batchSize || data.users?.length || 0} users...`);
+      if (Array.isArray(data.users)) {
+        for (const u of data.users) {
+          if (u.email) {
+            await this.emailService.sendReminderEmail(u.email, data.showName || `Show #${data.concert_id || 1}`);
+          }
+        }
+      }
+      this.logger.log(`[Worker ${workerId}] Đã xử lý xong batch email nhắc nhở.`);
       return;
     }
 
-    // Luồng sinh e-ticket tức thì cho từng đơn hàng (Giao dịch thành công)
-    const qrDataUrl = await QRCode.toDataURL(JSON.stringify(data));
-    this.logger.log(`[Worker ${workerId}] Đã tạo mã QR và gửi email xác nhận cho User: ${data.userId}`);
+    // Luồng thông báo khi người dùng vừa giữ vé thành công
+    if (data.userId) {
+      const user = await this.userRepo.findOne({ where: { id: data.userId } });
+      if (user && user.email) {
+        await this.emailService.sendHoldNotificationEmail(
+          user.email,
+          data.concert_id || 1,
+          data.type || 'Vé',
+          data.quantity || 1,
+        );
+        this.logger.log(`[Worker ${workerId}] Đã gửi email thông báo giữ vé cho User: ${data.userId} (${user.email})`);
+      } else {
+        this.logger.warn(`[Worker ${workerId}] Không tìm thấy user hoặc email cho User ID: ${data.userId}`);
+      }
+    }
   }
 }

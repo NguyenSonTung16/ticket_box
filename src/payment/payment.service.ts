@@ -9,7 +9,6 @@ import { PaypalClient } from './paypal.client';
 import { IdempotencyKey } from './entities/idempotency-key.entity';
 import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
-import { SseService } from '../booking/sse.service';
 
 @Injectable()
 export class PaymentService implements OnModuleInit {
@@ -24,7 +23,6 @@ export class PaymentService implements OnModuleInit {
     @InjectRepository(SeatInventory) private readonly seatInventoryRepo: Repository<SeatInventory>,
     @InjectRepository(ZoneInventory) private readonly zoneInventoryRepo: Repository<ZoneInventory>,
     private readonly paypalClient: PaypalClient,
-    private readonly sseService: SseService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -38,25 +36,25 @@ export class PaymentService implements OnModuleInit {
         try {
           const payload = JSON.parse(msg.content.toString());
           const { paypalOrderId } = payload;
-          this.logger.log(`[Internal Capture] Nhận tín hiệu xử lý fallback cho order: ${paypalOrderId}`);
+          this.logger.log(`[Webhook Capture] Nhận tín hiệu chốt đơn từ Webhook cho order: ${paypalOrderId}`);
 
           // Tìm IdempotencyKey liên quan đến order này
           const idemRecord = await this.idempotencyRepo.findOne({ where: { paypalOrderId } });
           if (!idemRecord) {
-            this.logger.warn(`[Internal Capture] Không tìm thấy IdempotencyKey cho order: ${paypalOrderId}. Cần can thiệp tay.`);
+            this.logger.warn(`[Webhook Capture] Không tìm thấy IdempotencyKey cho order: ${paypalOrderId}. Cần can thiệp tay.`);
             this.rabbitChannel.ack(msg);
             return;
           }
 
           if (idemRecord.status === 'COMPLETED') {
-            this.logger.log(`[Internal Capture] Order ${paypalOrderId} đã được Frontend capture thành công. Webhook bỏ qua.`);
+            this.logger.log(`[Webhook Capture] Order ${paypalOrderId} đã được xử lý hoàn tất trước đó. Webhook bỏ qua.`);
             this.rabbitChannel.ack(msg);
             return;
           }
 
           const reqPayload = idemRecord.requestPayload;
           if (!reqPayload) {
-            this.logger.error(`[Internal Capture] Thiếu requestPayload trong DB cho order: ${paypalOrderId}`);
+            this.logger.error(`[Webhook Capture] Thiếu requestPayload trong DB cho order: ${paypalOrderId}`);
             this.rabbitChannel.ack(msg);
             return;
           }
@@ -72,10 +70,10 @@ export class PaymentService implements OnModuleInit {
             reqPayload.totalAmountVND
           );
 
-          this.logger.log(`[Internal Capture] Fallback capture thành công cho order: ${paypalOrderId}`);
+          this.logger.log(`[Webhook Capture] Xử lý đơn hàng Webhook thành công cho order: ${paypalOrderId}`);
           this.rabbitChannel.ack(msg);
         } catch (error) {
-          this.logger.error(`[Internal Capture] Lỗi xử lý fallback capture: ${error.message}`);
+          this.logger.error(`[Webhook Capture] Lỗi xử lý Webhook capture: ${error.message}`);
           this.rabbitChannel.nack(msg, false, false); // Đẩy vào DLQ hoặc retry
         }
       }
@@ -87,6 +85,10 @@ export class PaymentService implements OnModuleInit {
    * Trả về: { isNew: true } nếu key mới, hoặc { isNew: false, existing: IdempotencyKey } nếu key đã tồn tại.
    */
   private async checkIdempotency(key: string, userId: string, concert_id: number, requestPayload?: any): Promise<{ isNew: boolean; existing?: IdempotencyKey }> {
+    if (!key || !userId || !concert_id) {
+      throw new BadRequestException('Thiếu tham số bắt buộc: idempotencyKey, userId hoặc concert_id');
+    }
+
     // Lớp 1: Redis fast-path
     const redisResult = await this.redis.get(`idem:${key}`);
     if (redisResult) {
@@ -220,6 +222,7 @@ export class PaymentService implements OnModuleInit {
     );
 
     const response = { orderId: paypalOrder.id, status: 'CREATED' };
+    this.logger.log(`[Create Order] Đã tạo PayPal Order thành công. Order ID: ${paypalOrder.id}`);
     return response;
   }
 
@@ -345,10 +348,10 @@ export class PaymentService implements OnModuleInit {
 
       // 5. SSE broadcast ghế đã thanh toán
       for (const seatNo of svipSeats) {
-        await this.sseService.broadcast({
+        await this.redis.publish('ticketbox_sse_broadcast', JSON.stringify({
           concert_id, seatNo, status: 'booked', userId,
           message: `Ghế SVIP ${seatNo} đã được thanh toán.`,
-        });
+        }));
       }
 
       // 6. Đẩy vào RabbitMQ để Worker tạo Invoice + gửi email bất đồng bộ

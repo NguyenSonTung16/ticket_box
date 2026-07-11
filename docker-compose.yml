@@ -29,9 +29,11 @@ services:
     container_name: ticketbox-redis
     ports:
       - "6379:6379"
-    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     networks:
       - ticketbox-network
+    volumes:
+      - redisdata:/data
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -146,4 +148,5 @@ networks:
 volumes:
   pgdata:
   mongodata:
+  redisdata:
 

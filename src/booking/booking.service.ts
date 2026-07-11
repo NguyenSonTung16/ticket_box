@@ -26,41 +26,9 @@ export class BookingService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('Seeding SVIP seats into database if not exists...');
-    
-    const concertIds = [1, 2, 3, 4];
-
-    for (const cid of concertIds) {
-      const [{ exists }] = await this.seatInventoryRepo.query(`SELECT EXISTS (SELECT 1 FROM concerts WHERE id = $1)`, [cid]);
-      if (!exists) {
-        this.logger.warn(`Concert ID ${cid} does not exist yet. Skipping DB seed for this concert.`);
-        continue;
-      }
-      
-      const count = await this.seatInventoryRepo.count({ where: { concert_id: cid } });
-      if (count === 0) {
-        const seats = [];
-        const rows = ['A', 'B']; // 2 rows
-        const cols = 20; // 20 columns = 40 seats
-        for (const row of rows) {
-          for (let i = 1; i <= cols; i++) {
-            seats.push({ seatNo: `${row}-${i}`, concert_id: cid, status: 'AVAILABLE', zone: 'SVIP' });
-          }
-        }
-        await this.seatInventoryRepo.insert(seats);
-        this.logger.log(`Seeded 40 SVIP seats for concert ${cid} successfully.`);
-      }
-
-      this.logger.log(`Seeding ZoneInventory for concert ${cid} into database if not exists...`);
-      const zoneCount = await this.zoneInventoryRepo.count({ where: { concert_id: cid } });
-      if (zoneCount === 0) {
-        await this.zoneInventoryRepo.insert([
-          { zone: 'VIP', concert_id: cid, totalCapacity: 75, availableSlots: 75 },
-          { zone: 'Normal', concert_id: cid, totalCapacity: 100, availableSlots: 100 },
-        ]);
-        this.logger.log(`Seeded 75 VIP and 100 Normal zones for concert ${cid} successfully.`);
-      }
-    }
+    this.logger.log('BookingService initialized.');
+    // Note: Database seeding has been moved to src/scripts/seed.ts
+    // to prevent Race Conditions in the Load Balancing cluster.
   }
 
   // Lấy trạng thái tất cả ghế SVIP
@@ -73,6 +41,11 @@ export class BookingService implements OnModuleInit {
       } else {
         const promise = (async () => {
           try {
+            const exists = await this.redis.exists(seatHashKey);
+            if (!exists) {
+              // LỖI REDIS TRỐNG: Chạy hàm đồng bộ từ DB lên Redis để phục hồi dữ liệu
+              await this.repairSeatSync(concert_id);
+            }
             const data = await this.redis.hgetall(seatHashKey);
             if (data) this.seatCache.set(seatHashKey, data);
             return data || {};
@@ -101,6 +74,14 @@ export class BookingService implements OnModuleInit {
       } else {
         const promise = (async () => {
           try {
+            const exists = await this.redis.exists(inventoryKey);
+            if (!exists) {
+              // LỖI REDIS TRỐNG: Lấy từ DB lên để hiển thị đúng lượng vé còn lại
+              const zones = await this.zoneInventoryRepo.find({ where: { concert_id } });
+              for (const z of zones) {
+                await this.redis.hsetnx(inventoryKey, z.zone, z.availableSlots);
+              }
+            }
             const data = await this.redis.hgetall(inventoryKey);
             if (data) this.inventoryCache.set(inventoryKey, data);
             return data || {};
@@ -281,5 +262,82 @@ export class BookingService implements OnModuleInit {
   async payTickets(concert_id: number, userId: string, payload: any) {
     this.logger.warn(`[Deprecated] Gọi hàm payTickets cũ. Vui lòng chuyển sang dùng PaymentModule.`);
     throw new BadRequestException('Endpoint thanh toán cũ đã bị vô hiệu hóa. Vui lòng cập nhật ứng dụng.');
+  }
+
+  /**
+   * Cơ chế Phòng chờ ảo (Virtual Waiting Room) với Sức chứa Động
+   */
+  async enterQueue(userId: string, concert_id: number) {
+    // 1. Kiểm tra xem user đã có Booking Pass hợp lệ chưa
+    const passKey = `booking_pass:${concert_id}:${userId}`;
+    const existingPass = await this.redis.get(passKey);
+    if (existingPass) {
+      const ttl = await this.redis.ttl(passKey);
+      return { status: 'SUCCESS', message: 'Bạn đã có Giấy thông hành hợp lệ!', ttl };
+    }
+
+    // 2. Tính toán sức chứa động (Dynamic Capacity) = 1.5 * Tổng số vé của concert
+    let maxRoomCapacity = 900;
+    try {
+      const svipCount = await this.seatInventoryRepo.count({ where: { concert_id } });
+      const zoneSum = await this.zoneInventoryRepo.createQueryBuilder('z')
+        .where('z.concert_id = :cid', { cid: concert_id })
+        .select('SUM(z.totalCapacity)', 'total')
+        .getRawOne();
+      const totalTickets = (svipCount || 200) + (parseInt(zoneSum?.total || '400', 10));
+      maxRoomCapacity = Math.max(100, Math.floor(totalTickets * 1.5));
+    } catch (e) {
+      this.logger.warn(`Không lấy được tổng số vé từ DB cho show ${concert_id}, dùng mặc định 900.`);
+    }
+
+    // 3. Kiểm tra số lượng người đang trong phòng chọn ghế
+    const activeUsersKey = `active_booking_users:${concert_id}`;
+    const currentActive = parseInt(await this.redis.get(activeUsersKey) || '0', 10);
+
+    if (currentActive < maxRoomCapacity) {
+      // Cho phép vào phòng: Cấp Booking Pass (hạn 5 phút) và tăng counter
+      await this.redis.set(passKey, 'true', 'EX', 300); // 300s = 5 phút
+      await this.redis.incr(activeUsersKey);
+
+      // Hết 5 phút tự động giảm active_booking_users để nhường chỗ cho người đợi
+      setTimeout(async () => {
+        try {
+          const val = await this.redis.decr(activeUsersKey);
+          if (val < 0) await this.redis.set(activeUsersKey, '0');
+          await this.processNextInQueue(concert_id);
+        } catch (err) {}
+      }, 300000);
+
+      return { status: 'SUCCESS', message: 'Chào mừng bạn vào phòng chọn ghế!', ttl: 300 };
+    } else {
+      // Đầy phòng -> Đẩy vào Hàng đợi (Waiting Queue)
+      const queueKey = `waiting_queue:${concert_id}`;
+      
+      // Kiểm tra xem user đã xếp hàng chưa
+      const queueList = await this.redis.lrange(queueKey, 0, -1);
+      let position = queueList.indexOf(userId);
+      if (position === -1) {
+        await this.redis.rpush(queueKey, userId);
+        position = (await this.redis.llen(queueKey)) - 1;
+      }
+
+      return {
+        status: 'WAITING',
+        position: position + 1, // 1-indexed cho UI
+        message: 'Phòng chọn ghế đang đầy. Vui lòng giữ trình duyệt, vị trí của bạn đang được cập nhật.',
+      };
+    }
+  }
+
+  // Bốc người tiếp theo từ hàng đợi vào phòng chọn ghế
+  async processNextInQueue(concert_id: number) {
+    const queueKey = `waiting_queue:${concert_id}`;
+    const nextUserId = await this.redis.lpop(queueKey);
+    if (nextUserId) {
+      const passKey = `booking_pass:${concert_id}:${nextUserId}`;
+      await this.redis.set(passKey, 'true', 'EX', 300);
+      await this.redis.incr(`active_booking_users:${concert_id}`);
+      this.sseService.notifyClient(nextUserId, { type: 'QUEUE_SUCCESS', message: 'Đã đến lượt bạn! Đang chuyển vào phòng chọn ghế...' });
+    }
   }
 }

@@ -14,9 +14,12 @@ async function bootstrap() {
   // Cấu hình phục vụ file Static (Vite Build) từ thư mục ticketbox-client/dist
   app.useStaticAssets(join(__dirname, '..', 'ticketbox-client', 'dist'));
 
-  // Middleware to log request and container ID
+  // Middleware to log request, add X-Served-By header for load balancing verification
   app.use((req, res, next) => {
-    console.log(`[${os.hostname()}] ${req.method} ${req.url}`);
+    const port = process.env.PORT || 3000;
+    const serviceName = process.env.SERVICE_NAME || 'app';
+    res.setHeader('X-Served-By', `${serviceName}-${port}`);
+    console.log(`[${serviceName}:${port}] ${req.method} ${req.url}`);
     next();
   });
 

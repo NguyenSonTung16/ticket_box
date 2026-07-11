@@ -138,7 +138,7 @@ export class WorkerService implements OnModuleInit {
     // Bước 2: Kiểm tra Redis — đã thanh toán chưa?
     const seatOwner = await this.redis.hget(`concert:${concert_id}:svip_seats`, seatNo);
     if (seatOwner === `${userId}:PAID`) {
-      this.logger.log(`[Rollback] Bỏ qua: ghế ${seatNo} đã được thanh toán (Redis).`);
+      this.logger.log(`[Hold Expired Check] VÉ AN TOÀN (Đã thanh toán): Ghế ${seatNo} đã được mua thành công. Không rollback.`);
       return;
     }
 
@@ -196,7 +196,7 @@ export class WorkerService implements OnModuleInit {
     // Kiểm tra đã thanh toán chưa (Redis paid_qty)
     const paidQtyStr = await this.redis.get(`user:${userId}:concert:${concert_id}:zone:${type}:paid_qty`);
     if (paidQtyStr && parseInt(paidQtyStr, 10) >= quantity) {
-      this.logger.log(`[Rollback] Bỏ qua: User ${userId} đã thanh toán ${quantity} vé ${type}.`);
+      this.logger.log(`[Hold Expired Check] VÉ AN TOÀN (Đã thanh toán): User ${userId} đã mua ${quantity} vé ${type}. Không rollback.`);
       return;
     }
 
@@ -211,7 +211,7 @@ export class WorkerService implements OnModuleInit {
       .getCount();
 
     if (invoiceCount >= quantity) {
-      this.logger.log(`[Rollback] DB confirms: User ${userId} đã thanh toán vé ${type}. Skip rollback.`);
+      this.logger.log(`[Hold Expired Check] VÉ AN TOÀN (DB xác nhận): User ${userId} đã mua vé ${type}. Không rollback.`);
       // Repair Redis
       await this.redis.set(`user:${userId}:concert:${concert_id}:zone:${type}:paid_qty`, invoiceCount.toString(), 'EX', 86400);
       return;
@@ -238,23 +238,15 @@ export class WorkerService implements OnModuleInit {
           const data = JSON.parse(msg.content.toString());
           this.logger.log(`[Payment Confirmed] Nhận yêu cầu tạo Invoice cho User: ${data.userId}`);
 
-          // Idempotency check: kiểm tra Invoice đã tồn tại chưa (theo paypalOrderId)
+          // Idempotency check: kiểm tra Invoice đã được tạo cho đúng paypalOrderId này chưa
           if (data.paypalOrderId) {
-            const existingInvoice = await this.invoiceRepo.findOne({
-              where: { userId: data.userId, concert_id: data.concert_id, status: 'PAID' },
-              relations: ['tickets'],
+            const idemKey = await this.idempotencyRepo.findOne({
+              where: { paypalOrderId: data.paypalOrderId },
             });
-
-            // Kiểm tra xem invoice này đã tạo cho cùng paypalOrderId chưa
-            if (existingInvoice) {
-              const idemKey = await this.idempotencyRepo.findOne({
-                where: { paypalOrderId: data.paypalOrderId, status: 'COMPLETED' },
-              });
-              if (idemKey) {
-                this.logger.log(`[Payment Confirmed] Invoice đã tồn tại cho PayPal Order ${data.paypalOrderId}. Skip.`);
-                this.rabbitChannel.ack(msg);
-                return;
-              }
+            if (idemKey && idemKey.responsePayload && idemKey.responsePayload.invoiceId) {
+              this.logger.log(`[Payment Confirmed] Invoice ${idemKey.responsePayload.invoiceId} đã được tạo cho PayPal Order ${data.paypalOrderId} từ trước. Skip.`);
+              this.rabbitChannel.ack(msg);
+              return;
             }
           }
 
@@ -279,6 +271,15 @@ export class WorkerService implements OnModuleInit {
           });
           const savedTickets = await this.ticketRepo.save(ticketsToSave);
           this.logger.log(`[Payment Confirmed] Đã lưu Invoice ${savedInvoice.id} và ${savedTickets.length} vé.`);
+
+          // Lưu invoiceId vào IdempotencyKey để đánh dấu order này đã tạo invoice
+          if (data.paypalOrderId) {
+            const idemKey = await this.idempotencyRepo.findOne({ where: { paypalOrderId: data.paypalOrderId } });
+            if (idemKey) {
+              const updatedPayload = { ...(idemKey.responsePayload || {}), invoiceId: savedInvoice.id };
+              await this.idempotencyRepo.update({ id: idemKey.id }, { responsePayload: updatedPayload });
+            }
+          }
 
           // Đẩy vào email queue
           this.rabbitChannel.sendToQueue('email_notification_queue', Buffer.from(JSON.stringify({
@@ -307,8 +308,8 @@ export class WorkerService implements OnModuleInit {
           const eventType = event.event_type;
           this.logger.log(`[Webhook Worker] Nhận event: ${eventType}`);
 
-          if (eventType === 'CHECKOUT.ORDER.APPROVED') {
-            const orderId = event.resource?.id;
+          if (eventType === 'CHECKOUT.ORDER.APPROVED' || eventType === 'CHECKOUT.ORDER.COMPLETED' || eventType === 'PAYMENT.CAPTURE.COMPLETED') {
+            const orderId = event.resource?.supplementary_data?.related_ids?.order_id || event.resource?.id;
 
             if (orderId) {
               // Kiểm tra idempotency — nếu đã xử lý → skip
@@ -317,9 +318,9 @@ export class WorkerService implements OnModuleInit {
               });
 
               if (idemRecord && idemRecord.status === 'COMPLETED') {
-                this.logger.log(`[Webhook Worker] PayPal Order ${orderId} đã được xử lý. Skip.`);
+                this.logger.log(`[Webhook Worker] PayPal Order ${orderId} đã được xử lý hoàn tất từ trước. Skip.`);
               } else {
-                this.logger.log(`[Webhook Worker] PayPal Order ${orderId} chưa được capture. Đẩy vào internal_capture_queue để fallback.`);
+                this.logger.log(`[Webhook Worker] Nhận đơn hàng ${orderId} từ PayPal (event: ${eventType}). Chuyển lệnh sang PaymentService để xác nhận thanh toán.`);
                 // Phát tín hiệu sang internal_capture_queue cho PaymentService chốt đơn
                 this.rabbitChannel.sendToQueue(
                   'internal_capture_queue',

@@ -8,6 +8,7 @@ import { BookingService } from './booking.service';
 export class SseService implements OnModuleInit, OnModuleDestroy {
   private clients = new Map<string, Subject<any>[]>();
   private readonly CHANNEL_NAME = 'ticketbox_sse_broadcast';
+  private readonly NOTIFY_CHANNEL = 'ticketbox_sse_notify';
 
   constructor(
     @Inject(REDIS_CLIENT) private readonly redisClient: Redis,
@@ -16,29 +17,32 @@ export class SseService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.redisSubscriber.subscribe(this.CHANNEL_NAME, (err, count) => {
+    this.redisSubscriber.subscribe(this.CHANNEL_NAME, this.NOTIFY_CHANNEL, (err, count) => {
       if (err) {
         console.error('Failed to subscribe to Redis channel', err);
       }
     });
 
     this.redisSubscriber.on('message', (channel, message) => {
-      if (channel === this.CHANNEL_NAME) {
-        try {
-          const data = JSON.parse(message);
+      try {
+        const data = JSON.parse(message);
+        if (channel === this.CHANNEL_NAME) {
           if (this.bookingService && typeof this.bookingService.updateLocalSeatCache === 'function') {
             this.bookingService.updateLocalSeatCache(data);
           }
           this.broadcastToLocalClients(data);
-        } catch (err) {
-          console.error('Failed to parse SSE message', err);
+        } else if (channel === this.NOTIFY_CHANNEL) {
+          const { targetClientId, payload } = data;
+          this.notifyLocalClient(targetClientId, payload);
         }
+      } catch (err) {
+        console.error('Failed to parse SSE message', err);
       }
     });
   }
 
   onModuleDestroy() {
-    this.redisSubscriber.unsubscribe(this.CHANNEL_NAME);
+    this.redisSubscriber.unsubscribe(this.CHANNEL_NAME, this.NOTIFY_CHANNEL);
   }
 
   addClient(clientId: string) {
@@ -58,7 +62,13 @@ export class SseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  notifyClient(clientId: string, data: any) {
+  // Thay vì chỉ gửi cục bộ, giờ sẽ Publish qua Redis để tìm client ở tất cả các Node
+  async notifyClient(clientId: string, data: any) {
+    await this.redisClient.publish(this.NOTIFY_CHANNEL, JSON.stringify({ targetClientId: clientId, payload: data }));
+  }
+
+  // Gửi tới 1 client ĐANG kết nối với máy chủ Node.js NÀY
+  private notifyLocalClient(clientId: string, data: any) {
     const subjects = this.clients.get(clientId);
     if (subjects) {
       subjects.forEach(s => s.next(data));

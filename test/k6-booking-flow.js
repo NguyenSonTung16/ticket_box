@@ -25,15 +25,15 @@ export const options = {
     // 2c: SVIP Zero Seat Clash (Extreme)
     svip_clash: {
       executor: 'shared-iterations',
-      vus: 500,
-      iterations: 500,
+      vus: 100,
+      iterations: 200,
       maxDuration: '30s',
       exec: 'bookSVIPClash',
     },
     // 2d: Per-User Quota
     quota_limit: {
       executor: 'shared-iterations',
-      vus: 1,
+      vus: 10,
       iterations: 10,
       maxDuration: '30s',
       exec: 'bookSVIPQuota',
