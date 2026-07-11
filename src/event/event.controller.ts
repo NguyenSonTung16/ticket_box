@@ -124,8 +124,31 @@ export class EventController {
 
   @Delete('admin/concerts/:id')
   @UseGuards(JwtAuthGuard)
-  async cancelEvent(@Param('id', ParseIntPipe) eventId: number) {
+  async cancelEventAdmin(@Param('id', ParseIntPipe) eventId: number) {
     return this.eventService.cancelEvent(eventId);
+  }
+
+  @Delete('organizer/concerts/:id')
+  @UseGuards(JwtAuthGuard)
+  async cancelEventOrganizer(@Param('id', ParseIntPipe) eventId: number, @Request() req: any) {
+    return this.eventService.cancelEvent(eventId, req.user.userId);
+  }
+
+  @Get('organizer/concerts/:id/stats')
+  @UseGuards(JwtAuthGuard)
+  async getEventStats(@Param('id', ParseIntPipe) eventId: number, @Request() req: any) {
+    return this.eventService.getEventStats(eventId, req.user.userId);
+  }
+
+  @Get('organizer/concerts/:id/payments')
+  @UseGuards(JwtAuthGuard)
+  async getEventPayments(
+    @Param('id', ParseIntPipe) eventId: number,
+    @Request() req: any,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.eventService.getEventPayments(eventId, req.user.userId, page, limit);
   }
 
   @Put('internal/concerts/:id/seat-counts/:zone')

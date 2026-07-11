@@ -20,6 +20,7 @@ import { EVENT_PUBLISHER, IEventPublisher } from './interfaces/event-publisher.i
 import { Concert, ConcertStatus } from '../info/entities/concert.entity';
 import { EventTicketType } from '../info/entities/event-ticket-type.entity';
 import { SeatInventory } from '../booking/entities/seat-inventory.entity';
+import { Invoice } from '../booking/entities/invoice.entity';
 import { ShowInfo, ShowInfoDocument } from '../info/schemas/show-info.schema';
 
 import { SaveStep1Dto } from './dto/save-step1.dto';
@@ -39,6 +40,7 @@ export class EventService {
     @InjectRepository(Concert) private readonly concertRepo: Repository<Concert>,
     @InjectRepository(EventTicketType) private readonly ticketTypeRepo: Repository<EventTicketType>,
     @InjectRepository(SeatInventory) private readonly seatRepo: Repository<SeatInventory>,
+    @InjectRepository(Invoice) private readonly invoiceRepo: Repository<Invoice>,
     @InjectModel(ShowInfo.name) private readonly showInfoModel: Model<ShowInfoDocument>,
     private readonly dataSource: DataSource,
   ) {}
@@ -137,7 +139,7 @@ export class EventService {
     await this.concertRepo.update(eventId, { slug: data.slug });
     await this.showInfoModel.findOneAndUpdate(
       { showId: eventId },
-      { $set: { privacy: data.privacy, confirmation_message: data.confirmation_message } },
+      { $set: { privacy: data.privacy, confirmation_message: data.confirmation_message, seating_chart_url: data.seating_chart_url } },
       { upsert: true },
     );
   }
@@ -173,7 +175,7 @@ export class EventService {
           }
         : null,
       step_2: concert.performanceDate ? { start_time: concert.performanceDate, ticket_types: ticketTypes } : null,
-      step_3: info?.['privacy'] ? { slug: concert.slug, privacy: info['privacy'], confirmation_message: info['confirmation_message'] } : null,
+      step_3: info?.['privacy'] ? { slug: concert.slug, privacy: info['privacy'] ?? 'PUBLIC', confirmation_message: info['confirmation_message'] ?? null, seating_chart_url: info['seating_chart_url'] ?? null } : null,
       step_4: info?.['bank_account_name']
         ? {
             bank_account_name: info['bank_account_name'], bank_account_number: info['bank_account_number'],
@@ -374,15 +376,68 @@ export class EventService {
     return this.getEventDetail(eventId);
   }
 
-  async cancelEvent(eventId: number) {
+  async cancelEvent(eventId: number, organizerId?: string) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
     if (!concert) throw new NotFoundException('Event not found.');
+
+    if (organizerId && concert.organizer_id !== organizerId) {
+      throw new ForbiddenException('You do not have permission to cancel this event.');
+    }
 
     await this.concertRepo.update(eventId, { status: ConcertStatus.CANCELLED });
     await this._invalidateConcertCache(eventId);
     await this.eventPublisher.publish('EVENT_CANCELLED', { event_id: eventId });
 
     return { id: eventId, status: ConcertStatus.CANCELLED, message: 'Event cancelled. Refund process initiated.' };
+  }
+
+  async getEventStats(eventId: number, organizerId: string) {
+    const concert = await this.concertRepo.findOne({ where: { id: eventId } });
+    if (!concert || concert.organizer_id !== organizerId) {
+      throw new ForbiddenException('No permission to access stats for this event.');
+    }
+
+    const { sum, count } = await this.invoiceRepo
+      .createQueryBuilder('invoice')
+      .select('SUM(invoice.totalAmount)', 'sum')
+      .addSelect('COUNT(invoice.id)', 'count')
+      .where('invoice.concert_id = :eventId', { eventId })
+      .andWhere('invoice.status = :status', { status: 'PAID' })
+      .getRawOne();
+
+    return {
+      eventId,
+      totalRevenue: parseFloat(sum || '0'),
+      totalPaidInvoices: parseInt(count || '0', 10),
+    };
+  }
+
+  async getEventPayments(eventId: number, organizerId: string, page = 1, limit = 20) {
+    const concert = await this.concertRepo.findOne({ where: { id: eventId } });
+    if (!concert || concert.organizer_id !== organizerId) {
+      throw new ForbiddenException('No permission to access payments for this event.');
+    }
+
+    const [items, total] = await this.invoiceRepo.findAndCount({
+      where: { concert_id: eventId },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      items: items.map(inv => ({
+        id: inv.id,
+        userEmail: inv.user?.email,
+        totalAmount: inv.totalAmount,
+        status: inv.status,
+        createdAt: inv.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async checkSlugAvailability(slug: string, eventId: number): Promise<boolean> {

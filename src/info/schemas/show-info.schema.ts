@@ -49,6 +49,9 @@ export class ShowInfo {
   @Prop()
   description: string;
 
+  @Prop()
+  seating_chart_url: string;
+
   // ── Step 3: Settings ────────────────────────────────────────────────
   @Prop({ enum: ['PUBLIC', 'PRIVATE'], default: 'PUBLIC' })
   privacy: string;
