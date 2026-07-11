@@ -10,6 +10,7 @@ import { EventTicketType } from '../info/entities/event-ticket-type.entity';
 import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { Invoice } from '../booking/entities/invoice.entity';
 import { ShowInfo, ShowInfoSchema } from '../info/schemas/show-info.schema';
+import { ArtistBio } from '../ai/entities/artist-bio.entity';
 
 import { EVENT_PUBLISHER } from './interfaces/event-publisher.interface';
 import { RabbitMQEventPublisher } from './publishers/rabbitmq-event.publisher';
@@ -18,7 +19,7 @@ import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Concert, EventTicketType, SeatInventory, Invoice]),
+    TypeOrmModule.forFeature([Concert, EventTicketType, SeatInventory, Invoice, ArtistBio]),
     MongooseModule.forFeature([{ name: ShowInfo.name, schema: ShowInfoSchema }]),
     AuthModule,
   ],

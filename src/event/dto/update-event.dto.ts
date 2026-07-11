@@ -13,6 +13,8 @@ export class UpdateEventDto {
   organizer_name?: string;
   organizer_info?: string;
   organizer_logo_url?: string;
+  artist_ids?: string[];
+  attachment_urls?: string[];
 
   // Step 3 fields (partial)
   slug?: string;

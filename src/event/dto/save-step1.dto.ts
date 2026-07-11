@@ -12,4 +12,6 @@ export class SaveStep1Dto {
   organizer_info?: string;
   organizer_logo_url?: string;
   description?: string;
+  artist_ids?: string[];
+  attachment_urls?: string[];
 }

@@ -22,6 +22,7 @@ import { EventTicketType } from '../info/entities/event-ticket-type.entity';
 import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { Invoice } from '../booking/entities/invoice.entity';
 import { ShowInfo, ShowInfoDocument } from '../info/schemas/show-info.schema';
+import { ArtistBio } from '../ai/entities/artist-bio.entity';
 
 import { SaveStep1Dto } from './dto/save-step1.dto';
 import { SaveStep2Dto } from './dto/save-step2.dto';
@@ -41,6 +42,7 @@ export class EventService {
     @InjectRepository(EventTicketType) private readonly ticketTypeRepo: Repository<EventTicketType>,
     @InjectRepository(SeatInventory) private readonly seatRepo: Repository<SeatInventory>,
     @InjectRepository(Invoice) private readonly invoiceRepo: Repository<Invoice>,
+    @InjectRepository(ArtistBio) private artistBioRepo: Repository<ArtistBio>,
     @InjectModel(ShowInfo.name) private readonly showInfoModel: Model<ShowInfoDocument>,
     private readonly dataSource: DataSource,
   ) {}
@@ -172,6 +174,7 @@ export class EventService {
             street: info['street'], image_url: info['image_url'], cover_image_url: info['cover_image_url'],
             organizer_name: info['organizer_name'], organizer_info: info['organizer_info'],
             organizer_logo_url: info['organizer_logo_url'], description: info['description'],
+            artist_ids: info['artist_ids'] ?? [], attachment_urls: info['attachment_urls'] ?? [],
           }
         : null,
       step_2: concert.performanceDate ? { start_time: concert.performanceDate, ticket_types: ticketTypes } : null,
@@ -343,7 +346,27 @@ export class EventService {
           created_at: concert.created_at,
           artistBio: info?.['artistBio'] ?? null,
           artist_bio: info?.['artistBio'] ?? null,
+          artist_ids: info?.['artist_ids'] ?? [],
+          attachment_urls: info?.['attachment_urls'] ?? [],
         };
+
+        if (result.artist_ids.length > 0) {
+          const artists = await this.artistBioRepo.createQueryBuilder('artist')
+            .where('artist.id IN (:...ids)', { ids: result.artist_ids })
+            .getMany();
+          (result as any).artists = artists.map(a => ({
+            id: a.id,
+            name: a.artistName || a.stageName,
+            stageName: a.stageName,
+            avatarUrl: a.avatarUrl,
+            shortBio: a.shortBio,
+            category: a.category,
+            genres: a.genres,
+            country: a.country,
+          }));
+        } else {
+          (result as any).artists = [];
+        }
 
         await this.redis.setex(cacheKey, 600, JSON.stringify(result));
         return { ...result, cache_hit: false };

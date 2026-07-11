@@ -52,6 +52,12 @@ export class ShowInfo {
   @Prop()
   seating_chart_url: string;
 
+  @Prop({ type: [String], default: [] })
+  artist_ids: string[];
+
+  @Prop({ type: [String], default: [] })
+  attachment_urls: string[];
+
   // ── Step 3: Settings ────────────────────────────────────────────────
   @Prop({ enum: ['PUBLIC', 'PRIVATE'], default: 'PUBLIC' })
   privacy: string;

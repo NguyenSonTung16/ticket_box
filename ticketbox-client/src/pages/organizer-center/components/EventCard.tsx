@@ -36,7 +36,7 @@ export const EventCard: React.FC<EventCardProps> = ({
 
   return (
     <div className="group bg-surface-container rounded-xl overflow-hidden flex flex-col sm:flex-row border border-transparent hover:border-primary/30 transition-all duration-300 ticket-notch">
-      <div className="sm:w-2/5 relative h-48 sm:h-auto overflow-hidden bg-surface-container-highest">
+      <Link to={`/event.html?id=${id}&preview=true`} className="sm:w-2/5 relative h-48 sm:h-auto overflow-hidden bg-surface-container-highest block">
         <img
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           src={imgError ? 'https://images.unsplash.com/photo-1540039155733-d7696d487346?q=80&w=600&auto=format&fit=crop' : image}
@@ -48,9 +48,9 @@ export const EventCard: React.FC<EventCardProps> = ({
         >
           {statusLabel}
         </div>
-      </div>
+      </Link>
       <div className="sm:w-3/5 p-6 flex flex-col justify-between">
-        <div>
+        <Link to={`/event.html?id=${id}&preview=true`} className="block">
           <h3 className="text-lg font-headline-lg font-bold text-white mb-2 group-hover:text-primary transition-colors">
             {title}
           </h3>
@@ -62,7 +62,7 @@ export const EventCard: React.FC<EventCardProps> = ({
             <span className="material-symbols-outlined text-sm">location_on</span>
             <span className="text-xs">{location}</span>
           </div>
-        </div>
+        </Link>
         <div className="flex items-center justify-between border-t border-outline-variant pt-4">
           <div className={`flex flex-col ${status === 'draft' ? 'opacity-50' : ''}`}>
             <span className="text-on-surface-variant text-[10px] uppercase font-bold">

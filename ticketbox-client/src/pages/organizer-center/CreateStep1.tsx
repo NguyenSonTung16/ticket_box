@@ -1,10 +1,14 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
 import { eventService, EventData } from '../../features/events/eventService';
+import { ArtistSelect } from './components/ArtistSelect';
 
 export const CreateStep1: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const existingEventId = searchParams.get('id');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -19,8 +23,37 @@ export const CreateStep1: React.FC = () => {
   const [addressType, setAddressType] = useState<'OFFLINE' | 'ONLINE'>('OFFLINE');
   const [venueName, setVenueName] = useState('');
   const [province, setProvince] = useState('');
+  const [artistIds, setArtistIds] = useState<string[]>([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [existingAttachmentUrls, setExistingAttachmentUrls] = useState<string[]>([]);
+
   // Giả lập organizer (trong thực tế có thể lấy từ UserProfile API)
   const organizer_name = 'TicketBox Organizer';
+
+  useEffect(() => {
+    if (existingEventId) {
+      const loadDraft = async () => {
+        try {
+          const draft = await eventService.getDraft(Number(existingEventId));
+          if (draft.step_1) {
+            setName(draft.step_1.name || '');
+            setCategory(draft.step_1.category || 'Âm nhạc');
+            setAddressType(draft.step_1.address_type || 'OFFLINE');
+            setVenueName(draft.step_1.venue_name || '');
+            setProvince(draft.step_1.province || '');
+            setArtistIds(draft.step_1.artist_ids || []);
+            setExistingAttachmentUrls(draft.step_1.attachment_urls || []);
+            if (draft.step_1.cover_image_url) {
+              setCoverImagePreview(draft.step_1.cover_image_url);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load draft", error);
+        }
+      };
+      loadDraft();
+    }
+  }, [existingEventId]);
 
   const handleNext = async () => {
     if (!name || !venueName || !province) {
@@ -31,29 +64,39 @@ export const CreateStep1: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      // Bước 0: Khởi tạo draft lấy ID
-      const { event_id } = await eventService.createDraft();
+      // Bước 0: Khởi tạo draft lấy ID hoặc dùng ID có sẵn
+      const event_id = existingEventId ? Number(existingEventId) : (await eventService.createDraft()).event_id;
       
       let finalCoverImageUrl = '';
 
-      // Upload ảnh nếu có
+      // Upload ảnh cover nếu có thay đổi
       if (coverImageFile) {
         const ext = coverImageFile.name.split('.').pop() || 'jpg';
         const { presignedUrl } = await eventService.getImageUploadUrl(event_id, 'cover_image_url', ext);
-        
-        // Upload trực tiếp lên MinIO
         await fetch(presignedUrl, {
           method: 'PUT',
           body: coverImageFile,
-          headers: {
-            'Content-Type': coverImageFile.type,
-          },
+          headers: { 'Content-Type': coverImageFile.type },
         });
-
-        // URL public của ảnh là presignedUrl bỏ đi phần query parameters
         finalCoverImageUrl = presignedUrl.split('?')[0];
       }
       
+      // Upload các ảnh đính kèm mới
+      const newAttachmentUrls: string[] = [];
+      for (let i = 0; i < attachmentFiles.length; i++) {
+        const file = attachmentFiles[i];
+        const ext = file.name.split('.').pop() || 'jpg';
+        const { presignedUrl } = await eventService.getImageUploadUrl(event_id, `attachment_${Date.now()}_${i}`, ext);
+        await fetch(presignedUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        });
+        newAttachmentUrls.push(presignedUrl.split('?')[0]);
+      }
+      
+      const allAttachmentUrls = [...existingAttachmentUrls, ...newAttachmentUrls];
+
       // Bước 1: Lưu thông tin
       const step1Data: EventData = {
         name,
@@ -62,6 +105,8 @@ export const CreateStep1: React.FC = () => {
         venue_name: venueName,
         province,
         organizer_name,
+        artist_ids: artistIds,
+        attachment_urls: allAttachmentUrls,
         ...(finalCoverImageUrl && {
           cover_image_url: finalCoverImageUrl,
           image_url: finalCoverImageUrl,
@@ -190,6 +235,21 @@ export const CreateStep1: React.FC = () => {
               </div>
             </div>
           </section>
+
+          {/* Nghệ sĩ tham gia */}
+          <section className="bg-card-level-1 rounded-xl border border-outline-variant overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-outline-variant">
+              <h2 className="text-lg md:text-xl font-headline-lg font-bold text-on-surface">
+                Lineup / Nghệ sĩ tham gia
+              </h2>
+            </div>
+            <div className="p-4 md:p-6">
+              <label className="block text-xs font-bold text-text-medium-emphasis mb-2 uppercase">
+                Chọn nghệ sĩ (có thể chọn nhiều)
+              </label>
+              <ArtistSelect value={artistIds} onChange={setArtistIds} />
+            </div>
+          </section>
         </div>
 
         {/* Right: Image upload */}
@@ -235,6 +295,128 @@ export const CreateStep1: React.FC = () => {
                   </>
                 )}
               </div>
+            </div>
+          </section>
+
+          <section className="bg-card-level-1 rounded-xl border border-outline-variant overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-outline-variant">
+              <h2 className="text-lg md:text-xl font-headline-lg font-bold text-on-surface">
+                Hình ảnh đính kèm (Tối đa 5)
+              </h2>
+            </div>
+            <div className="p-4 md:p-6">
+              <input 
+                type="file" 
+                multiple
+                className="hidden" 
+                accept="image/jpeg, image/png, image/webp"
+                id="attachments-upload"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  const total = existingAttachmentUrls.length + attachmentFiles.length + files.length;
+                  if (total > 5) {
+                    setError('Chỉ được chọn tối đa 5 ảnh đính kèm.');
+                    return;
+                  }
+                  setAttachmentFiles(prev => [...prev, ...files]);
+                }}
+              />
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                {existingAttachmentUrls.map((url, i) => (
+                  <div key={`existing-${i}`} className="relative group rounded overflow-hidden aspect-video border border-outline-variant">
+                    <img src={url} alt={`Attachment ${i}`} className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      className="absolute top-2 right-2 bg-error-red text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setExistingAttachmentUrls(prev => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
+                ))}
+                {attachmentFiles.map((file, i) => (
+                  <div key={`new-${i}`} className="relative group rounded overflow-hidden aspect-video border border-outline-variant">
+                    <img src={URL.createObjectURL(file)} alt={`New Attachment ${i}`} className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      className="absolute top-2 right-2 bg-error-red text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setAttachmentFiles(prev => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {(existingAttachmentUrls.length + attachmentFiles.length) < 5 && (
+                <label 
+                  htmlFor="attachments-upload"
+                  className="cursor-pointer flex items-center justify-center gap-2 h-11 px-4 border border-outline-variant rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-sm font-bold text-on-surface"
+                >
+                  <span className="material-symbols-outlined text-[18px]">upload</span>
+                  Thêm ảnh đính kèm
+                </label>
+              )}
+            </div>
+          </section>
+
+          <section className="bg-card-level-1 rounded-xl border border-outline-variant overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-outline-variant">
+              <h2 className="text-lg md:text-xl font-headline-lg font-bold text-on-surface">
+                Hình ảnh đính kèm (Tối đa 5)
+              </h2>
+            </div>
+            <div className="p-4 md:p-6">
+              <input 
+                type="file" 
+                multiple
+                className="hidden" 
+                accept="image/jpeg, image/png, image/webp"
+                id="attachments-upload"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  const total = existingAttachmentUrls.length + attachmentFiles.length + files.length;
+                  if (total > 5) {
+                    setError('Chỉ được chọn tối đa 5 ảnh đính kèm.');
+                    return;
+                  }
+                  setAttachmentFiles(prev => [...prev, ...files]);
+                }}
+              />
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                {existingAttachmentUrls.map((url, i) => (
+                  <div key={`existing-${i}`} className="relative group rounded overflow-hidden aspect-video border border-outline-variant">
+                    <img src={url} alt={`Attachment ${i}`} className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      className="absolute top-2 right-2 bg-error-red text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setExistingAttachmentUrls(prev => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
+                ))}
+                {attachmentFiles.map((file, i) => (
+                  <div key={`new-${i}`} className="relative group rounded overflow-hidden aspect-video border border-outline-variant">
+                    <img src={URL.createObjectURL(file)} alt={`New Attachment ${i}`} className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      className="absolute top-2 right-2 bg-error-red text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setAttachmentFiles(prev => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {(existingAttachmentUrls.length + attachmentFiles.length) < 5 && (
+                <label 
+                  htmlFor="attachments-upload"
+                  className="cursor-pointer flex items-center justify-center gap-2 h-11 px-4 border border-outline-variant rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-sm font-bold text-on-surface"
+                >
+                  <span className="material-symbols-outlined text-[18px]">upload</span>
+                  Thêm ảnh đính kèm
+                </label>
+              )}
             </div>
           </section>
         </div>

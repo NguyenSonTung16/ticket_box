@@ -9,6 +9,7 @@ import axiosClient from '../utils/axiosClient';
 export const EventPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('id') || '1';
+  const isPreview = searchParams.get('preview') === 'true';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -178,6 +179,25 @@ export const EventPage: React.FC = () => {
           <>
             {/* Hero Section: Event Ticket Card */}
             <section className="relative group">
+          {isPreview && (
+            <div className="bg-primary/20 border border-primary/50 text-primary-container p-4 rounded-xl mb-6 flex justify-between items-center shadow-lg">
+              <div className="flex items-center gap-2 font-bold">
+                <span className="material-symbols-outlined">visibility</span>
+                Chế độ xem trước (Preview Mode)
+              </div>
+              <div className="flex gap-4">
+                <a href={`/organizer/create/step-1?id=${eventId}`} className="bg-primary text-on-primary px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:brightness-110">
+                  <span className="material-symbols-outlined text-sm">edit</span>
+                  Chỉnh sửa sự kiện
+                </a>
+                <a href="/organizer" className="bg-surface-container text-on-surface px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:brightness-110">
+                  <span className="material-symbols-outlined text-sm">arrow_back</span>
+                  Về Dashboard
+                </a>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex flex-col md:flex-row bg-surface-container-high rounded-xl h-[400px] animate-pulse"></div>
           ) : (
@@ -246,6 +266,61 @@ export const EventPage: React.FC = () => {
                     <div className="mt-8">
                       <h3 className="text-on-surface font-headline-md mb-2">Nghệ sĩ tham gia</h3>
                       <p>{eventData?.artistBio}</p>
+                    </div>
+                  )}
+
+                  {eventData?.artists && eventData.artists.length > 0 && (
+                    <div className="mt-12 border-t border-outline-variant pt-8">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-on-surface font-headline-md">Lineup / Nghệ sĩ biểu diễn</h3>
+                        {isPreview && (
+                          <a href={`/organizer/create/step-1?id=${eventId}`} className="text-primary hover:underline text-sm font-bold flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                            Sửa nghệ sĩ
+                          </a>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                        {eventData.artists.map((artist: any) => (
+                          <div key={artist.id} className="bg-surface-container rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                            <div className="h-48 w-full bg-surface-container-high">
+                              {artist.avatarUrl ? (
+                                <img src={artist.avatarUrl} alt={artist.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-4xl">person</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-4">
+                              <h4 className="font-bold text-on-surface text-lg">{artist.name}</h4>
+                              {artist.category && <p className="text-on-surface-variant text-xs mt-1">{artist.category}</p>}
+                              {artist.shortBio && <p className="text-sm mt-3 line-clamp-3 leading-relaxed">{artist.shortBio}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {eventData?.attachment_urls && eventData.attachment_urls.length > 0 && (
+                    <div className="mt-12 border-t border-outline-variant pt-8">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-on-surface font-headline-md">Gallery / Hình ảnh sự kiện</h3>
+                        {isPreview && (
+                          <a href={`/organizer/create/step-1?id=${eventId}`} className="text-primary hover:underline text-sm font-bold flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                            Sửa ảnh
+                          </a>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {eventData.attachment_urls.map((url: string, index: number) => (
+                          <div key={index} className="aspect-video rounded-xl overflow-hidden bg-surface-container-high relative group">
+                            <img src={url} alt={`Gallery ${index}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 

@@ -12,6 +12,8 @@ export interface EventData {
   organizer_info?: string;
   image_url?: string;
   cover_image_url?: string;
+  artist_ids?: string[];
+  attachment_urls?: string[];
 }
 
 export interface TicketTypeData {
@@ -110,6 +112,11 @@ export const eventService = {
     const response = await axiosClient.get(`/api/organizer/concerts/${eventId}/payments`, {
       params: { page, limit },
     });
+    return response.data;
+  },
+
+  getArtists: async () => {
+    const response = await axiosClient.get('/artist/bios');
     return response.data;
   },
 };
