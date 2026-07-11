@@ -251,11 +251,20 @@ export class WorkerService implements OnModuleInit {
           }
 
           // Tạo Invoice
+          let invoiceStatus = 'PAID';
+          if (data.refundAmount > 0) {
+            if (data.refundId) {
+              invoiceStatus = data.tickets.length === 0 ? 'REFUNDED_FULL' : 'REFUNDED_PARTIAL';
+            } else {
+              invoiceStatus = data.tickets.length === 0 ? 'REFUND_NEEDED_FULL' : 'REFUND_NEEDED_PARTIAL';
+            }
+          }
+
           const invoice = this.invoiceRepo.create({
             userId: data.userId,
             concert_id: data.concert_id,
             totalAmount: data.totalAmount,
-            status: 'PAID',
+            status: invoiceStatus,
           });
           const savedInvoice = await this.invoiceRepo.save(invoice);
 
