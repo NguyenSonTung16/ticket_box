@@ -119,13 +119,28 @@ export class BookingService implements OnModuleInit {
     }
   }
 
+  // Lấy tổng sức chứa của một Zone
+  async getZoneCapacity(concert_id: number, zoneType: string): Promise<number> {
+    const capacityKey = `concert:${concert_id}:zone_capacity`;
+    let capacity = await this.redis.hget(capacityKey, zoneType);
+    if (!capacity) {
+      const zoneInfo = await this.zoneInventoryRepo.findOne({ where: { zone: zoneType, concert_id } });
+      if (!zoneInfo) return 0;
+      await this.redis.hset(capacityKey, zoneType, zoneInfo.totalCapacity);
+      capacity = zoneInfo.totalCapacity.toString();
+    }
+    return parseInt(capacity, 10);
+  }
+
   // Lấy giới hạn vé của một Zone từ Redis (hoặc DB)
   async getTicketLimit(concert_id: number, zoneType: string): Promise<number> {
     const limitsKey = `concert:${concert_id}:zone_limits`;
     let limit = await this.redis.hget(limitsKey, zoneType);
     if (!limit) {
       const zoneInfo = await this.zoneInventoryRepo.findOne({ where: { zone: zoneType, concert_id } });
-      if (!zoneInfo) return 4; // Mặc định nếu không tìm thấy
+      if (!zoneInfo) {
+        throw new BadRequestException(`Khu vực vé ${zoneType} không tồn tại hoặc chưa được cấu hình giới hạn.`);
+      }
       await this.redis.hset(limitsKey, zoneType, zoneInfo.ticketLimit);
       limit = zoneInfo.ticketLimit.toString();
     }
@@ -195,7 +210,7 @@ export class BookingService implements OnModuleInit {
   // Đặt ghế SVIP cụ thể sử dụng HSETNX để tránh trùng ghế
   async bookSVIPTicket(concert_id: number, userId: string, seatNo: string) {
     const seatHashKey = `concert:${concert_id}:svip_seats`;
-    const maxSvipSeats = 40;
+    const maxSvipSeats = await this.getZoneCapacity(concert_id, 'SVIP');
 
     // 1. Kiểm tra số lượng ghế đã bán (HLEN)
     const soldSeatsCount = await this.redis.hlen(seatHashKey);
@@ -310,7 +325,7 @@ export class BookingService implements OnModuleInit {
         .where('z.concert_id = :cid', { cid: concert_id })
         .select('SUM(z.totalCapacity)', 'total')
         .getRawOne();
-      const totalTickets = (svipCount || 200) + (parseInt(zoneSum?.total || '400', 10));
+      const totalTickets = svipCount + parseInt(zoneSum?.total || '0', 10);
       maxRoomCapacity = Math.max(100, Math.floor(totalTickets * 1.5));
     } catch (e) {
       this.logger.warn(`Không lấy được tổng số vé từ DB cho show ${concert_id}, dùng mặc định 900.`);
