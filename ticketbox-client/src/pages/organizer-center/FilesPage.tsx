@@ -1,7 +1,65 @@
-import React from 'react';
-import { MOCK_FILES } from './utils/mockData';
+import React, { useState, useEffect, useRef } from 'react';
+import { importService, ImportJob } from '../../features/import/importService';
 
 export const FilesPage: React.FC = () => {
+  const [jobs, setJobs] = useState<ImportJob[]>([]);
+  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Hardcode tạm thời (Trong thực tế sẽ lấy từ Context hoặc URL params)
+  const SHOW_ID = 1;
+  const SPONSOR_ID = 1;
+
+  const fetchJobs = async () => {
+    try {
+      const data = await importService.listImports(SHOW_ID);
+      setJobs(data);
+    } catch (err) {
+      console.error('Failed to fetch jobs', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobs();
+    
+    // Polling định kỳ mỗi 5s để cập nhật trạng thái PROCESSING
+    const interval = setInterval(() => {
+      fetchJobs();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      
+      // 1. Lấy Pre-signed URL
+      const { upload_url, file_key } = await importService.getUploadUrl(SHOW_ID, SPONSOR_ID);
+      
+      // 2. Upload file trực tiếp lên MinIO
+      await importService.uploadToMinIO(upload_url, file);
+
+      // 3. Kích hoạt trigger Import (Tạo job cho Worker xử lý)
+      await importService.triggerImport(file_key, SHOW_ID, SPONSOR_ID);
+
+      // Fetch lại danh sách ngay lập tức
+      await fetchJobs();
+      
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Có lỗi xảy ra khi upload file!');
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
   return (
     <div className="flex-grow lg:ml-64 px-4 md:px-6 lg:px-10 pb-10 pt-24 md:pt-28 lg:pt-32">
       <div className="max-w-[1200px] mx-auto">
@@ -29,12 +87,23 @@ export const FilesPage: React.FC = () => {
               />
             </div>
             <div className="flex gap-3 sm:gap-4">
-              <button className="px-4 sm:px-6 py-2 border border-primary text-primary rounded-lg font-bold hover:bg-primary/10 transition-all text-sm">
-                Upload .csv
+              <input 
+                type="file" 
+                accept=".csv" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+              />
+              <button 
+                onClick={handleUploadClick}
+                disabled={loading}
+                className="px-4 sm:px-6 py-2 border border-primary text-primary rounded-lg font-bold hover:bg-primary/10 transition-all text-sm disabled:opacity-50"
+              >
+                {loading ? 'Đang Upload...' : 'Upload .csv'}
               </button>
               <button className="bg-primary text-on-primary px-4 sm:px-6 py-2 rounded-lg font-bold flex items-center gap-2 text-sm">
                 <span className="material-symbols-outlined text-[18px]">download</span>
-                Xuất file mới
+                Xuất file báo cáo
               </button>
             </div>
           </div>
@@ -43,7 +112,7 @@ export const FilesPage: React.FC = () => {
         {/* Files Table */}
         <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="font-bold text-white">Lịch sử xuất file</h3>
+            <h3 className="font-bold text-white">Lịch sử Import File Khách Mời</h3>
             <span className="text-xs text-text-medium-emphasis">
               Hiển thị các kết quả gần nhất
             </span>
@@ -67,40 +136,40 @@ export const FilesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
-                {MOCK_FILES.map((file) => (
-                  <tr key={file.id} className="hover:bg-surface-container-highest/30 transition-colors">
+                {jobs.map((job) => (
+                  <tr key={job.id} className="hover:bg-surface-container-highest/30 transition-colors">
                     <td className="px-4 md:px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-surface-container-highest rounded flex items-center justify-center text-primary flex-shrink-0">
                           <span className="material-symbols-outlined">description</span>
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-white truncate">
-                            {file.name}
+                          <p className="text-sm font-bold text-white truncate" title={job.file_key}>
+                            {job.file_key.split('/').pop()}
                           </p>
                           <p className="text-[10px] text-text-medium-emphasis">
-                            {file.size} • {file.type}
+                            {job.success_count} / {job.total_records} bản ghi hợp lệ
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 md:px-6 py-4 text-sm text-on-surface-variant">
-                      {file.dateRequested}
+                      {new Date(job.created_at).toLocaleString()}
                     </td>
                     <td className="px-4 md:px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
-                        file.status === 'completed'
+                        job.status === 'COMPLETED'
                           ? 'bg-primary/10 text-primary border-primary/20'
-                          : file.status === 'processing'
+                          : job.status === 'PROCESSING' || job.status === 'PENDING'
                           ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
                           : 'bg-red-500/10 text-red-500 border-red-500/20'
                       }`}>
-                        {file.status === 'completed' ? 'Hoàn tất' : file.status === 'processing' ? 'Đang xử lý' : 'Thất bại'}
+                        {job.status}
                       </span>
                     </td>
                     <td className="px-4 md:px-6 py-4 text-right">
-                      <button className="text-primary hover:underline text-xs font-bold" disabled={file.status !== 'completed'} style={{ opacity: file.status !== 'completed' ? 0.5 : 1 }}>
-                        Tải về
+                      <button className="text-primary hover:underline text-xs font-bold" disabled={job.status !== 'FAILED'} style={{ opacity: job.status !== 'FAILED' ? 0.5 : 1 }} title={job.status === 'FAILED' ? JSON.stringify(job.error_details) : 'Tải log chi tiết'}>
+                        {job.status === 'FAILED' ? 'Xem lỗi' : 'Tải về'}
                       </button>
                     </td>
                   </tr>
