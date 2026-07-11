@@ -14,6 +14,7 @@ export const CreateStep3: React.FC = () => {
   // Step 3 (Backend): Slug & Privacy
   const [slug, setSlug] = useState('');
   const [privacy, setPrivacy] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC');
+  const [seatingChartUrl, setSeatingChartUrl] = useState('');
 
   // Step 4 (Backend): Payment & VAT
   const [bankAccountName, setBankAccountName] = useState('');
@@ -45,7 +46,8 @@ export const CreateStep3: React.FC = () => {
       // Gọi Step 3 API (Slug & Privacy)
       await eventService.saveStep3(id, {
         slug,
-        privacy
+        privacy,
+        seating_chart_url: seatingChartUrl,
       });
 
       // Truyền dữ liệu Step 4 sang trang cuối cùng để Publish
@@ -100,6 +102,21 @@ export const CreateStep3: React.FC = () => {
                 <option value="PUBLIC">Công khai (Ai cũng có thể xem)</option>
                 <option value="PRIVATE">Riêng tư (Chỉ người có link)</option>
               </select>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+            <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Sơ đồ vé:</label>
+            <div className="relative flex-1 flex gap-2">
+              <input type="text" className="flex-1 h-11 bg-white text-black px-4 rounded-md focus:outline-none" 
+                     placeholder="URL sơ đồ vé (VD: /screenshot_seat.png)"
+                     value={seatingChartUrl} onChange={(e) => setSeatingChartUrl(e.target.value)} />
+              <button 
+                type="button" 
+                onClick={() => setSeatingChartUrl('/screenshot_seat.png')}
+                className="px-4 py-2 bg-surface-container-high rounded text-sm text-on-surface hover:bg-surface-container-highest transition-colors"
+              >
+                Dùng mặc định
+              </button>
             </div>
           </div>
         </div>

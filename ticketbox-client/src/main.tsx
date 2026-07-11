@@ -22,6 +22,7 @@ import { CreateStep4 } from './pages/organizer-center/CreateStep4';
 import { ArtistBiographyPage } from './pages/organizer-center/ArtistBiographyPage';
 import { ArtistBioListPage } from './pages/organizer-center/ArtistBioListPage';
 import { ArtistBioManualPage } from './pages/organizer-center/ArtistBioManualPage';
+import { StatsPage } from './pages/organizer-center/StatsPage';
 
 // Check-in & Admin Approval
 import { CheckinConsolePage } from './pages/CheckinConsolePage';
@@ -57,6 +58,7 @@ if (container) {
               <Route path="bio" element={<ArtistBiographyPage />} />
               <Route path="bio-manual" element={<ArtistBioManualPage />} />
               <Route path="artists" element={<ArtistBioListPage />} />
+              <Route path="stats/:id" element={<StatsPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

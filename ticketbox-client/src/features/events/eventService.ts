@@ -30,6 +30,7 @@ export interface SaveStep3Data {
   slug: string;
   privacy: 'PUBLIC' | 'PRIVATE';
   confirmation_message?: string;
+  seating_chart_url?: string;
 }
 
 export interface SaveStep4Data {
@@ -92,5 +93,23 @@ export const eventService = {
       params: { type, ext },
     });
     return response.data as { presignedUrl: string; objectKey: string; expiresIn: number; maxSizeBytes: number };
+  },
+
+  // API mới
+  cancelEvent: async (eventId: number) => {
+    const response = await axiosClient.delete(`/api/organizer/concerts/${eventId}`);
+    return response.data;
+  },
+
+  getEventStats: async (eventId: number) => {
+    const response = await axiosClient.get(`/api/organizer/concerts/${eventId}/stats`);
+    return response.data;
+  },
+
+  getEventPayments: async (eventId: number, page = 1, limit = 20) => {
+    const response = await axiosClient.get(`/api/organizer/concerts/${eventId}/payments`, {
+      params: { page, limit },
+    });
+    return response.data;
   },
 };

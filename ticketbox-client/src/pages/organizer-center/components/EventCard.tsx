@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface EventCardProps {
   title: string;
   date: string;
   location: string;
   image: string;
-  status: 'selling' | 'draft';
+  status: 'selling' | 'draft' | 'CANCELLED';
   ticketsSold: number;
   totalTickets: number;
+  id: number;
+  onCancel?: (id: number) => void;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({
@@ -18,14 +21,18 @@ export const EventCard: React.FC<EventCardProps> = ({
   status,
   ticketsSold,
   totalTickets,
+  id,
+  onCancel,
 }) => {
-  const statusLabel = status === 'selling' ? 'Đang bán' : 'Nháp';
+  const statusLabel = status === 'selling' ? 'Đang bán' : status === 'CANCELLED' ? 'Đã hủy' : 'Nháp';
   const statusClass =
     status === 'selling'
       ? 'bg-primary text-on-primary'
+      : status === 'CANCELLED'
+      ? 'bg-error text-on-error'
       : 'bg-outline-variant text-on-surface';
 
-  const [imgError, setImgError] = React.useState(false);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div className="group bg-surface-container rounded-xl overflow-hidden flex flex-col sm:flex-row border border-transparent hover:border-primary/30 transition-all duration-300 ticket-notch">
@@ -70,11 +77,24 @@ export const EventCard: React.FC<EventCardProps> = ({
               </span>
             </div>
           </div>
-          <button className="p-2 rounded-lg hover:bg-primary/20 hover:text-primary transition-all">
-            <span className="material-symbols-outlined">
-              {status === 'selling' ? 'more_vert' : 'edit'}
-            </span>
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              to={`/organizer/stats/${id}`}
+              className="px-3 py-1.5 bg-surface-container-high hover:bg-surface-container-highest rounded-lg text-sm text-primary transition-colors flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[16px]">bar_chart</span>
+              Thống kê
+            </Link>
+            {onCancel && status !== 'CANCELLED' && (
+              <button
+                onClick={() => onCancel(id)}
+                className="px-3 py-1.5 bg-surface-container-high hover:bg-error/20 rounded-lg text-sm text-error transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">cancel</span>
+                Hủy sự kiện
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

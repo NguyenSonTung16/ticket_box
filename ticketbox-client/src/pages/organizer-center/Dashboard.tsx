@@ -23,6 +23,18 @@ export const OrganizerDashboard: React.FC = () => {
     { key: 'draft' as const, label: 'Bản nháp' },
   ];
 
+  const handleCancel = async (id: number) => {
+    if (window.confirm('Bạn có chắc chắn muốn hủy sự kiện này? Hành động này không thể hoàn tác.')) {
+      try {
+        await eventService.cancelEvent(id);
+        alert('Hủy sự kiện thành công');
+        setEvents(events.map(e => e.id === id ? { ...e, status: 'CANCELLED' } : e));
+      } catch (err: any) {
+        alert(err.response?.data?.message || 'Có lỗi xảy ra khi hủy sự kiện');
+      }
+    }
+  };
+
   const filteredEvents = events.filter((event) => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'published') return event.status === 'selling';
@@ -84,6 +96,7 @@ export const OrganizerDashboard: React.FC = () => {
             {filteredEvents.map((event) => (
               <EventCard 
                 key={event.id}
+                id={event.id}
                 title={event.name}
                 date={new Date(event.date).toLocaleDateString('vi-VN')}
                 location={event.venue_name}
@@ -91,6 +104,7 @@ export const OrganizerDashboard: React.FC = () => {
                 status={event.status}
                 ticketsSold={event.tickets_sold ?? 0}
                 totalTickets={event.total_tickets ?? 0}
+                onCancel={handleCancel}
               />
             ))}
           </div>
