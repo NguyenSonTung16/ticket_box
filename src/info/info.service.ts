@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import NodeCache from 'node-cache';
 import { REDIS_CLIENT } from '../config/redis.config';
@@ -10,8 +10,16 @@ import { ShowInfo, ShowInfoDocument } from './schemas/show-info.schema';
 import { Concert } from './entities/concert.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
 
+/**
+ * InfoService — Legacy read-only service for the original show list/detail endpoints.
+ * New event management (CRUD wizard) is handled by EventService in the event/ module.
+ *
+ * Endpoints still served:
+ *   GET /info/shows       → all active concerts (basic list)
+ *   GET /info/show/:id    → full show detail with zones
+ */
 @Injectable()
-export class InfoService implements OnModuleInit {
+export class InfoService {
   private readonly logger = new Logger(InfoService.name);
   private activePromises = new Map<string, Promise<any>>(); // SingleFlight pattern
   private showCache = new NodeCache({ stdTTL: 300 }); // 5 minutes TTL
@@ -24,18 +32,7 @@ export class InfoService implements OnModuleInit {
     @InjectModel(ShowInfo.name) private readonly showInfoModel: Model<ShowInfoDocument>,
   ) {}
 
-  // =========================================================================
-  // SEED DATA (TẠO DỮ LIỆU MẪU)
-  // Hàm onModuleInit() này CHỈ chạy một lần duy nhất khi khởi động server.
-  // Nếu Database trống, nó sẽ chèn dữ liệu mẫu (hardcode) vào Postgres & MongoDB.
-  // Các hàm getAllShows() và getShowInfo() bên dưới SẼ ĐỌC TỪ DATABASE,
-  // chứ không đọc từ đống dữ liệu hardcode này.
-  // =========================================================================
-  async onModuleInit() {
-    this.logger.log('InfoService initialized. No auto-seeding will occur.');
-  }
-
-  // Lấy danh sách tất cả các show
+  // Lấy danh sách tất cả các show (ACTIVE status)
   async getAllShows() {
     const cacheKey = 'all_shows';
     let shows = this.showCache.get(cacheKey);
@@ -71,20 +68,24 @@ export class InfoService implements OnModuleInit {
           return parsed;
         }
 
-        const postgresShows = await this.showRepo.find();
+        const postgresShows = await this.showRepo.find({ where: { status: 'ACTIVE' } });
         const mongoInfos = await this.showInfoModel.find().lean();
 
-        // Nối dữ liệu
+        // Join PG + Mongo data
         const finalData = postgresShows.map(show => {
-          const info = mongoInfos.find(i => i.concert_id === show.id);
+          const info = mongoInfos.find(i => i['showId'] === show.id);
           return {
             id: show.id,
-            name: show.name,
+            slug: show.slug,
             performanceDate: show.performanceDate,
-            location: show.location,
             status: show.status,
-            coverImage: info?.coverImage,
-            description: info?.description,
+            name: info?.['name'] ?? null,
+            venue_name: info?.['venue_name'] ?? null,
+            province: info?.['province'] ?? null,
+            image_url: info?.['image_url'] ?? null,
+            cover_image_url: info?.['cover_image_url'] ?? null,
+            category: info?.['category'] ?? null,
+            description: info?.['description'] ?? null,
           };
         });
 
@@ -102,89 +103,63 @@ export class InfoService implements OnModuleInit {
   }
 
   // Lấy thông tin Show với Cache-Aside và SingleFlight (Mutex Lock cục bộ)
-  async getShowInfo(concert_id: number) {
-    const cacheKey = `concert_info:${concert_id}`;
-    let showInfo: any = this.showCache.get(cacheKey);
-    
-    if (!showInfo) {
-      // 1. Kiểm tra trên Redis (Cache-Aside)
-      let redisData: string | null = null;
+  async getShowInfo(showId: number) {
+    const cacheKey = `show_info:${showId}`;
+
+    // 1. Kiểm tra trên Redis (Cache-Aside)
+    const redisData = await this.redis.get(cacheKey);
+    if (redisData) {
+      return JSON.parse(redisData);
+    }
+
+    // 2. SingleFlight Pattern: Tránh Cache Stampede khi Cache Miss
+    if (this.activePromises.has(cacheKey)) {
+      return this.activePromises.get(cacheKey);
+    }
+
+    const promise = (async () => {
       try {
-        redisData = await this.redis.get(cacheKey);
-      } catch (error) {
-        this.logger.error(`[Redis Error] Failed to get concert_info:${concert_id}: ${error.message}`);
+        const doubleCheck = await this.redis.get(cacheKey);
+        if (doubleCheck) return JSON.parse(doubleCheck);
+
+        // 3. Phân tách DB: Truy vấn đồng thời PostgreSQL và MongoDB
+        const [postgresData, postgresZones, mongoData] = await Promise.all([
+          this.showRepo.findOne({ where: { id: showId } }),
+          this.zoneRepo.find({ where: { concert_id: showId } }),
+          this.showInfoModel.findOne({ showId }).lean(),
+        ]);
+
+        const zones = postgresZones.map(pz => ({
+          zone: pz.zone,
+          price: pz.price,
+          totalCapacity: pz.totalCapacity,
+          availableSlots: pz.availableSlots,
+        }));
+
+        const finalData = {
+          id: showId,
+          slug: postgresData?.slug || null,
+          name: mongoData?.['name'] || null,
+          performanceDate: postgresData?.performanceDate,
+          venue_name: mongoData?.['venue_name'] || null,
+          province: mongoData?.['province'] || null,
+          description: mongoData?.['description'],
+          category: mongoData?.['category'],
+          image_url: mongoData?.['image_url'],
+          cover_image_url: mongoData?.['cover_image_url'],
+          organizer_name: mongoData?.['organizer_name'],
+          privacy: mongoData?.['privacy'] || 'PUBLIC',
+          zones,
+        };
+
+        await this.redis.set(cacheKey, JSON.stringify(finalData), 'EX', 60);
+        return finalData;
+      } finally {
+        this.activePromises.delete(cacheKey);
       }
+    })();
 
-      if (redisData) {
-        showInfo = JSON.parse(redisData);
-        this.showCache.set(cacheKey, showInfo);
-      } else {
-      // 2. SingleFlight Pattern: Tránh Cache Stampede khi Cache Miss
-      if (this.activePromises.has(cacheKey)) {
-        showInfo = await this.activePromises.get(cacheKey);
-      } else {
-        const promise = (async () => {
-          try {
-            // Double check phòng khi request đại diện khác vừa nạp vào Redis xong
-            let doubleCheck: string | null = null;
-            try {
-              doubleCheck = await this.redis.get(cacheKey);
-            } catch (e) {}
-            if (doubleCheck) {
-              const parsed = JSON.parse(doubleCheck);
-              this.showCache.set(cacheKey, parsed);
-              return parsed;
-            }
-
-            // 3. Phân tách DB: Truy vấn đồng thời PostgreSQL và MongoDB
-            const [postgresData, postgresZones, mongoData] = await Promise.all([
-              this.showRepo.findOne({ where: { id: concert_id } }),
-              this.zoneRepo.find({ where: { concert_id } }),
-              this.showInfoModel.findOne({ concert_id }).lean()
-            ]);
-
-            const mongoZones = mongoData?.zoneSetups || [];
-            const zones = postgresZones.map(pz => {
-              const mz = mongoZones.find(m => m.name === pz.zone);
-              return {
-                zone: pz.zone,
-                price: pz.price,
-                totalCapacity: pz.totalCapacity,
-                availableSlots: pz.availableSlots,
-                color: mz?.color || '#cccccc',
-                benefits: mz?.benefits || []
-              };
-            });
-
-            const finalData = {
-              id: concert_id,
-              name: postgresData?.name || 'Unknown Show',
-              performanceDate: postgresData?.performanceDate,
-              location: postgresData?.location,
-              description: mongoData?.description,
-              artistBio: mongoData?.artistBio,
-              rules: mongoData?.rules,
-              coverImage: mongoData?.coverImage,
-              zones: zones
-            };
-            
-            // 4. Lưu Lên Redis với TTL 300s (5 phút) cho thông tin tĩnh
-            try {
-              await this.redis.set(cacheKey, JSON.stringify(finalData), 'EX', 300);
-            } catch (e) {}
-            this.showCache.set(cacheKey, finalData);
-            
-            return finalData;
-          } finally {
-            this.activePromises.delete(cacheKey); // Giải phóng Lock
-          }
-        })();
-        this.activePromises.set(cacheKey, promise);
-        showInfo = await promise;
-      }
-    }
-    }
-
-    return showInfo;
+    this.activePromises.set(cacheKey, promise);
+    return promise;
   }
 }

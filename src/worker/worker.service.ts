@@ -84,12 +84,14 @@ export class WorkerService implements OnModuleInit {
         .getMany();
 
       for (const seat of expiredSeats) {
+        // SeatInventory uses: seatId (PK), row, number, showId — NOT seatNo/concert_id
+        const seatLabel = `${seat.row}-${seat.number}`;
         await this.seatInventoryRepo.update(
-          { seatNo: seat.seatNo, concert_id: seat.concert_id, status: 'RESERVED' },
+          { seatId: seat.seatId },
           { status: 'AVAILABLE', reservedBy: null, expiryTime: null },
         );
-        pipeline.hdel(`concert:${seat.concert_id}:svip_seats`, seat.seatNo);
-        this.logger.log(`[Warm-up Repair] Nhả ghế hết hạn: ${seat.seatNo}`);
+        pipeline.hdel(`concert:${seat.showId}:svip_seats`, seatLabel);
+        this.logger.log(`[Warm-up Repair] Nhả ghế hết hạn: ${seatLabel}`);
       }
 
       await pipeline.exec();
@@ -143,7 +145,7 @@ export class WorkerService implements OnModuleInit {
     }
 
     // Bước 3: Kiểm tra DB — phòng trường hợp Redis chưa cập nhật :PAID
-    const dbSeat = await this.seatInventoryRepo.findOne({ where: { seatNo, concert_id } });
+    const dbSeat = await this.seatInventoryRepo.findOne({ where: { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId: concert_id } });
     if (!dbSeat) return;
 
     if (dbSeat.status === 'BOOKED') {
@@ -170,7 +172,7 @@ export class WorkerService implements OnModuleInit {
       await pipeline.exec();
 
       await this.seatInventoryRepo.update(
-        { seatNo, concert_id, status: 'RESERVED' },
+        { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId: concert_id, status: 'RESERVED' },
         { status: 'AVAILABLE', reservedBy: null, expiryTime: null },
       );
 

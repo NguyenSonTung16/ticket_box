@@ -63,14 +63,15 @@ async function bootstrap() {
       console.log(`Đã Seed 40 SVIP, 75 VIP và 100 Normal zones cho Concert ${cData.id} vào Postgres.`);
     }
 
-    const seatCount = await seatInventoryRepo.count({ where: { concert_id: cData.id } });
+    const seatCount = await seatInventoryRepo.count({ where: { showId: cData.id } });
     if (seatCount === 0) {
       const seats = [];
       const rows = ['A', 'B'];
       const cols = 20;
       for (const row of rows) {
         for (let i = 1; i <= cols; i++) {
-          seats.push({ seatNo: `${row}-${i}`, concert_id: cData.id, status: 'AVAILABLE', zone: 'SVIP' });
+          const sponsorId = (cData.id === 1 && row === 'A' && (i === 1 || i === 2)) ? 'sponsor-test' : null;
+          seats.push({ row, number: String(i), showId: cData.id, status: 'AVAILABLE', zone: 'SVIP', sponsorId });
         }
       }
       await seatInventoryRepo.insert(seats);
@@ -119,10 +120,9 @@ async function bootstrap() {
   // 4. Meilisearch Seed: Dummy shows
   const index = meiliClient.index('shows');
   const dummyShows = [
-    { id: '1', name: 'Anh Trai Say Hi - Live Concert', location: 'Hà Nội', date: '2026-10-10' },
-    { id: '2', name: 'Rap Việt All Star', location: 'TPHCM', date: '2026-11-20' },
-    { id: '3', name: 'Đen Vâu - Show Của Đen', location: 'Đà Nẵng', date: '2026-12-05' },
-    { id: '4', name: 'Anh Trai "Say Hi" 2025', location: 'Hà Nội', date: '2026-12-20' },
+    { id: '11111111-1111-1111-1111-111111111111', name: 'Anh Trai Say Hi - Live Concert', location: 'Hà Nội', date: '2026-10-10' },
+    { id: '22222222-2222-2222-2222-222222222222', name: 'Rap Việt All Star', location: 'TPHCM', date: '2026-11-20' },
+    { id: '33333333-3333-3333-3333-333333333333', name: 'Đen Vâu - Show Của Đen', location: 'Đà Nẵng', date: '2026-12-05' },
   ];
   await index.addDocuments(dummyShows);
   console.log('Đã nạp Dummy Shows vào Meilisearch.');

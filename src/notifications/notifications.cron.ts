@@ -1,10 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import * as amqp from 'amqplib';
 import { RABBITMQ_CHANNEL } from '../config/rabbitmq.config';
 import { Invoice } from '../booking/entities/invoice.entity';
+import { ImportJob, ImportJobStatus } from '../guest/entities/import-job.entity';
 
 @Injectable()
 export class NotificationsCron {
@@ -13,6 +14,7 @@ export class NotificationsCron {
   constructor(
     @Inject(RABBITMQ_CHANNEL) private readonly rabbitChannel: amqp.Channel,
     @InjectRepository(Invoice) private readonly invoiceRepo: Repository<Invoice>,
+    @InjectRepository(ImportJob) private readonly importJobRepo: Repository<ImportJob>,
   ) {}
 
   // Chạy mỗi ngày vào lúc 00:00 để gửi nhắc nhở 24h trước khi sự kiện diễn ra
@@ -56,5 +58,40 @@ export class NotificationsCron {
         this.logger.error(`Lỗi khi đẩy batch ${batch.length} users vào queue: ${error.message}`);
       }
     }
+  }
+  private fetchUsersBatch(offset: number, limit: number) {
+    const users = [];
+    for (let i = 0; i < limit; i++) {
+      users.push({ id: `user_${offset + i}` });
+    }
+    return users;
+  }
+
+  /**
+   * Zombie Job Detector — runs every 5 minutes.
+   * Finds import_jobs stuck in PROCESSING for >30 min (worker likely crashed)
+   * and marks them FAILED so admins can re-trigger.
+   */
+  @Cron('*/5 * * * *')
+  async detectZombieImportJobs() {
+    const cutoff = new Date(Date.now() - 30 * 60 * 1000); // 30 min ago
+    const zombies = await this.importJobRepo.find({
+      where: { status: ImportJobStatus.PROCESSING, startedAt: LessThan(cutoff) },
+    });
+
+    if (zombies.length === 0) return;
+
+    for (const job of zombies) {
+      this.logger.warn(
+        `[ZOMBIE] Import job ${job.id} (sponsor=${job.sponsorId}) ` +
+        `stuck in PROCESSING since ${job.startedAt?.toISOString()}. Marking FAILED.`,
+      );
+      await this.importJobRepo.update(job.id, {
+        status: ImportJobStatus.FAILED,
+        completedAt: new Date(),
+      });
+      // Post-MVP: publish a Slack/email alert here via notification_queue
+    }
+    this.logger.warn(`[ZOMBIE] Resolved ${zombies.length} stuck import job(s).`);
   }
 }

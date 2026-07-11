@@ -1,10 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, Unique } from 'typeorm';
 import { Invoice } from './invoice.entity';
 import { Concert } from '../../info/entities/concert.entity';
 import { SeatInventory } from './seat-inventory.entity';
 import { ZoneInventory } from './zone-inventory.entity';
 
 @Entity('tickets')
+@Unique(['concert_id', 'seatNo'])
 export class Ticket {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -24,24 +25,34 @@ export class Ticket {
   @Column({ nullable: true })
   qrCodeUrl: string;
 
+  @Column({ type: 'varchar', length: 50, default: 'valid' })
+  status: string; // valid | checked_in | refunded | invalid
+
+  // ── VIP Guest CSV Import fields ──────────────────────────────────────────
+  /** Full name of the VIP guest — populated by CSV import worker */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  guestName: string | null;
+
+  /** Email of the VIP guest — populated by CSV import worker */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  guestEmail: string | null;
+
+  /** Which sponsor's CSV import created this ticket */
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  sponsorId: string | null;
+
+  /** FK to import_jobs.id — which batch import produced this ticket */
+  @Column({ type: 'uuid', nullable: true })
+  importJobId: string | null;
+  // ────────────────────────────────────────────────────────────────────────
+
   @ManyToOne(() => Invoice, invoice => invoice.tickets)
   invoice: Invoice;
 
-  @ManyToOne(() => Concert)
-  @JoinColumn({ name: 'concert_id' })
-  concert: Concert;
+  @CreateDateColumn()
+  createdAt: Date;
 
-  @ManyToOne(() => SeatInventory)
-  @JoinColumn([
-    { name: 'seatNo', referencedColumnName: 'seatNo' },
-    { name: 'concert_id', referencedColumnName: 'concert_id' }
-  ])
-  seat: SeatInventory;
-
-  @ManyToOne(() => ZoneInventory)
-  @JoinColumn([
-    { name: 'zone', referencedColumnName: 'zone' },
-    { name: 'concert_id', referencedColumnName: 'concert_id' }
-  ])
-  zoneInfo: ZoneInventory;
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
+

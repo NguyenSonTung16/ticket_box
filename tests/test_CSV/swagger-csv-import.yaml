@@ -1,0 +1,372 @@
+openapi: 3.0.0
+info:
+  title: TicketBox MinIO API Documentation
+  version: 1.0.0
+  description: OpenAPI specifications for MinIO Presigned URL and CSV Import endpoints based on HTTP tests.
+servers:
+  - url: http://localhost:3333
+    description: Local API Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ImportJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileKey:
+          type: string
+        showId:
+          type: string
+          format: uuid
+        sponsorId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        totalRows:
+          type: integer
+        successCount:
+          type: integer
+        errorCount:
+          type: integer
+        errorDetails:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              reason:
+                type: string
+              seatNo:
+                type: string
+        idempotencyKey:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/organizer/concerts/{id}/upload-url:
+    get:
+      summary: Get MinIO Presigned Upload URL for Event Images
+      tags: [Organizer]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: "The Event/Concert ID"
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [image_url, cover_image_url, ticket_image_url]
+        - name: ext
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [jpg, jpeg, png, webp]
+      responses:
+        '200':
+          description: Presigned URL generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  presignedUrl:
+                    type: string
+                    format: uri
+                  objectKey:
+                    type: string
+                  expiresIn:
+                    type: integer
+                  maxSizeBytes:
+                    type: integer
+              example:
+                presignedUrl: "http://localhost:9000/ticketbox-images/events/3248aa8c-6634-450b-a822-c4d0779c77aa/image_url_ee0d59a7.jpg?X-Amz-..."
+                objectKey: "events/3248aa8c-6634-450b-a822-c4d0779c77aa/image_url_ee0d59a7.jpg"
+                expiresIn: 900
+                maxSizeBytes: 5242880
+        '400':
+          description: Bad Request (Invalid file extension or type)
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                message: "Unauthorized"
+                statusCode: 401
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                message: "Forbidden resource"
+                error: "Forbidden"
+                statusCode: 403
+
+  /api/admin/guests/csv-upload-url:
+    get:
+      summary: Get MinIO Presigned Upload URL for CSV Import
+      tags: [Admin - Guests]
+      parameters:
+        - name: showId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sponsorId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Presigned URL generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  presignedUrl:
+                    type: string
+                    format: uri
+                  objectKey:
+                    type: string
+                  expiresIn:
+                    type: integer
+                  maxSizeBytes:
+                    type: integer
+              example:
+                presignedUrl: "http://localhost:9000/ticketbox-csv-imports/11111111-1111-1111-1111-111111111111/sponsor-A_1783419382132.csv?X-Amz-..."
+                objectKey: "11111111-1111-1111-1111-111111111111/sponsor-A_1783419382132.csv"
+                expiresIn: 3600
+                maxSizeBytes: 524288000
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                message: "Unauthorized"
+                statusCode: 401
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                message: "Forbidden resource"
+                error: "Forbidden"
+                statusCode: 403
+
+  /api/admin/guests/import:
+    post:
+      summary: Trigger CSV Import Job
+      tags: [Admin - Guests]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileKey, showId, sponsorId]
+              properties:
+                fileKey:
+                  type: string
+                  description: The MinIO objectKey returned from csv-upload-url
+                showId:
+                  type: string
+                  format: uuid
+                sponsorId:
+                  type: string
+            example:
+              fileKey: "11111111-1111-1111-1111-111111111111/sponsor-A_1783419382132.csv"
+              showId: "11111111-1111-1111-1111-111111111111"
+              sponsorId: "sponsor-A"
+      responses:
+        '202':
+          description: Import task queued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  job_id:
+                    type: string
+                    format: uuid
+              example:
+                message: "Import task queued successfully"
+                job_id: "6b8da9af-6203-4a92-9854-af48e156d9b6"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                message: "Unauthorized"
+                statusCode: 401
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                message: "Forbidden resource"
+                error: "Forbidden"
+                statusCode: 403
+        '409':
+          description: Conflict - Duplicate Job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  job_id:
+                    type: string
+                  status:
+                    type: string
+              example:
+                message: "This file has already been queued for this show and sponsor."
+                job_id: "6b8da9af-6203-4a92-9854-af48e156d9b6"
+                status: "PENDING"
+
+  /api/admin/imports/{id}:
+    get:
+      summary: Get Import Job Status by ID
+      tags: [Admin - Imports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: "The unique UUID of the import job."
+          example: "6b8da9af-6203-4a92-9854-af48e156d9b6"
+      responses:
+        '200':
+          description: Job status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJob'
+              example:
+                id: "6b8da9af-6203-4a92-9854-af48e156d9b6"
+                fileKey: "11111111-1111-1111-1111-111111111111/sponsor-A_1783419382132.csv"
+                showId: "11111111-1111-1111-1111-111111111111"
+                sponsorId: "sponsor-A"
+                status: "PROCESSING"
+                totalRows: 0
+                successCount: 0
+                errorCount: 0
+                errorDetails: []
+                startedAt: "2026-07-07T10:16:22.218Z"
+                completedAt: null
+                createdAt: "2026-07-07T03:16:21.785Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                message: "Unauthorized"
+                statusCode: 401
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                message: "Forbidden resource"
+                error: "Forbidden"
+                statusCode: 403
+
+  /api/admin/imports:
+    get:
+      summary: List all Import Jobs
+      tags: [Admin - Imports]
+      parameters:
+        - name: showId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+          description: "The page number for pagination."
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: "The number of items to return per page."
+      responses:
+        '200':
+          description: List of import jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportJob'
+              example:
+                - id: "1b80d88c-c56f-42f2-9346-b702969e97b9"
+                  fileKey: "11111111-1111-1111-1111-111111111111/sponsor-A_1783132414602.csv"
+                  showId: "11111111-1111-1111-1111-111111111111"
+                  sponsorId: "sponsor-A"
+                  status: "COMPLETED"
+                  totalRows: 3
+                  successCount: 0
+                  errorCount: 3
+                  errorDetails:
+                    - row: 1
+                      reason: "Seat A-1 is a public seat and not allocated to any sponsor"
+                      seatNo: "A-1"
+                  startedAt: "2026-07-04T02:36:01.198Z"
+                  completedAt: "2026-07-04T02:36:01.765Z"
+                  createdAt: "2026-07-03T19:36:02.308Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                message: "Unauthorized"
+                statusCode: 401
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                message: "Forbidden resource"
+                error: "Forbidden"
+                statusCode: 403

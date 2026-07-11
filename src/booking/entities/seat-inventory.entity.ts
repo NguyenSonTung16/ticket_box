@@ -1,40 +1,50 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Concert } from '../../info/entities/concert.entity';
-import { ZoneInventory } from './zone-inventory.entity';
-import { User } from '../../auth/entities/user.entity';
+import { Entity, Column, PrimaryColumn, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+
+export enum SeatStatus {
+  AVAILABLE = 'AVAILABLE',
+  RESERVED = 'RESERVED',
+  SOLD = 'SOLD',
+  LOCKED = 'LOCKED',
+}
 
 @Entity('seat_inventory')
+@Index('idx_seat_inventory_lookup', ['showId', 'zone', 'status'])
 export class SeatInventory {
-  @PrimaryColumn()
-  seatNo: string;
+  @PrimaryGeneratedColumn('uuid')
+  seatId: string;
 
-  @PrimaryColumn()
-  concert_id: number;
+  @Column({ type: 'int' })
+  showId: number;
 
-  @Column({ nullable: true, default: 'SVIP' })
-  zone: string;
+  @Column({ type: 'varchar', length: 100 })
+  zone: string; // Maps to EventTicketType.name
 
-  @Column({ default: 'AVAILABLE' })
-  status: string; // AVAILABLE | RESERVED | BOOKED
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  row: string; // Only for seated events
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  number: string; // Only for seated events
+
+  @Column({ type: 'varchar', length: 20, default: SeatStatus.AVAILABLE })
+  status: string;
+
+  @Column({ type: 'uuid', nullable: true })
   reservedBy: string;
 
   @Column({ type: 'timestamp', nullable: true })
   expiryTime: Date;
 
-  @ManyToOne(() => Concert)
-  @JoinColumn({ name: 'concert_id' })
-  concert: Concert;
+  /**
+   * Sponsor allocation — NULL means a normal public seat.
+   * When set (e.g. 'sponsor-abc'), the seat is pre-reserved for that
+   * sponsor's VIP CSV import. Multiple sponsors can coexist in the same show.
+   */
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  sponsorId: string | null;
 
-  @ManyToOne(() => ZoneInventory)
-  @JoinColumn([
-    { name: 'zone', referencedColumnName: 'zone' },
-    { name: 'concert_id', referencedColumnName: 'concert_id' }
-  ])
-  zoneInfo: ZoneInventory;
+  @CreateDateColumn()
+  createdAt: Date;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'reservedBy' })
-  user: User;
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

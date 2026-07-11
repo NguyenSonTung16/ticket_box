@@ -1,14 +1,109 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
+import { eventService } from '../../features/events/eventService';
 
 export const CreateStep3: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get('eventId');
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Step 3 (Backend): Slug & Privacy
+  const [slug, setSlug] = useState('');
+  const [privacy, setPrivacy] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC');
+
+  // Step 4 (Backend): Payment & VAT
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankBranch, setBankBranch] = useState('');
+  
+  const [vatBusinessType, setVatBusinessType] = useState<'INDIVIDUAL' | 'COMPANY'>('INDIVIDUAL');
+  const [vatFullName, setVatFullName] = useState('');
+  const [vatAddress, setVatAddress] = useState('');
+  const [vatTaxCode, setVatTaxCode] = useState('');
+
+  const handleNext = async () => {
+    if (!eventId) {
+      setError('Không tìm thấy Event ID. Vui lòng quay lại bước 1.');
+      return;
+    }
+    if (!slug || !bankAccountName || !bankAccountNumber || !bankName) {
+      setError('Vui lòng điền đầy đủ Đường dẫn và thông tin tài khoản ngân hàng.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const id = parseInt(eventId);
+      
+      // Gọi Step 3 API (Slug & Privacy)
+      await eventService.saveStep3(id, {
+        slug,
+        privacy
+      });
+
+      // Truyền dữ liệu Step 4 sang trang cuối cùng để Publish
+      const bankInfo = {
+        bank_account_name: bankAccountName,
+        bank_account_number: bankAccountNumber,
+        bank_name: bankName,
+        bank_branch: bankBranch,
+        vat_business_type: vatBusinessType,
+        vat_full_name: vatFullName,
+        vat_address: vatAddress,
+        vat_tax_code: vatTaxCode,
+      };
+
+      navigate(`/organizer/create/step-4?eventId=${eventId}`, { state: { bankInfo } });
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi lưu thông tin');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="lg:ml-64 pt-24 md:pt-28 pb-32 px-4 md:px-6 min-h-screen">
       <div className="max-w-[1000px] mx-auto">
         <Stepper currentStep={3} />
+
+      {error && (
+        <div className="bg-error-red/10 text-error-red px-4 py-3 mb-6 rounded-lg text-sm font-bold border border-error-red/20">
+          {error}
+        </div>
+      )}
+
+      <div className="bg-surface-container-low p-6 md:p-10 rounded-xl border border-outline-variant/30 text-sm mb-6">
+        <h2 className="text-xl md:text-2xl font-headline-lg font-bold text-white mb-4">Thiết lập URL & Hiển thị</h2>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+            <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Đường dẫn sự kiện:</label>
+            <div className="relative flex-1">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">ticketbox.vn/</span>
+              <input type="text" className="w-full h-11 bg-white text-black pl-24 pr-4 rounded-md focus:outline-none" 
+                     placeholder="ten-su-kien-123"
+                     value={slug} onChange={(e) => setSlug(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+            <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Trạng thái:</label>
+            <div className="relative flex-1">
+              <select className="w-full h-11 bg-white text-black px-4 rounded-md focus:outline-none appearance-none"
+                      value={privacy} onChange={(e) => setPrivacy(e.target.value as 'PUBLIC' | 'PRIVATE')}>
+                <option value="PUBLIC">Công khai (Ai cũng có thể xem)</option>
+                <option value="PRIVATE">Riêng tư (Chỉ người có link)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="bg-surface-container-low p-6 md:p-10 rounded-xl border border-outline-variant/30 text-sm">
         <h2 className="text-xl md:text-2xl font-headline-lg font-bold text-white mb-4">Thông tin thanh toán</h2>
@@ -21,32 +116,28 @@ export const CreateStep3: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
             <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Chủ tài khoản:</label>
             <div className="relative flex-1">
-              <input type="text" className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">0 / 100</span>
+              <input type="text" value={bankAccountName} onChange={e => setBankAccountName(e.target.value)} className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
             <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Số tài khoản:</label>
             <div className="relative flex-1">
-              <input type="text" defaultValue="0" className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">0 / 100</span>
+              <input type="text" value={bankAccountNumber} onChange={e => setBankAccountNumber(e.target.value)} className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
             <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Tên ngân hàng:</label>
             <div className="relative flex-1">
-              <input type="text" className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">0 / 100</span>
+              <input type="text" value={bankName} onChange={e => setBankName(e.target.value)} className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
             <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Chi nhánh:</label>
             <div className="relative flex-1">
-              <input type="text" className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">0 / 100</span>
+              <input type="text" value={bankBranch} onChange={e => setBankBranch(e.target.value)} className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
             </div>
           </div>
         </div>
@@ -57,34 +148,32 @@ export const CreateStep3: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
             <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Loại hình kinh doanh:</label>
             <div className="relative flex-1">
-              <select className="w-full h-11 bg-white text-black px-4 pr-12 rounded-md focus:outline-none appearance-none">
-                <option>Cá nhân</option>
-                <option>Doanh nghiệp</option>
+              <select value={vatBusinessType} onChange={(e) => setVatBusinessType(e.target.value as 'INDIVIDUAL' | 'COMPANY')} className="w-full h-11 bg-white text-black px-4 pr-12 rounded-md focus:outline-none appearance-none">
+                <option value="INDIVIDUAL">Cá nhân</option>
+                <option value="COMPANY">Doanh nghiệp</option>
               </select>
               <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">expand_more</span>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-            <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Họ tên:</label>
+            <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Họ tên/Công ty:</label>
             <div className="relative flex-1">
-              <input type="text" className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">0 / 100</span>
+              <input type="text" value={vatFullName} onChange={e => setVatFullName(e.target.value)} className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
             <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Địa chỉ:</label>
             <div className="relative flex-1">
-              <input type="text" className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">0 / 100</span>
+              <input type="text" value={vatAddress} onChange={e => setVatAddress(e.target.value)} className="w-full h-11 bg-white text-black px-4 pr-16 rounded-md focus:outline-none" />
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
             <label className="sm:w-40 flex-shrink-0 font-bold text-white sm:text-right">Mã số thuế:</label>
             <div className="relative flex-1">
-              <input type="text" defaultValue="0" className="w-full h-11 bg-white text-black px-4 rounded-md focus:outline-none" />
+              <input type="text" value={vatTaxCode} onChange={e => setVatTaxCode(e.target.value)} className="w-full h-11 bg-white text-black px-4 rounded-md focus:outline-none" />
             </div>
           </div>
         </div>
@@ -101,10 +190,13 @@ export const CreateStep3: React.FC = () => {
           Quay lại
         </button>
         <button
-          onClick={() => navigate('/organizer/create/step-4')}
-          className="bg-primary text-on-primary px-6 md:px-8 py-3 rounded-xl font-bold shadow-md neon-glow hover:brightness-110 transition-all text-sm"
+          onClick={handleNext}
+          disabled={loading}
+          className={`px-6 md:px-8 py-3 rounded-xl font-bold shadow-md transition-all text-sm ${
+            loading ? 'bg-surface-container-high text-text-medium-emphasis cursor-not-allowed' : 'bg-primary text-on-primary neon-glow hover:brightness-110'
+          }`}
         >
-          Bước cuối cùng: Review
+          {loading ? 'Đang lưu...' : 'Bước cuối cùng: Review'}
         </button>
       </footer>
     </div>

@@ -1,5 +1,4 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Concert } from '../../info/entities/concert.entity';
+import { Entity, Column, PrimaryColumn } from 'typeorm';
 
 @Entity('zone_inventory')
 export class ZoneInventory {
@@ -8,10 +7,6 @@ export class ZoneInventory {
 
   @PrimaryColumn()
   concert_id: number;
-
-  @ManyToOne(() => Concert)
-  @JoinColumn({ name: 'concert_id' })
-  concert: Concert;
 
   @Column('int')
   totalCapacity: number;

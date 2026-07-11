@@ -5,8 +5,10 @@ const getToken = () => localStorage.getItem('access_token');
 const setToken = (token: string) => localStorage.setItem('access_token', token);
 const getRefreshToken = () => localStorage.getItem('refresh_token');
 
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333';
+
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:3000', // Sửa lại loại bỏ /api vì NestJS không dùng global prefix
+  baseURL, // Sửa lại sử dụng biến môi trường hoặc fallback 3333
   headers: {
     'Content-Type': 'application/json',
   },
@@ -73,7 +75,7 @@ axiosClient.interceptors.response.use(
       return new Promise((resolve, reject) => {
         // Gọi API refresh token
         axios
-          .post('http://localhost:3000/auth/refresh', { userId, refreshToken })
+          .post(`${baseURL}/auth/refresh`, { userId, refreshToken })
           .then(({ data }) => {
             const newToken = data.accessToken;
             setToken(newToken);

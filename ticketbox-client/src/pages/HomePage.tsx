@@ -75,16 +75,33 @@ export const HomePage: React.FC = () => {
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-primary-container/70">search</span>
             </div>
           </div>
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6">
             <a className="text-on-primary-container font-bold border-b-2 border-on-primary-container pb-1 font-label-md text-label-md" href="#">Home</a>
-            <button onClick={() => navigate('/organizer')} className="bg-on-primary-fixed text-primary px-5 py-2 rounded-full font-bold hover:bg-white transition-all flex items-center gap-2 shadow-md text-label-md">
-              <span className="material-symbols-outlined text-[18px]">add_circle</span>
-              Tạo sự kiện
-            </button>
+            
+            {/* Conditional Organizer panel */}
+            {user && user.role === 'ORGANIZER' && (
+              <button onClick={() => navigate('/organizer')} className="bg-white/10 text-white border border-white/20 px-4 py-2 rounded-full font-bold hover:bg-white hover:text-black transition-all flex items-center gap-1.5 shadow-md text-xs">
+                <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                Tạo sự kiện
+              </button>
+            )}
+
+            {/* Conditional Checkin panel */}
+            {user && (user.role === 'ADMIN' || user.role === 'CHECKIN_STAFF') && (
+              <button onClick={() => navigate('/checkin')} className="bg-primary-container border border-primary text-primary px-4 py-2 rounded-full font-bold hover:brightness-110 transition-all flex items-center gap-1.5 shadow-md text-xs">
+                <span className="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+                Soát vé
+              </button>
+            )}
+
+
+
+
             <a className="text-on-primary-container/80 font-label-md text-label-md hover:text-white transition-colors" href="#">My Tickets</a>
-            <div className="flex items-center gap-4 ml-4">
+            <div className="flex items-center gap-4 ml-2">
               {user ? (
                 <div className="flex items-center gap-3 bg-white/10 rounded-full px-3 py-1.5 backdrop-blur-sm">
+                  <span className="text-xs font-semibold text-white/90 bg-primary/20 px-2 py-0.5 rounded-full">{user.role}</span>
                   <span className="text-sm font-medium text-white hidden sm:block">{user.email}</span>
                   <span className="text-sm font-medium text-white sm:hidden">{user.email.split('@')[0]}</span>
                   <button

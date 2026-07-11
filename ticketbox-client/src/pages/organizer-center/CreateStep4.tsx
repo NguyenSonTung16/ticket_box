@@ -1,23 +1,57 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
+import { eventService } from '../../features/events/eventService';
 
 export const CreateStep4: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const eventId = searchParams.get('eventId');
+  
   const [published, setPublished] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handlePublish = () => {
-    setPublished(true);
-    setTimeout(() => {
-      setPublished(false);
-      navigate('/organizer');
-    }, 2000);
+  const handlePublish = async () => {
+    if (!eventId) {
+      setError('Không tìm thấy Event ID');
+      return;
+    }
+    const bankInfo = location.state?.bankInfo;
+    if (!bankInfo) {
+      setError('Thiếu thông tin thanh toán từ bước trước');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      await eventService.saveStep4(parseInt(eventId), bankInfo);
+      
+      setPublished(true);
+      setTimeout(() => {
+        setPublished(false);
+        navigate('/organizer');
+      }, 2000);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Lỗi khi xuất bản sự kiện');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="lg:ml-64 pt-24 md:pt-28 pb-32 px-4 md:px-6 min-h-screen">
       <div className="max-w-[1000px] mx-auto">
         <Stepper currentStep={4} />
+
+      {error && (
+        <div className="bg-error-red/10 text-error-red px-4 py-3 mb-6 rounded-lg text-sm font-bold border border-error-red/20">
+          {error}
+        </div>
+      )}
 
       {/* Header */}
       <div className="text-center mb-12">
@@ -102,9 +136,12 @@ export const CreateStep4: React.FC = () => {
         </button>
         <button
           onClick={handlePublish}
-          className="bg-primary text-on-primary px-8 md:px-10 py-3 rounded-xl font-black shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm"
+          disabled={loading}
+          className={`px-8 md:px-10 py-3 rounded-xl font-black shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm ${
+            loading ? 'bg-surface-container-high text-text-medium-emphasis cursor-not-allowed' : 'bg-primary text-on-primary'
+          }`}
         >
-          XUẤT BẢN NGAY
+          {loading ? 'ĐANG XUẤT BẢN...' : 'XUẤT BẢN NGAY'}
           <span className="material-symbols-outlined">rocket_launch</span>
         </button>
       </footer>

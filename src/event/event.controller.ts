@@ -1,0 +1,136 @@
+import {
+  Controller, Post, Put, Get, Delete, Param, Body, Query, UseGuards, Request,
+  UploadedFile, UseInterceptors, ParseIntPipe, DefaultValuePipe, HttpCode, HttpStatus
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { EventService } from './event.service';
+import { MinioService } from '../minio/minio.service';
+import { SaveStep1Dto } from './dto/save-step1.dto';
+import { SaveStep2Dto } from './dto/save-step2.dto';
+import { SaveStep3Dto } from './dto/save-step3.dto';
+import { SaveStep4Dto } from './dto/save-step4.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
+
+@Controller('api')
+export class EventController {
+  constructor(
+    private readonly eventService: EventService,
+    private readonly minioService: MinioService,
+  ) {}
+
+  @Post('organizer/concerts')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async createDraft(@Request() req: any) {
+    return this.eventService.createDraft(req.user.userId);
+  }
+
+  @Get('organizer/concerts')
+  @UseGuards(JwtAuthGuard)
+  async getOrganizerEvents(@Request() req: any) {
+    return this.eventService.getOrganizerEvents(req.user.userId);
+  }
+
+  @Put('organizer/concerts/:id/step/1')
+  @UseGuards(JwtAuthGuard)
+  async saveStep1(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep1Dto, @Request() req: any) {
+    return this.eventService.saveStep(eventId, 1, body, req.user.userId);
+  }
+
+  @Put('organizer/concerts/:id/step/2')
+  @UseGuards(JwtAuthGuard)
+  async saveStep2(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep2Dto, @Request() req: any) {
+    return this.eventService.saveStep(eventId, 2, body, req.user.userId);
+  }
+
+  @Put('organizer/concerts/:id/step/3')
+  @UseGuards(JwtAuthGuard)
+  async saveStep3(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep3Dto, @Request() req: any) {
+    return this.eventService.saveStep(eventId, 3, body, req.user.userId);
+  }
+
+  @Put('organizer/concerts/:id/step/4')
+  @UseGuards(JwtAuthGuard)
+  async saveStep4(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep4Dto, @Request() req: any) {
+    return this.eventService.saveStep(eventId, 4, body, req.user.userId);
+  }
+
+  @Get('organizer/concerts/:id/draft')
+  @UseGuards(JwtAuthGuard)
+  async getDraft(@Param('id', ParseIntPipe) eventId: number, @Request() req: any) {
+    return this.eventService.getDraft(eventId, req.user.userId);
+  }
+
+  /**
+   * GET /api/organizer/concerts/:id/upload-url?type=image_url&ext=jpg
+   *
+   * Returns a presigned PUT URL the client uses to upload directly to MinIO.
+   * Server enforces MIME type (Q4) and ContentLength limit (Q3).
+   *
+   * @param type - one of: image_url | cover_image_url | organizer_logo_url | ticket_image_url
+   * @param ext  - file extension without dot, e.g. "jpg", "png", "webp"
+   */
+  @Get('organizer/concerts/:id/upload-url')
+  @UseGuards(JwtAuthGuard)
+  async getImageUploadUrl(
+    @Param('id', ParseIntPipe) eventId: number,
+    @Query('type') type: string,
+    @Query('ext') ext = 'jpg',
+  ) {
+    return this.minioService.getImagePresignedUploadUrl(eventId, type, ext);
+  }
+
+  /**
+   * @deprecated Use GET /api/organizer/concerts/:id/upload-url instead.
+   * Kept for backward compatibility — will be removed in Phase 4.
+   * Uploads the file to local disk (1 MB limit). MinIO version has no such limit.
+   */
+  @Post('organizer/concerts/:id/upload')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 1 * 1024 * 1024 }, // 1 MB
+      fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        cb(null, allowed.includes(file.mimetype));
+      },
+    }),
+  )
+  async uploadImage(@Param('id', ParseIntPipe) eventId: number, @UploadedFile() file: Express.Multer.File, @Body('type') type: string) {
+    return this.eventService.saveImageFile(eventId, file, type);
+  }
+
+  @Get('concerts')
+  async listEvents(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.eventService.getEventList(page, limit);
+  }
+
+  @Get('concerts/:id')
+  async getEventDetail(@Param('id', ParseIntPipe) eventId: number) {
+    return this.eventService.getEventDetail(eventId);
+  }
+
+  @Put('admin/concerts/:id')
+  @UseGuards(JwtAuthGuard)
+  async updateEvent(@Param('id', ParseIntPipe) eventId: number, @Body() body: UpdateEventDto, @Request() req: any) {
+    return this.eventService.updateEvent(eventId, body, req.user.userId);
+  }
+
+  @Delete('admin/concerts/:id')
+  @UseGuards(JwtAuthGuard)
+  async cancelEvent(@Param('id', ParseIntPipe) eventId: number) {
+    return this.eventService.cancelEvent(eventId);
+  }
+
+  @Put('internal/concerts/:id/seat-counts/:zone')
+  async updateGASeatCounts(@Param('id', ParseIntPipe) eventId: number, @Param('zone') zone: string, @Body() body: { available: number; reserved: number; sold: number }) {
+    return this.eventService.updateGASeatCounts(eventId, zone, body.available, body.reserved, body.sold);
+  }
+}
+

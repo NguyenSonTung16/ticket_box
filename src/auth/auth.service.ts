@@ -22,7 +22,10 @@ export class AuthService {
   ) {}
 
   async generateTokens(userId: string) {
-    const accessToken = this.jwtService.sign({ sub: userId });
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const role = user?.role || 'USER';
+    const jti = `at_${crypto.randomBytes(8).toString('hex')}`;
+    const accessToken = this.jwtService.sign({ sub: userId, role, jti });
     const refreshToken = crypto.randomBytes(40).toString('hex');
 
     // Lưu Refresh Token vào Redis
@@ -78,20 +81,83 @@ export class AuthService {
   }
 
   // Thay thế bằng Login thực tế
-  async login(email: string, passwordPlain: string) {
+  async login(email: string, passwordPlain: string, ip: string = '127.0.0.1') {
+    const rateLimitKey = `failed_login_count:${ip}_${email}`;
+    const blockKey = `login_blocked:${ip}_${email}`;
+    const consecutiveFailedKey = `consecutive_failed:${email}`;
+
+    // 1. Check if blocked
+    const isBlocked = await this.redis.get(blockKey);
+    if (isBlocked) {
+      throw new UnauthorizedException('Too many failed login attempts. Please try again after 15 minutes');
+    }
+
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
+      await this.handleFailedLogin(ip, email);
       throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu');
     }
-    
-    // Nếu là dev user cũ (hashed_password) thì cho pass để tương thích, ngược lại dùng bcrypt
-    if (user.passwordHash !== 'hashed_password') {
-      const isMatch = await bcrypt.compare(passwordPlain, user.passwordHash);
-      if (!isMatch) {
-        throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu');
-      }
+
+    // 2. Check if account is locked
+    if (user.status === 'LOCKED') {
+      throw new UnauthorizedException('Tài khoản đã bị khóa. Vui lòng liên hệ hỗ trợ.');
     }
-    
+
+    // 3. Verify password
+    let isMatch = false;
+    // Nếu là dev user cũ (hashed_password) thì cho pass để tương thích, ngược lại dùng bcrypt
+    if (user.passwordHash === 'hashed_password') {
+      isMatch = passwordPlain === '123456';
+    } else {
+      isMatch = await bcrypt.compare(passwordPlain, user.passwordHash);
+    }
+
+    if (!isMatch) {
+      await this.handleFailedLogin(ip, email, user.id);
+      throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu');
+    }
+
+    // Success - Reset counters
+    await this.redis.del(rateLimitKey);
+    await this.redis.del(consecutiveFailedKey);
+
     return this.generateTokens(user.id);
+  }
+
+  async logout(accessToken: string) {
+    try {
+      const payload = this.jwtService.decode(accessToken) as any;
+      if (payload && payload.jti) {
+        // Blacklist token in Redis for 15 minutes (or its remaining TTL)
+        await this.redis.set(`blacklist:${payload.jti}`, '1', 'EX', 15 * 60);
+      }
+    } catch (err) {
+      // Ignore decode error
+    }
+    return { success: true, message: 'Logged out successfully' };
+  }
+
+  private async handleFailedLogin(ip: string, email: string, userId?: string) {
+    const rateLimitKey = `failed_login_count:${ip}_${email}`;
+    const blockKey = `login_blocked:${ip}_${email}`;
+    const consecutiveFailedKey = `consecutive_failed:${email}`;
+
+    // Increment failed login count for IP+Email
+    const failedCountStr = await this.redis.get(rateLimitKey);
+    const failedCount = failedCountStr ? parseInt(failedCountStr, 10) + 1 : 1;
+    await this.redis.set(rateLimitKey, failedCount.toString(), 'EX', 15 * 60);
+
+    if (failedCount >= 5) {
+      await this.redis.set(blockKey, '1', 'EX', 15 * 60);
+    }
+
+    // Handle consecutive failures for account lock
+    const consecStr = await this.redis.get(consecutiveFailedKey);
+    const consecCount = consecStr ? parseInt(consecStr, 10) + 1 : 1;
+    await this.redis.set(consecutiveFailedKey, consecCount.toString(), 'EX', 24 * 60 * 60); // persist for 24h
+
+    if (consecCount >= 10 && userId) {
+      await this.userRepository.update(userId, { status: 'LOCKED' });
+    }
   }
 }

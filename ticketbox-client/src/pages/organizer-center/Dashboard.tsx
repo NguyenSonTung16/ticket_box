@@ -1,33 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EventCard } from './components/EventCard';
-
-const MOCK_EVENTS = [
-  {
-    id: 1,
-    title: 'Electric Forest: Midnight Pulse',
-    date: 'Dec 24, 2024 • 20:00',
-    location: 'Saigon Exhibition Center (SECC)',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuD45MuNv6ym8q_8DqJ5OgH5REAtsjZb5mJ7oV5J38feMF_mYJz_MYuFepMPJIjZtQh_ru1ADauqQ64DGIoY5W2vnyyUc_jvKtGzwfzPk9EnzTU1h2owzt31VYKJHUSOntbkNbkx-ZmQbXRptuD03P3-xsVUysFjIB60AE3RunldN2XmvOEU-001AaP8HELY61Yob973MHf4JCARCd0jDytrwVa462lY6wmNZ47T__nNXYa6XkKmWuDm0-dSWJ8HEvZiDBP4_qGLaz0',
-    status: 'selling' as const,
-    ticketsSold: 1240,
-    totalTickets: 2000,
-  },
-  {
-    id: 2,
-    title: 'Neo-Jazz Evening: Obsidian Series',
-    date: 'Jan 15, 2025 • 19:30',
-    location: 'The Grand Theater, Dist 1',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBPcB-Q1xnXdk0Lkiqv0fwKxvS2nXC8Wnuo7jvBH_bwyj0AGfDQBXTUdsj7lhH14ahGBU-KaA91VqRnI0fyRCoC2zjyXm0W1MD7AOXT81fK9LtbLg6bGmYvJIvLpVWIvjhCvK0GvVkRzF953xxek5Gpu9C4VcKSDofDA352EVp5BNFVEpz7PvUghlxTSP19yjzKaiLIX5gsQiDUzsz2ApdG-w6TYQ_yIGA0cQYqBFNQ5ApQgHlTPRrBZ5av--WZm61DMPsO3937r20',
-    status: 'draft' as const,
-    ticketsSold: 0,
-    totalTickets: 500,
-  },
-];
+import { eventService } from '../../features/events/eventService';
 
 export const OrganizerDashboard: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    eventService.getOrganizerEvents().then(data => {
+      setEvents(data);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
 
   const filters = [
     { key: 'all' as const, label: 'Tất cả' },
@@ -35,7 +23,7 @@ export const OrganizerDashboard: React.FC = () => {
     { key: 'draft' as const, label: 'Bản nháp' },
   ];
 
-  const filteredEvents = MOCK_EVENTS.filter((event) => {
+  const filteredEvents = events.filter((event) => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'published') return event.status === 'selling';
     if (activeFilter === 'draft') return event.status === 'draft';
@@ -87,13 +75,28 @@ export const OrganizerDashboard: React.FC = () => {
         </div>
 
         {/* Event Cards Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {filteredEvents.map((event) => (
-            <EventCard key={event.id} {...event} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-20">
+            <p className="text-text-medium-emphasis">Đang tải dữ liệu sự kiện...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {filteredEvents.map((event) => (
+              <EventCard 
+                key={event.id}
+                title={event.name}
+                date={new Date(event.date).toLocaleDateString('vi-VN')}
+                location={event.venue_name}
+                image={event.image_url}
+                status={event.status}
+                ticketsSold={event.tickets_sold ?? 0}
+                totalTickets={event.total_tickets ?? 0}
+              />
+            ))}
+          </div>
+        )}
 
-        {filteredEvents.length === 0 && (
+        {!loading && filteredEvents.length === 0 && (
           <div className="text-center py-20">
             <span className="material-symbols-outlined text-6xl text-text-medium-emphasis mb-4 block">
               event_busy

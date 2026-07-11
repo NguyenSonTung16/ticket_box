@@ -39,6 +39,29 @@ export const OrganizerSideNav: React.FC = () => {
           <span className="material-symbols-outlined">folder</span>
           <span className="text-sm font-semibold">Quản lý file</span>
         </Link>
+        <Link
+          to="/organizer/bio"
+          className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
+            isActive('/organizer/bio')
+              ? 'bg-primary/10 text-primary font-bold'
+              : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
+          }`}
+        >
+          <span className="material-symbols-outlined">badge</span>
+          <span className="text-sm font-semibold">Tạo tiểu sử</span>
+        </Link>
+        <Link
+          to="/organizer/artists"
+          className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
+            isActive('/organizer/artists')
+              ? 'bg-primary/10 text-primary font-bold'
+              : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
+          }`}
+        >
+          <span className="material-symbols-outlined">groups</span>
+          <span className="text-sm font-semibold">Danh sách nghệ sĩ</span>
+        </Link>
+
       </div>
       <div className="mt-auto px-2 pt-4 border-t border-outline-variant flex flex-col gap-1">
         <button
