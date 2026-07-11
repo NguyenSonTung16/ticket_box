@@ -13,10 +13,13 @@ import { ShowInfo, ShowInfoSchema } from '../info/schemas/show-info.schema';
 import { EVENT_PUBLISHER } from './interfaces/event-publisher.interface';
 import { RabbitMQEventPublisher } from './publishers/rabbitmq-event.publisher';
 
+import { AuthModule } from '../auth/auth.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([Concert, EventTicketType, SeatInventory]),
     MongooseModule.forFeature([{ name: ShowInfo.name, schema: ShowInfoSchema }]),
+    AuthModule,
   ],
   controllers: [EventController],
   providers: [
