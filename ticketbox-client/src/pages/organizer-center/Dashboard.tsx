@@ -82,7 +82,16 @@ export const OrganizerDashboard: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {filteredEvents.map((event) => (
-              <EventCard key={event.id} {...event} />
+              <EventCard 
+                key={event.id}
+                title={event.name}
+                date={new Date(event.date).toLocaleDateString('vi-VN')}
+                location={event.venue_name}
+                image={event.image_url}
+                status={event.status}
+                ticketsSold={event.tickets_sold ?? 0}
+                totalTickets={event.total_tickets ?? 0}
+              />
             ))}
           </div>
         )}
