@@ -14,6 +14,7 @@ export interface EventData {
   cover_image_url?: string;
   artist_ids?: string[];
   attachment_urls?: string[];
+  description?: string;
 }
 
 export interface TicketTypeData {

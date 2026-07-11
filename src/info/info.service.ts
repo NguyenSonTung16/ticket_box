@@ -9,6 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ShowInfo, ShowInfoDocument } from './schemas/show-info.schema';
 import { Concert } from './entities/concert.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
+import { ArtistBio } from '../ai/entities/artist-bio.entity';
 
 /**
  * InfoService — Legacy read-only service for the original show list/detail endpoints.
@@ -30,6 +31,7 @@ export class InfoService {
     @InjectRepository(Concert) private readonly showRepo: Repository<Concert>,
     @InjectRepository(ZoneInventory) private readonly zoneRepo: Repository<ZoneInventory>,
     @InjectModel(ShowInfo.name) private readonly showInfoModel: Model<ShowInfoDocument>,
+    @InjectRepository(ArtistBio) private readonly artistBioRepo: Repository<ArtistBio>,
   ) {}
 
   // Lấy danh sách tất cả các show (ACTIVE status)
@@ -136,6 +138,23 @@ export class InfoService {
           availableSlots: pz.availableSlots,
         }));
 
+        const artistIds = mongoData?.['artist_ids'] || [];
+        let artists = [];
+        if (artistIds.length > 0) {
+          const fetchedArtists = await this.artistBioRepo.createQueryBuilder('artist')
+            .where('artist.id IN (:...ids)', { ids: artistIds })
+            .getMany();
+          artists = fetchedArtists.map(a => ({
+            id: a.id,
+            name: a.artistName || a.stageName,
+            stageName: a.stageName,
+            avatarUrl: a.avatarUrl,
+            shortBio: a.shortBio,
+            category: a.category,
+            genres: a.genres,
+          }));
+        }
+
         const finalData = {
           id: showId,
           slug: postgresData?.slug || null,
@@ -149,6 +168,8 @@ export class InfoService {
           cover_image_url: mongoData?.['cover_image_url'],
           organizer_name: mongoData?.['organizer_name'],
           privacy: mongoData?.['privacy'] || 'PUBLIC',
+          artist_ids: artistIds,
+          artists,
           zones,
         };
 

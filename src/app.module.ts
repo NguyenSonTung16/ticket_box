@@ -67,7 +67,7 @@ if (serviceName === 'auth') {
 } else if (serviceName === 'checkin') {
   serviceModules = [CheckinModule];
 } else if (serviceName === 'ai') {
-  serviceModules = [AiModule];
+  serviceModules = [AiModule, AuthModule];
 } else if (serviceName === 'worker') {
   serviceModules = [WorkerModule];
 } else {

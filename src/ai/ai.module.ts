@@ -11,11 +11,13 @@ import { PromptTemplate } from './entities/prompt-template.entity';
 import { ArtistBio } from './entities/artist-bio.entity';
 import { Concert } from '../info/entities/concert.entity';
 import { ShowInfo, ShowInfoSchema } from '../info/schemas/show-info.schema';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ArtistDocument, AiJob, PromptTemplate, ArtistBio, Concert]),
     MongooseModule.forFeature([{ name: ShowInfo.name, schema: ShowInfoSchema }]),
+    AuthModule,
   ],
   controllers: [AiController],
   providers: [AiService, AiWorker],

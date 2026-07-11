@@ -49,9 +49,9 @@ export class MinioService {
     ext: string,
   ): Promise<PresignedUploadResult> {
     // Q4: Server-side MIME enforcement
-    if (!ALLOWED_IMAGE_TYPES.has(type)) {
+    if (!ALLOWED_IMAGE_TYPES.has(type) && !type.startsWith('attachment_')) {
       throw new BadRequestException(
-        `Unsupported upload type: ${type}. Allowed: ${[...ALLOWED_IMAGE_TYPES].join(', ')}`,
+        `Unsupported upload type: ${type}. Allowed: ${[...ALLOWED_IMAGE_TYPES].join(', ')}, or attachment_*`,
       );
     }
 

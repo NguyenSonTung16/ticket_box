@@ -82,6 +82,9 @@ export class EventService {
     existing.current_step = step;
     await this.redis.setex(draftKey, 86400, JSON.stringify(existing));
 
+    // Invalidate show_info cache so preview is immediate
+    await this.redis.del(`show_info:${eventId}`);
+
     if (step === 4) {
       await this.concertRepo.update(eventId, { status: ConcertStatus.ACTIVE });
       await this.redis.del(draftKey);

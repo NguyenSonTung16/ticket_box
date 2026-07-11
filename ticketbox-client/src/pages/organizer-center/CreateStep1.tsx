@@ -23,6 +23,7 @@ export const CreateStep1: React.FC = () => {
   const [addressType, setAddressType] = useState<'OFFLINE' | 'ONLINE'>('OFFLINE');
   const [venueName, setVenueName] = useState('');
   const [province, setProvince] = useState('');
+  const [description, setDescription] = useState('');
   const [artistIds, setArtistIds] = useState<string[]>([]);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [existingAttachmentUrls, setExistingAttachmentUrls] = useState<string[]>([]);
@@ -41,6 +42,7 @@ export const CreateStep1: React.FC = () => {
             setAddressType(draft.step_1.address_type || 'OFFLINE');
             setVenueName(draft.step_1.venue_name || '');
             setProvince(draft.step_1.province || '');
+            setDescription(draft.step_1.description || '');
             setArtistIds(draft.step_1.artist_ids || []);
             setExistingAttachmentUrls(draft.step_1.attachment_urls || []);
             if (draft.step_1.cover_image_url) {
@@ -105,6 +107,7 @@ export const CreateStep1: React.FC = () => {
         venue_name: venueName,
         province,
         organizer_name,
+        description,
         artist_ids: artistIds,
         attachment_urls: allAttachmentUrls,
         ...(finalCoverImageUrl && {
@@ -236,8 +239,28 @@ export const CreateStep1: React.FC = () => {
             </div>
           </section>
 
+          {/* Thông tin chi tiết */}
+          <section className="bg-card-level-1 rounded-xl border border-outline-variant">
+            <div className="px-4 md:px-6 py-4 border-b border-outline-variant">
+              <h2 className="text-lg md:text-xl font-headline-lg font-bold text-on-surface">
+                Thông tin chi tiết
+              </h2>
+            </div>
+            <div className="p-4 md:p-6">
+              <label className="block text-xs font-bold text-text-medium-emphasis mb-2 uppercase">
+                Mô tả sự kiện
+              </label>
+              <textarea
+                className="w-full h-32 px-4 py-3 border border-outline-variant rounded-lg bg-input-level-2 text-on-surface outline-none resize-y"
+                placeholder="Nhập thông tin chi tiết về sự kiện của bạn..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </section>
+
           {/* Nghệ sĩ tham gia */}
-          <section className="bg-card-level-1 rounded-xl border border-outline-variant overflow-hidden">
+          <section className="bg-card-level-1 rounded-xl border border-outline-variant">
             <div className="px-4 md:px-6 py-4 border-b border-outline-variant">
               <h2 className="text-lg md:text-xl font-headline-lg font-bold text-on-surface">
                 Lineup / Nghệ sĩ tham gia

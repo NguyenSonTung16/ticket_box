@@ -14,6 +14,7 @@
     "start:info": "cross-env PORT=3003 SERVICE_NAME=info ts-node-dev --respawn --transpile-only src/main.ts",
     "start:event": "cross-env PORT=3005 SERVICE_NAME=event ts-node-dev --respawn --transpile-only src/main.ts",
     "start:payment": "cross-env PORT=3004 SERVICE_NAME=payment ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:ai": "cross-env PORT=3008 SERVICE_NAME=ai ts-node-dev --respawn --transpile-only src/main.ts",
     "start:worker": "cross-env PORT=3006 SERVICE_NAME=worker ts-node-dev --respawn --transpile-only src/main.ts"
   },
   "dependencies": {
