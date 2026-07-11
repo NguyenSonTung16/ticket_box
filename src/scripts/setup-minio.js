@@ -63,6 +63,7 @@ async function main() {
   console.log('Creating buckets...');
   await createBucket('ticketbox-images');
   await createBucket('ticketbox-csv-imports');
+  await createBucket('artist-documents');
   console.log('\nSetting lifecycle rules...');
   await setLifecycleRule('ticketbox-csv-imports');
   console.log('\nSetup complete!');

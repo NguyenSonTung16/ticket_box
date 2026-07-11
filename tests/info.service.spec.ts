@@ -3,7 +3,7 @@ import { InfoService } from '../src/info/info.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getModelToken } from '@nestjs/mongoose';
 import { REDIS_CLIENT } from '../src/config/redis.config';
-import { Show } from '../src/info/entities/show.entity';
+import { Concert } from '../src/info/entities/concert.entity';
 import { ShowInfo } from '../src/info/schemas/show-info.schema';
 
 describe('InfoService - getShowInfo SingleFlight Test', () => {
@@ -23,6 +23,10 @@ describe('InfoService - getShowInfo SingleFlight Test', () => {
     findOne: jest.fn(),
   };
 
+  const mockZoneRepo = {
+    find: jest.fn(),
+  };
+
   beforeEach(async () => {
     // Reset mocks
     jest.clearAllMocks();
@@ -31,7 +35,8 @@ describe('InfoService - getShowInfo SingleFlight Test', () => {
       providers: [
         InfoService,
         { provide: REDIS_CLIENT, useValue: mockRedis },
-        { provide: getRepositoryToken(Show), useValue: mockShowRepo },
+        { provide: getRepositoryToken(Concert), useValue: mockShowRepo },
+        { provide: getRepositoryToken(require('../src/booking/entities/zone-inventory.entity').ZoneInventory), useValue: mockZoneRepo },
         { provide: getModelToken(ShowInfo.name), useValue: mockShowInfoModel },
       ],
     }).compile();
@@ -45,18 +50,19 @@ describe('InfoService - getShowInfo SingleFlight Test', () => {
     mockRedis.set.mockResolvedValue('OK');
 
     // Giả lập DB Response
-    const pgData = { name: 'Concert Test', timeStart: '2026-06-04' };
-    const mongoData = { description: 'Super show', artistBio: 'Top Artist' };
+    const pgData = { slug: 'concert-test', performanceDate: new Date('2026-06-04') };
+    const mongoData = { name: 'Concert Test', description: 'Super show', category: 'Music', image_url: 'img.png', cover_image_url: 'cover.png', organizer_name: 'Org', privacy: 'PUBLIC' };
 
     // Simulate Network Delay (10ms) to ensure concurrent requests pile up
     mockShowRepo.findOne.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(pgData), 10)));
+    mockZoneRepo.find.mockImplementation(() => new Promise(resolve => resolve([])));
     
     // Simulate mongoose lean() behavior
     const leanQuery = { lean: jest.fn().mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(mongoData), 10))) };
     mockShowInfoModel.findOne.mockReturnValue(leanQuery);
 
     // Kích hoạt 1.000 luồng Promise cùng 1 lúc
-    const showId = 'show-123';
+    const showId = 123;
     const concurrentRequests = 1000;
     const promises = [];
 
@@ -70,12 +76,18 @@ describe('InfoService - getShowInfo SingleFlight Test', () => {
     // KIỂM TRA ĐIỀU KIỆN 1: Tất cả 1000 luồng đều nhận được cùng 1 dữ liệu
     const expectedData = {
       id: showId,
+      slug: 'concert-test',
       name: 'Concert Test',
-      timeStart: '2026-06-04',
-      location: undefined,
+      performanceDate: pgData.performanceDate,
+      venue_name: null,
+      province: null,
       description: 'Super show',
-      artistBio: 'Top Artist',
-      rules: undefined,
+      category: 'Music',
+      image_url: 'img.png',
+      cover_image_url: 'cover.png',
+      organizer_name: 'Org',
+      privacy: 'PUBLIC',
+      zones: [],
     };
 
     expect(results).toHaveLength(1000);

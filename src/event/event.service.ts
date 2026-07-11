@@ -339,6 +339,8 @@ export class EventService {
           start_time: concert.performanceDate,
           ticket_types: enriched,
           created_at: concert.created_at,
+          artistBio: info?.['artistBio'] ?? null,
+          artist_bio: info?.['artistBio'] ?? null,
         };
 
         await this.redis.setex(cacheKey, 600, JSON.stringify(result));

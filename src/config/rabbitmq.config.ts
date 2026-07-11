@@ -22,6 +22,7 @@ export const RABBITMQ_CHANNEL = 'RABBITMQ_CHANNEL';
         const processQueue = 'hold_timeout_queue';
         await channel.assertQueue(processQueue, { durable: true });
         await channel.bindQueue(processQueue, dlxExchange, 'rollback');
+        
         const waitQueue = 'hold_timeout_wait_queue';
         await channel.assertQueue(waitQueue, {
           durable: true,
@@ -30,6 +31,22 @@ export const RABBITMQ_CHANNEL = 'RABBITMQ_CHANNEL';
             'x-dead-letter-routing-key': 'rollback',
           },
         });
+
+        const waitQueue5m = 'hold_timeout_wait_5m_queue';
+        await channel.assertQueue(waitQueue5m, {
+          durable: true,
+          arguments: {
+            'x-dead-letter-exchange': dlxExchange,
+            'x-dead-letter-routing-key': 'rollback',
+            'x-message-ttl': 300000, // 5 minutes TTL
+          },
+        });
+
+        // ── Payment Service queues ─────────────────────────────────────────────
+        await channel.assertQueue('internal_capture_queue', { durable: true });
+        await channel.assertQueue('payment_confirmed_queue', { durable: true });
+        await channel.assertQueue('payment_webhook_queue', { durable: true });
+        await channel.assertQueue('email_notification_queue', { durable: true });
 
         // ── Event Service queues ─────────────────────────────────────────────
         // Consumers: Notification Service, Booking Service (refund on cancel)

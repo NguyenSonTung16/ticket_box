@@ -25,6 +25,9 @@ export class Ticket {
   @Column({ nullable: true })
   qrCodeUrl: string;
 
+  @Column({ type: 'varchar', length: 50, default: 'valid' })
+  status: string; // valid | checked_in | refunded | invalid
+
   // ── VIP Guest CSV Import fields ──────────────────────────────────────────
   /** Full name of the VIP guest — populated by CSV import worker */
   @Column({ type: 'varchar', length: 255, nullable: true })

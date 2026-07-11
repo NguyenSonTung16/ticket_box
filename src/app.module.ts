@@ -17,8 +17,12 @@ import { SearchModule } from './search/search.module';
 import { InfoModule } from './info/info.module';
 import { EventModule } from './event/event.module';
 import { GuestModule } from './guest/guest.module';
+import { PaymentModule } from './payment/payment.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { mongoConfig } from './config/mongo.config';
+import { CheckinModule } from './checkin/checkin.module';
+import { AiModule } from './ai/ai.module';
+import { WorkerModule } from './worker/worker.module';
 
 const coreModules = [
   ConfigModule.forRoot(),
@@ -58,9 +62,28 @@ if (serviceName === 'auth') {
   serviceModules = [GuestModule];
 } else if (serviceName === 'event') {
   serviceModules = [EventModule];
+} else if (serviceName === 'payment') {
+  serviceModules = [PaymentModule];
+} else if (serviceName === 'checkin') {
+  serviceModules = [CheckinModule];
+} else if (serviceName === 'ai') {
+  serviceModules = [AiModule];
+} else if (serviceName === 'worker') {
+  serviceModules = [WorkerModule];
 } else {
   // Monolithic fallback
-  serviceModules = [AuthModule, BookingModule, InfoModule, EventModule, SearchModule, GuestModule];
+  serviceModules = [
+    AuthModule,
+    BookingModule,
+    InfoModule,
+    EventModule,
+    SearchModule,
+    GuestModule,
+    PaymentModule,
+    CheckinModule,
+    AiModule,
+    WorkerModule,
+  ];
 }
 
 @Module({

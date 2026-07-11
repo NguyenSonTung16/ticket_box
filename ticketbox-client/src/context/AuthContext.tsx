@@ -4,6 +4,7 @@ import axiosClient from '../utils/axiosClient';
 interface User {
   id: string;
   email: string;
+  role: string;
 }
 
 interface AuthContextType {
@@ -25,9 +26,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const accessToken = localStorage.getItem('access_token');
     const userEmail = localStorage.getItem('userEmail');
     const userId = localStorage.getItem('userId');
+    const userRole = localStorage.getItem('userRole') || 'USER';
 
     if (accessToken && userEmail && userId) {
-      setUser({ email: userEmail, id: userId });
+      setUser({ email: userEmail, id: userId, role: userRole });
     }
     setIsLoading(false);
   }, []);
@@ -44,13 +46,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }).join(''));
       const payload = JSON.parse(jsonPayload);
       const userId = payload.sub;
+      const role = payload.role || 'USER';
 
       localStorage.setItem('access_token', accessToken);
       localStorage.setItem('refresh_token', refreshToken);
       localStorage.setItem('userEmail', email);
       localStorage.setItem('userId', userId);
+      localStorage.setItem('userRole', role);
       
-      setUser({ email, id: userId });
+      setUser({ email, id: userId, role });
     } catch (error) {
       console.error('Auth failed:', error);
       throw error;
@@ -65,6 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
     sessionStorage.removeItem('booking_expireAt');
     sessionStorage.removeItem('idempotency_key');
     setUser(null);
