@@ -120,6 +120,14 @@ async function bootstrap() {
     { id: ticketIdValid, concert_id: 1, seatNo: seatInfo, zone: 'SVIP', price: 2500000, status: 'valid' },
     { id: ticketIdCheckedIn, concert_id: 1, seatNo: 'SVIP-A-13', zone: 'SVIP', price: 2500000, status: 'checked_in' },
     { id: ticketIdRefunded, concert_id: 1, seatNo: 'SVIP-A-14', zone: 'SVIP', price: 2500000, status: 'refunded' },
+    { id: '1a1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', concert_id: 1, seatNo: 'SVIP-B-01', zone: 'SVIP', price: 2500000, status: 'valid' },
+    { id: '2b2deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', concert_id: 1, seatNo: 'SVIP-B-02', zone: 'SVIP', price: 2500000, status: 'valid' },
+    { id: '3c3deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', concert_id: 1, seatNo: 'SVIP-B-03', zone: 'SVIP', price: 2500000, status: 'valid' },
+    { id: '4d4deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', concert_id: 1, seatNo: 'SVIP-B-04', zone: 'SVIP', price: 2500000, status: 'valid' },
+    { id: '5e5deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', concert_id: 1, seatNo: 'SVIP-B-05', zone: 'SVIP', price: 2500000, status: 'valid' },
+    { id: '6f6deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', concert_id: 1, seatNo: 'SVIP-B-06', zone: 'SVIP', price: 2500000, status: 'valid' },
+    { id: '7a7deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', concert_id: 1, seatNo: 'SVIP-B-07', zone: 'SVIP', price: 2500000, status: 'invalid' },
+    { id: '8b8deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', concert_id: 1, seatNo: 'SVIP-B-08', zone: 'SVIP', price: 2500000, status: 'refunded' },
   ];
 
   for (const t of ticketsToSeed) {

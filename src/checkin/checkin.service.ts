@@ -423,8 +423,30 @@ export class CheckinService implements OnModuleInit {
   }
 
   async getMockTickets() {
-    return this.ticketRepo.find({
-      take: 10,
+    const tickets = await this.ticketRepo.find({
+      take: 30,
+    });
+
+    const privateKeyPem = process.env.ED25519_PRIVATE_KEY || DEV_PRIVATE_KEY;
+    const issuedAt = 1717848000;
+
+    return tickets.map(ticket => {
+      const message = `${ticket.id}.${ticket.concert_id}.${ticket.seatNo}.${issuedAt}`;
+      let signature = '';
+      try {
+        signature = crypto.sign(null, Buffer.from(message, 'utf8'), privateKeyPem).toString('base64url');
+      } catch (err) {
+        this.logger.error(`Failed to sign mock ticket: ${err.message}`);
+      }
+
+      return {
+        ticketId: ticket.id,
+        concertId: String(ticket.concert_id),
+        seatInfo: ticket.seatNo,
+        issuedAt,
+        signature,
+        status: ticket.status,
+      };
     });
   }
 }

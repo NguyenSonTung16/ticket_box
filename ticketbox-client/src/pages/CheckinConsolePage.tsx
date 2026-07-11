@@ -34,6 +34,7 @@ export const CheckinConsolePage: React.FC = () => {
   const [recentScans, setRecentScans] = useState<any[]>([]);
   const [offlineScans, setOfflineScans] = useState<LocalScan[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [mockTickets, setMockTickets] = useState<any[]>([]);
 
   // Check auth - redirect user if they lack permissions
   useEffect(() => {
@@ -56,6 +57,19 @@ export const CheckinConsolePage: React.FC = () => {
   useEffect(() => {
     fetchHistory();
   }, [concertId, deviceCode]);
+
+  const fetchMockTickets = async () => {
+    try {
+      const res = await axiosClient.get('/checkin/mock-tickets');
+      setMockTickets(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch mock tickets:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMockTickets();
+  }, []);
 
   // Handle Scan Verification
   const handleScanSubmit = async (e: React.FormEvent) => {
@@ -262,6 +276,52 @@ export const CheckinConsolePage: React.FC = () => {
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isOffline ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
+            </div>
+          </div>
+
+          {/* Mock Tickets Helper List */}
+          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-md font-bold flex items-center gap-2 text-white/90">
+                <span className="material-symbols-outlined text-primary text-[18px]">confirmation_number</span>
+                Danh sách vé Test Case (Database)
+              </h2>
+              <button 
+                type="button" 
+                onClick={fetchMockTickets}
+                className="text-xs bg-white/10 text-white/80 px-2.5 py-1 rounded-full hover:bg-white/20 transition-all"
+              >
+                Làm mới
+              </button>
+            </div>
+            <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-2">
+              {mockTickets.length > 0 ? (
+                mockTickets.map((t, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => {
+                      setTicketIdInput(t.ticketId);
+                      setSeatInfoInput(t.seatInfo);
+                      setIssuedAtInput(String(t.issuedAt));
+                      setSignatureInput(t.signature);
+                    }}
+                    className="flex justify-between items-center bg-black/40 hover:bg-primary/10 border border-white/5 hover:border-primary/30 p-2.5 rounded-xl cursor-pointer transition-all text-xs"
+                  >
+                    <div>
+                      <div className="font-mono text-white/95">{t.ticketId.slice(0, 18)}...</div>
+                      <div className="text-white/40 mt-0.5">Ghế: {t.seatInfo} | Concert: {t.concertId}</div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      t.status === 'valid' ? 'bg-emerald-500/10 text-emerald-400' :
+                      t.status === 'checked_in' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
+                    }`}>
+                      {t.status.toUpperCase()}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-xs text-white/30">Không tìm thấy vé test.</div>
+              )}
             </div>
           </div>
 
