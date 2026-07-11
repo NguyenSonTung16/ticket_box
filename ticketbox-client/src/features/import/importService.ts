@@ -19,19 +19,19 @@ export interface ImportJob {
 export const importService = {
   // Lấy danh sách các bản ghi import của một sự kiện
   listImports: async (showId: number): Promise<ImportJob[]> => {
-    const response = await axiosClient.get(`/api/admin/imports?showId=${showId}`);
+    const response = await axiosClient.get(`/api/organizer/imports?showId=${showId}`);
     return response.data;
   },
 
   // Xem chi tiết một job import
   getImportStatus: async (jobId: string): Promise<ImportJob> => {
-    const response = await axiosClient.get(`/api/admin/imports/${jobId}`);
+    const response = await axiosClient.get(`/api/organizer/imports/${jobId}`);
     return response.data;
   },
 
   // Lấy URL upload trực tiếp lên MinIO (Pre-signed URL)
   getUploadUrl: async (showId: number, sponsorId: number): Promise<{ upload_url: string; file_key: string }> => {
-    const response = await axiosClient.get(`/api/admin/guests/csv-upload-url?showId=${showId}&sponsorId=${sponsorId}`);
+    const response = await axiosClient.get(`/api/organizer/guests/csv-upload-url?showId=${showId}&sponsorId=${sponsorId}`);
     return response.data;
   },
 
@@ -47,7 +47,7 @@ export const importService = {
 
   // Kích hoạt worker bắt đầu xử lý file CSV đã upload
   triggerImport: async (fileKey: string, showId: number, sponsorId: number): Promise<{ job_id: string; message: string }> => {
-    const response = await axiosClient.post('/api/admin/guests/import', {
+    const response = await axiosClient.post('/api/organizer/guests/import', {
       file_key: fileKey,
       show_id: showId,
       sponsor_id: sponsorId,

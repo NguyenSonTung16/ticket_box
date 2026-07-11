@@ -28,7 +28,7 @@ async function bootstrap() {
   const passwordHash = await bcrypt.hash('Password123!', 10);
   
   const usersToSeed = [
-    { email: 'admin@ticketbox.com', role: 'ADMIN', status: 'ACTIVE' },
+    { email: 'admin@ticketbox.com', role: 'ORGANIZER', status: 'ACTIVE' },
     { email: 'organizer@ticketbox.com', role: 'ORGANIZER', status: 'ACTIVE' },
     { email: 'staff@ticketbox.com', role: 'CHECKIN_STAFF', status: 'ACTIVE' },
     { email: 'user@ticketbox.com', role: 'USER', status: 'ACTIVE' },

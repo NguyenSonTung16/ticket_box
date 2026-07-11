@@ -11,9 +11,9 @@ export class SearchController {
     return this.searchService.searchShows(q);
   }
 
-  @Post('admin/sync')
-  async syncAdminData(@Body() body: any) {
-    await this.searchService.syncAdminData(body);
+  @Post('organizer/sync')
+  async syncConcertData(@Body() body: any) {
+    await this.searchService.syncConcertData(body);
     return { success: true };
   }
 }

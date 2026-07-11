@@ -68,11 +68,10 @@ export const Header: React.FC = () => {
   };
 
   // Determine if user has special roles for Star Studio
-  const hasStudioAccess = user && ['ADMIN', 'CHECKIN_STAFF', 'ORGANIZER'].includes(user.role);
+  const hasStudioAccess = user && ['CHECKIN_STAFF', 'ORGANIZER'].includes(user.role);
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'ADMIN': return 'bg-red-500/20 text-red-400 border border-red-500/30';
       case 'ORGANIZER': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
       case 'CHECKIN_STAFF': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
@@ -179,7 +178,7 @@ export const Header: React.FC = () => {
                   </div>
                   
                   {/* Soát vé Option */}
-                  {(user?.role === 'ADMIN' || user?.role === 'CHECKIN_STAFF') && (
+                  {(user?.role === 'CHECKIN_STAFF' || user?.role === 'ORGANIZER') && (
                     <button 
                       onClick={() => { setIsStudioOpen(false); navigate('/checkin'); }}
                       className="w-full text-left px-4 py-2.5 text-sm text-on-primary-container hover:bg-on-primary-container/5 transition-colors flex items-center gap-2"
@@ -190,7 +189,7 @@ export const Header: React.FC = () => {
                   )}
 
                   {/* Organizer Center Option */}
-                  {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
+                  {user?.role === 'ORGANIZER' && (
                     <button 
                       onClick={() => { setIsStudioOpen(false); navigate('/organizer'); }}
                       className="w-full text-left px-4 py-2.5 text-sm text-on-primary-container hover:bg-on-primary-container/5 transition-colors flex items-center gap-2"
@@ -200,14 +199,14 @@ export const Header: React.FC = () => {
                     </button>
                   )}
 
-                  {/* Admin Approval Option */}
-                  {user?.role === 'ADMIN' && (
+                  {/* Bio Approval Option */}
+                  {user?.role === 'ORGANIZER' && (
                     <button 
-                      onClick={() => { setIsStudioOpen(false); navigate('/admin'); }}
+                      onClick={() => { setIsStudioOpen(false); navigate('/organizer/bio-approval'); }}
                       className="w-full text-left px-4 py-2.5 text-sm text-on-primary-container hover:bg-on-primary-container/5 transition-colors flex items-center gap-2"
                     >
-                      <span className="material-symbols-outlined text-[18px] text-red-500">admin_panel_settings</span>
-                      Phê duyệt sự kiện
+                      <span className="material-symbols-outlined text-[18px] text-pink-400">analytics</span>
+                      Duyệt tiểu sử (AI Bio)
                     </button>
                   )}
                 </div>
@@ -318,7 +317,7 @@ export const Header: React.FC = () => {
             {hasStudioAccess && (
               <div className="flex flex-col gap-2.5 pt-2 border-t border-on-primary-container/10">
                 <span className="text-xs font-bold text-on-primary-container/70 uppercase tracking-wider px-1">Star Studio</span>
-                {(user?.role === 'ADMIN' || user?.role === 'CHECKIN_STAFF') && (
+                {(user?.role === 'CHECKIN_STAFF' || user?.role === 'ORGANIZER') && (
                   <button 
                     onClick={() => { setIsMobileMenuOpen(false); navigate('/checkin'); }}
                     className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-1.5 pl-3 text-sm transition-colors"
@@ -327,7 +326,7 @@ export const Header: React.FC = () => {
                     Soát vé (Check-in)
                   </button>
                 )}
-                {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
+                {user?.role === 'ORGANIZER' && (
                   <button 
                     onClick={() => { setIsMobileMenuOpen(false); navigate('/organizer'); }}
                     className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-1.5 pl-3 text-sm transition-colors"
@@ -336,13 +335,13 @@ export const Header: React.FC = () => {
                     Organizer Center
                   </button>
                 )}
-                {user?.role === 'ADMIN' && (
+                {user?.role === 'ORGANIZER' && (
                   <button 
-                    onClick={() => { setIsMobileMenuOpen(false); navigate('/admin'); }}
+                    onClick={() => { setIsMobileMenuOpen(false); navigate('/organizer/bio-approval'); }}
                     className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-1.5 pl-3 text-sm transition-colors"
                   >
-                    <span className="material-symbols-outlined text-[18px] text-red-500">admin_panel_settings</span>
-                    Phê duyệt sự kiện
+                    <span className="material-symbols-outlined text-[18px] text-pink-400">analytics</span>
+                    Duyệt tiểu sử (AI Bio)
                   </button>
                 )}
               </div>

@@ -38,7 +38,7 @@ export const CheckinConsolePage: React.FC = () => {
 
   // Check auth - redirect user if they lack permissions
   useEffect(() => {
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'ORGANIZER' && user.role !== 'CHECKIN_STAFF')) {
+    if (!user || (user.role !== 'ORGANIZER' && user.role !== 'CHECKIN_STAFF')) {
       alert('Bạn không có quyền truy cập trang soát vé.');
       navigate('/');
     }
@@ -471,48 +471,7 @@ export const CheckinConsolePage: React.FC = () => {
             </div>
           )}
 
-          {/* Server Recent Logs list */}
-          {user && user.role === 'ADMIN' ? (
-            <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex-1 flex flex-col">
-              <h2 className="text-md font-bold mb-4 flex items-center gap-2 text-white/90">
-                <span className="material-symbols-outlined text-primary text-[18px]">history</span>
-                Lịch sử quét tại cổng gần đây (Server Logs)
-              </h2>
-              
-              <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 flex flex-col gap-3">
-                {recentScans.length > 0 ? (
-                  recentScans.map((scan, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white/[0.02] hover:bg-white/[0.04] p-3 rounded-xl border border-white/5 transition-colors text-xs">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-white/90">{scan.ticketId.slice(0, 18)}...</span>
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded-full ${
-                            scan.isOffline ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'
-                          }`}>
-                            {scan.isOffline ? 'Offline' : 'Online'}
-                          </span>
-                        </div>
-                        <div className="text-white/40 mt-1">Ghế: {scan.seatInfo} | Máy: {scan.deviceId} | Lúc: {new Date(scan.scannedAt).toLocaleTimeString()}</div>
-                      </div>
-                      <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                        scan.syncStatus === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400' :
-                        scan.syncStatus === 'CONFLICT' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'
-                      }`}>
-                        {scan.syncStatus}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-white/30 text-xs py-10">Không tìm thấy bản ghi quét nào trên database.</div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 text-center text-white/40 text-xs flex flex-col items-center justify-center min-h-[160px]">
-              <span className="material-symbols-outlined text-[32px] text-white/20 mb-2">lock</span>
-              <p>Bạn không có quyền xem nhật ký quét của Server (Yêu cầu vai trò ADMIN).</p>
-            </div>
-          )}
+
 
         </div>
 

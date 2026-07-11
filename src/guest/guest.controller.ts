@@ -31,7 +31,7 @@ class TriggerImportDto {
   sponsorId: string;
 }
 
-@Controller('api/admin')
+@Controller('api/organizer')
 @UseGuards(JwtAuthGuard)
 export class GuestController {
   constructor(

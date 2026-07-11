@@ -6,8 +6,7 @@ import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   USER: [],
   CHECKIN_STAFF: ['CHECKIN_SCAN'],
-  ORGANIZER: ['AI_BIO_UPLOAD'],
-  ADMIN: ['CHECKIN_SCAN', 'CHECKIN_VIEW_HISTORY', 'AI_BIO_UPLOAD'],
+  ORGANIZER: ['AI_BIO_UPLOAD', 'CHECKIN_SCAN', 'CHECKIN_VIEW_HISTORY'],
 };
 
 @Injectable()

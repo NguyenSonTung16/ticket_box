@@ -18,12 +18,12 @@ async function bootstrap() {
   const meiliClient = app.get(MEILISEARCH_CLIENT);
 
   // 1. Postgres Seed: Tạo user
-  const adminEmail = 'admin@ticketbox.com';
-  let admin = await userRepository.findOne({ where: { email: adminEmail } });
-  if (!admin) {
-    admin = userRepository.create({ email: adminEmail, passwordHash: 'hashed_password' });
-    await userRepository.save(admin);
-    console.log('Đã tạo Admin User trong Postgres.');
+  const organizerEmail = 'organizer@ticketbox.com';
+  let organizer = await userRepository.findOne({ where: { email: organizerEmail } });
+  if (!organizer) {
+    organizer = userRepository.create({ email: organizerEmail, passwordHash: 'hashed_password', role: 'ORGANIZER' });
+    await userRepository.save(organizer);
+    console.log('Đã tạo Organizer User trong Postgres.');
   }
 
   const dummyConcerts = [
@@ -53,7 +53,7 @@ async function bootstrap() {
         id: cData.id,
         performanceDate: cData.performanceDate,
         status: 'ACTIVE',
-        organizer_id: admin.id
+        organizer_id: organizer.id
       });
       await concertRepository.save(concert);
       console.log(`Đã tạo Concert ID ${cData.id} trong Postgres.`);

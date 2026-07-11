@@ -3,7 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeor
 export enum UserRole {
   USER = 'USER',
   ORGANIZER = 'ORGANIZER',
-  ADMIN = 'ADMIN',
+  CHECKIN_STAFF = 'CHECKIN_STAFF',
 }
 
 @Entity('users')
