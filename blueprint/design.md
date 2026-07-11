@@ -82,33 +82,83 @@ graph TB
 
 ---
 
-## 3. Thiết kế Cơ sở dữ liệu tối giản (Database Schema)
-Để phục vụ việc lưu trữ thông tin concert và số vé gốc, hệ thống sử dụng PostgreSQL với các bảng được chuẩn hóa:
+## 3. Thiết kế Cơ sở dữ liệu (Database Schema)
+Để phục vụ việc lưu trữ thông tin concert, sơ đồ ghế và xử lý thanh toán, hệ thống sử dụng PostgreSQL với các bảng được chuẩn hóa như sau:
 
 ```mermaid
 erDiagram
-    CONCERT ||--o{ TICKET_TYPE : "has"
-    CONCERT {
-        bigint id PK
-        varchar title
-        text description
-        timestamp event_date
-        varchar status "DRAFT, PUBLISHED, CANCELLED"
-        timestamp created_at
+    users ||--o{ invoices : "has"
+    users ||--o{ seat_inventory : "holds/books"
+    concerts ||--o{ zone_inventory : "has zones"
+    concerts ||--o{ seat_inventory : "has seats"
+    invoices ||--|{ tickets : "contains"
+
+    users {
+        uuid id PK
+        varchar email
+        varchar passwordHash
+        timestamp createdAt
     }
-    TICKET_TYPE {
-        bigint id PK
-        bigint concert_id FK
-        varchar name "SVIP, VIP, CAT1, CAT2, GA"
-        numeric price
-        integer total_quantity
-        integer remaining_quantity
+    concerts {
+        int id PK
+        varchar name
+        timestamp performanceDate
+        varchar location
+        varchar status
+    }
+    zone_inventory {
+        varchar zone PK
+        int concert_id PK
+        int totalCapacity
+        int availableSlots
+        int price
+        int ticketLimit
+    }
+    seat_inventory {
+        varchar seatNo PK
+        int concert_id PK
+        varchar zone
+        varchar status "AVAILABLE, RESERVED, BOOKED"
+        uuid reservedBy FK
+        timestamp expiryTime
+    }
+    invoices {
+        uuid id PK
+        uuid userId FK
+        int concert_id FK
+        decimal totalAmount
+        varchar status
+        timestamp createdAt
+    }
+    tickets {
+        uuid id PK
+        uuid invoiceId FK
+        int concert_id FK
+        varchar seatNo FK
+        varchar zone FK
+        decimal price
+        varchar qrCodeUrl
+    }
+    idempotency_keys {
+        uuid id PK
+        varchar key UK
+        uuid userId FK
+        varchar status
+        int concert_id FK
+        jsonb requestPayload
+        jsonb responsePayload
+        varchar paypalOrderId
+        timestamp createdAt
+        timestamp expiresAt
     }
 ```
 
 ### Chi tiết Schema:
 *   **Bảng `concerts`**: Lưu thông tin tĩnh của show diễn. Dữ liệu này ít khi thay đổi nên sẽ được cache rất lâu.
-*   **Bảng `ticket_types`**: Lưu thông tin giá vé và số lượng vé còn lại (`remaining_quantity`). Dữ liệu này biến động liên tục khi có giao dịch và cần được đồng bộ cực nhanh lên tầng Cache.
+*   **Bảng `zone_inventory`**: Quản lý sức chứa và số lượng vé trống của các khu vực chung (không có ghế ngồi cố định, ví dụ: VIP, Normal). Chứa cấu hình `ticketLimit` giới hạn mua.
+*   **Bảng `seat_inventory`**: Quản lý từng ghế ngồi vật lý độc lập (Dùng cho hạng vé SVIP). Có cơ chế Lock giữ ghế bằng `expiryTime` và `reservedBy`.
+*   **Bảng `invoices` & `tickets`**: Quản lý hóa đơn và vé thực tế xuất ra cho người dùng sau khi thanh toán.
+*   **Bảng `idempotency_keys`**: Lưu khóa chống trùng lặp để ngăn ngừa lỗi thanh toán đúp (Double-charge) khi người dùng spam nút thanh toán.
 
 ---
 
