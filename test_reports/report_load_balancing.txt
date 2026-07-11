@@ -24,111 +24,111 @@ stateless          [   0% ] 1 VUs    00m01.0s/10m0s  0/1 shared iters
 running (00m02.0s), 300/311 VUs, 1101 complete and 0 interrupted iterations
 round_robin        [  13% ] 300 VUs  02.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
 running (00m03.0s), 300/311 VUs, 1701 complete and 0 interrupted iterations
 round_robin        [  20% ] 300 VUs  03.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
 running (00m04.0s), 300/311 VUs, 2301 complete and 0 interrupted iterations
 round_robin        [  26% ] 300 VUs  04.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
 running (00m05.0s), 300/311 VUs, 2901 complete and 0 interrupted iterations
 round_robin        [  33% ] 300 VUs  05.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
 running (00m06.0s), 300/311 VUs, 3501 complete and 0 interrupted iterations
 round_robin        [  40% ] 300 VUs  06.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
 running (00m07.0s), 300/311 VUs, 4101 complete and 0 interrupted iterations
 round_robin        [  46% ] 300 VUs  07.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
 running (00m08.0s), 300/311 VUs, 4701 complete and 0 interrupted iterations
 round_robin        [  53% ] 300 VUs  08.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
 running (00m09.0s), 300/311 VUs, 5301 complete and 0 interrupted iterations
 round_robin        [  60% ] 300 VUs  09.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
-running (00m10.0s), 300/311 VUs, 5792 complete and 0 interrupted iterations
+running (00m10.0s), 300/311 VUs, 5901 complete and 0 interrupted iterations
 round_robin        [  66% ] 300 VUs  10.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
-running (00m11.0s), 300/311 VUs, 6392 complete and 0 interrupted iterations
+running (00m11.0s), 300/311 VUs, 6501 complete and 0 interrupted iterations
 round_robin        [  73% ] 300 VUs  11.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
-running (00m12.0s), 300/311 VUs, 6992 complete and 0 interrupted iterations
+running (00m12.0s), 300/311 VUs, 7101 complete and 0 interrupted iterations
 round_robin        [  80% ] 300 VUs  12.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
-running (00m13.0s), 300/311 VUs, 7592 complete and 0 interrupted iterations
+running (00m13.0s), 300/311 VUs, 7701 complete and 0 interrupted iterations
 round_robin        [  86% ] 300 VUs  13.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
-running (00m14.0s), 300/311 VUs, 8192 complete and 0 interrupted iterations
+running (00m14.0s), 300/311 VUs, 8300 complete and 0 interrupted iterations
 round_robin        [  93% ] 300 VUs  14.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
-running (00m15.0s), 300/311 VUs, 8792 complete and 0 interrupted iterations
+running (00m15.0s), 300/311 VUs, 8891 complete and 0 interrupted iterations
 round_robin        [ 100% ] 300 VUs  15.0s/15s      
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters
 
 
   Γûê THRESHOLDS 
 
     http_req_duration
-    Γ£ô 'p(95)<200' p(95)=41.03ms
+    Γ£ô 'p(95)<200' p(95)=32.71ms
 
 
   Γûê TOTAL RESULTS 
 
-    checks_total.......: 9111   590.771829/s
-    checks_succeeded...: 98.89% 9010 out of 9111
-    checks_failed......: 1.10%  101 out of 9111
+    checks_total.......: 9220   595.587205/s
+    checks_succeeded...: 98.87% 9116 out of 9220
+    checks_failed......: 1.12%  104 out of 9220
 
     Γ£ù status is 200
-      Γå│  98% ΓÇö Γ£ô 8800 / Γ£ù 101
+      Γå│  98% ΓÇö Γ£ô 8906 / Γ£ù 104
     Γ£ô status is 200 or 502
     Γ£ô seat B-20 is reserved
 
     HTTP
-    http_req_duration..............: avg=11.69ms  min=0s     med=3.91ms   max=281.66ms p(90)=17.65ms  p(95)=41.03ms 
-      { expected_response:true }...: avg=11.82ms  min=1.03ms med=3.94ms   max=281.66ms p(90)=17.79ms  p(95)=41.23ms 
-    http_req_failed................: 1.12%  102 out of 9104
-    http_reqs......................: 9104   590.317938/s
+    http_req_duration..............: avg=9.3ms    min=0s     med=3.22ms   max=269.77ms p(90)=12.43ms  p(95)=32.71ms 
+      { expected_response:true }...: avg=9.4ms    min=1.02ms med=3.23ms   max=269.77ms p(90)=12.56ms  p(95)=33.58ms 
+    http_req_failed................: 1.12%  104 out of 9213
+    http_reqs......................: 9213   595.135024/s
 
     EXECUTION
-    iteration_duration.............: avg=503.01ms min=3.59ms med=504.42ms max=1.4s     p(90)=519.15ms p(95)=558.17ms
-    iterations.....................: 9092   589.539838/s
+    iteration_duration.............: avg=500.12ms min=4.57ms med=503.67ms max=1.49s    p(90)=513.74ms p(95)=540.63ms
+    iterations.....................: 9201   594.359856/s
     vus............................: 300    min=300         max=301
     vus_max........................: 311    min=311         max=311
 
     NETWORK
-    data_received..................: 14 MB  927 kB/s
-    data_sent......................: 811 kB 53 kB/s
+    data_received..................: 15 MB  988 kB/s
+    data_sent......................: 820 kB 53 kB/s
 
 
 
 
-running (00m15.4s), 000/311 VUs, 9092 complete and 0 interrupted iterations
+running (00m15.5s), 000/311 VUs, 9201 complete and 0 interrupted iterations
 round_robin      Γ£ô [ 100% ] 300 VUs  15s            
 server_down_test Γ£ô [ 100% ] 10 VUs   00m00.4s/10m0s  200/200 shared iters
-stateless        Γ£ô [ 100% ] 1 VUs    00m01.4s/10m0s  1/1 shared iters
+stateless        Γ£ô [ 100% ] 1 VUs    00m01.5s/10m0s  1/1 shared iters

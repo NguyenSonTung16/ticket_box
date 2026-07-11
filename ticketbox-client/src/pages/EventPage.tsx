@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import debounce from 'lodash.debounce';
 import { useAuth } from '../context/AuthContext';
 import { LoginModal } from '../components/LoginModal';
+import { WaitingRoomModal } from '../components/WaitingRoomModal';
 
 import { useSearchParams } from 'react-router-dom';
 import axiosClient from '../utils/axiosClient';
@@ -14,8 +15,17 @@ export const EventPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const { user, logout } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isWaitingRoomOpen, setIsWaitingRoomOpen] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleBuyClick = () => {
+    if (!user) {
+      setIsLoginModalOpen(true);
+    } else {
+      setIsWaitingRoomOpen(true);
+    }
+  };
   const [error, setError] = useState<string | null>(null);
 
   // Bọc API call trong Debounce 300ms
@@ -40,6 +50,8 @@ export const EventPage: React.FC = () => {
     setSearchQuery(e.target.value);
     fetchSearchResults(e.target.value);
   };
+
+  // Đã gỡ bỏ hook useTicketEvents khỏi EventPage để tối ưu hóa, không mở 80.000 kết nối SSE khi xem show
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -178,151 +190,151 @@ export const EventPage: React.FC = () => {
           <>
             {/* Hero Section: Event Ticket Card */}
             <section className="relative group">
-          {loading ? (
-            <div className="flex flex-col md:flex-row bg-surface-container-high rounded-xl h-[400px] animate-pulse"></div>
-          ) : (
-            <div className="flex flex-col md:flex-row bg-surface-container-high rounded-xl overflow-hidden shadow-2xl relative">
-              {/* Ticket Content (Left) */}
-              <div className="flex-1 p-8 md:p-12 flex flex-col justify-between relative">
-                <div className="space-y-6">
-                  <h1 className="font-headline-lg text-headline-lg text-on-surface leading-tight">{eventData?.name}</h1>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-primary">
-                      <span className="material-symbols-outlined">calendar_today</span>
-                      <span className="font-body-md">{eventData?.performanceDate ? new Date(eventData.performanceDate).toLocaleString('vi-VN') : ''}</span>
-                    </div>
-                    <div className="flex items-start gap-3 text-on-surface-variant">
-                      <span className="material-symbols-outlined">location_on</span>
-                      <div>
-                        <p className="font-headline-md text-primary">{eventData?.location?.split(',')[0]}</p>
-                        {eventData?.location?.includes(',') && (
-                          <p className="font-body-sm">{eventData.location}</p>
-                        )}
+              {loading ? (
+                <div className="flex flex-col md:flex-row bg-surface-container-high rounded-xl h-[400px] animate-pulse"></div>
+              ) : (
+                <div className="flex flex-col md:flex-row bg-surface-container-high rounded-xl overflow-hidden shadow-2xl relative">
+                  {/* Ticket Content (Left) */}
+                  <div className="flex-1 p-8 md:p-12 flex flex-col justify-between relative">
+                    <div className="space-y-6">
+                      <h1 className="font-headline-lg text-headline-lg text-on-surface leading-tight">{eventData?.name}</h1>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 text-primary">
+                          <span className="material-symbols-outlined">calendar_today</span>
+                          <span className="font-body-md">{eventData?.performanceDate ? new Date(eventData.performanceDate).toLocaleString('vi-VN') : ''}</span>
+                        </div>
+                        <div className="flex items-start gap-3 text-on-surface-variant">
+                          <span className="material-symbols-outlined">location_on</span>
+                          <div>
+                            <p className="font-headline-md text-primary">{eventData?.venue_name}</p>
+                            {eventData?.province && eventData.province !== eventData.venue_name && (
+                              <p className="font-body-sm">{eventData.province}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                <div className="mt-12 pt-8 border-t border-outline-variant flex flex-col gap-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-label-md text-on-surface-variant">Trạng thái</p>
-                      <p className="font-headline-md text-primary-container">{eventData?.status || 'ON_SALE'}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => window.location.href = `/seat.html?id=${eventId}`} className="w-full bg-primary-container text-on-primary-container font-headline-md py-4 rounded-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-container/20 relative overflow-hidden">
-                    Mua vé ngay
-                  </button>
-                </div>
-                {/* Stub Divider */}
-                <div className="hidden md:block absolute right-0 top-0 bottom-0 w-px bg-dashed bg-outline-variant opacity-30"></div>
-              </div>
-              {/* Poster Image (Right) */}
-              <div className="w-full md:w-1/2 h-[400px] md:h-auto relative">
-                <img alt="Event poster" className="w-full h-full object-cover" src={eventData?.coverImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuABvAGlSse2Xau-2J8KDcHYWpxl46eIzBU6V9Ek1rf41fU1cH07dl7qPt6rMAyKGpEjyspkOZMw9C_Y6f18Sx4zU_ZkUBFWwl410uJ5ai2Qg7WTNb5AkmApYEaN6R_PtcLEE2Mkf-IbqdJEZ198gUzvaVZHfDGH7-oCvhVkyDdKdW3qiFCc82qHsVN9yWcEBXLap0pJTEjEpbzBXT3ZLfQ1PMoGfa-YuCGMSXBxhTTvc_glH-ip0yCIipasrLKv17neupyz7iONm4k-"} />
-                <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-surface-container-high/60"></div>
-
-              </div>
-              {/* Ticket Notches */}
-              <div className="hidden md:block absolute left-1/2 -ml-3 -top-3 w-6 h-6 bg-background rounded-full"></div>
-              <div className="hidden md:block absolute left-1/2 -ml-3 -bottom-3 w-6 h-6 bg-background rounded-full"></div>
-            </div>
-          )}
-        </section>
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-          {/* Left: Description & Details */}
-          <div className="lg:col-span-8 space-y-8">
-
-            <div className="bg-surface-container-high rounded-xl p-8 space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-4 text-on-surface-variant font-body-md leading-relaxed whitespace-pre-line">
-                  {loading ? (
-                    <div className="h-24 bg-surface-container-low animate-pulse rounded"></div>
-                  ) : (
-                    <p>{eventData?.description}</p>
-                  )}
-
-                  {eventData?.artistBio && (
-                    <div className="mt-8">
-                      <h3 className="text-on-surface font-headline-md mb-2">Nghệ sĩ tham gia</h3>
-                      <p>{eventData?.artistBio}</p>
-                    </div>
-                  )}
-
-                  {eventData?.rules && (
-                    <div className="mt-8">
-                      <h3 className="text-on-surface font-headline-md mb-2">Quy định sự kiện</h3>
-                      <p className="text-error font-bold flex items-center gap-2 mb-2">
-                        <span className="material-symbols-outlined">warning</span>
-                        Lưu ý từ BTC:
-                      </p>
-                      <p>{eventData?.rules}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            {/* Map Section */}
-            <section className="bg-surface-container-high rounded-xl p-6 md:p-8 space-y-8">
-              <div className="flex justify-between items-center">
-                <h2 className="text-primary font-headline-md">Lịch diễn</h2>
-
-              </div>
-              <div className="bg-surface-container-lowest/50 rounded-xl p-6 border border-outline-variant flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="font-body-md text-on-surface">19:30 - 22:00, T7</p>
-                    <p className="font-label-md text-primary">06 Tháng 06, 2026</p>
-                  </div>
-                </div>
-                <button onClick={() => window.location.href = '/seat.html'} className="bg-primary text-on-primary px-8 py-2.5 rounded-lg font-headline-md hover:brightness-110">
-                  Mua vé ngay
-                </button>
-              </div>
-              <div className="space-y-6">
-                <h3 className="text-on-surface font-headline-md">Thông tin vé</h3>
-                <div className="space-y-3">
-                  {loading ? (
-                    <div className="h-16 bg-surface-container-low animate-pulse rounded-xl"></div>
-                  ) : eventData?.zones && eventData.zones.length > 0 ? (
-                    eventData.zones.map((zone: any, idx: number) => (
-                      <div key={idx} className="bg-surface-container-lowest/30 p-4 rounded-xl border border-outline-variant flex justify-between items-center">
+                    <div className="mt-12 pt-8 border-t border-outline-variant flex flex-col gap-6">
+                      <div className="flex items-center justify-between">
                         <div>
-                          <span className="font-bold text-on-surface" style={{ color: zone.color }}>{zone.zone}</span>
-                          {zone.benefits && zone.benefits.length > 0 && (
-                            <p className="text-on-surface-variant text-xs mt-1">{zone.benefits.join(', ')}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-primary font-bold">{new Intl.NumberFormat('vi-VN').format(zone.price)} đ</p>
-                          {zone.availableSlots === 0 && (
-                            <span className="inline-block bg-error/20 text-error text-[10px] px-2 py-0.5 rounded uppercase font-bold mt-1">Hết vé</span>
-                          )}
+                          <p className="font-label-md text-on-surface-variant">Trạng thái</p>
+                          <p className="font-headline-md text-primary-container">{eventData?.status || 'ON_SALE'}</p>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-on-surface-variant font-body-sm">Chưa có thông tin giá vé.</p>
-                  )}
+                      <button onClick={handleBuyClick} className="w-full bg-primary-container text-on-primary-container font-headline-md py-4 rounded-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-container/20 relative overflow-hidden">
+                        Mua vé ngay
+                      </button>
+                    </div>
+                    {/* Stub Divider */}
+                    <div className="hidden md:block absolute right-0 top-0 bottom-0 w-px bg-dashed bg-outline-variant opacity-30"></div>
+                  </div>
+                  {/* Poster Image (Right) */}
+                  <div className="w-full md:w-1/2 h-[400px] md:h-auto relative">
+                    <img alt="Event poster" className="w-full h-full object-cover" src={eventData?.cover_image_url || eventData?.image_url || "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&q=80&w=1200"} />
+                    <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-surface-container-high/60"></div>
+
+                  </div>
+                  {/* Ticket Notches */}
+                  <div className="hidden md:block absolute left-1/2 -ml-3 -top-3 w-6 h-6 bg-background rounded-full"></div>
+                  <div className="hidden md:block absolute left-1/2 -ml-3 -bottom-3 w-6 h-6 bg-background rounded-full"></div>
                 </div>
-              </div>
+              )}
             </section>
-          </div>
-          {/* Right Sidebar: Promo & Summary */}
-          <div className="lg:col-span-4 space-y-gutter">
-            {/* Promo Card */}
-            {/* Event Stats */}
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+              {/* Left: Description & Details */}
+              <div className="lg:col-span-8 space-y-8">
+
+                <div className="bg-surface-container-high rounded-xl p-8 space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-4 text-on-surface-variant font-body-md leading-relaxed whitespace-pre-line">
+                      {loading ? (
+                        <div className="h-24 bg-surface-container-low animate-pulse rounded"></div>
+                      ) : (
+                        <p>{eventData?.description}</p>
+                      )}
+
+                      {eventData?.artistBio && (
+                        <div className="mt-8">
+                          <h3 className="text-on-surface font-headline-md mb-2">Nghệ sĩ tham gia</h3>
+                          <p>{eventData?.artistBio}</p>
+                        </div>
+                      )}
+
+                      {eventData?.rules && (
+                        <div className="mt-8">
+                          <h3 className="text-on-surface font-headline-md mb-2">Quy định sự kiện</h3>
+                          <p className="text-error font-bold flex items-center gap-2 mb-2">
+                            <span className="material-symbols-outlined">warning</span>
+                            Lưu ý từ BTC:
+                          </p>
+                          <p>{eventData?.rules}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Map Section */}
+                <section className="bg-surface-container-high rounded-xl p-6 md:p-8 space-y-8">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-primary font-headline-md">Lịch diễn</h2>
+
+                  </div>
+                  <div className="bg-surface-container-lowest/50 rounded-xl p-6 border border-outline-variant flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="font-body-md text-on-surface">19:30 - 22:00, T7</p>
+                        <p className="font-label-md text-primary">06 Tháng 06, 2026</p>
+                      </div>
+                    </div>
+                    <button onClick={handleBuyClick} className="bg-primary text-on-primary px-8 py-2.5 rounded-lg font-headline-md hover:brightness-110">
+                      Mua vé ngay
+                    </button>
+                  </div>
+                  <div className="space-y-6">
+                    <h3 className="text-on-surface font-headline-md">Thông tin vé</h3>
+                    <div className="space-y-3">
+                      {loading ? (
+                        <div className="h-16 bg-surface-container-low animate-pulse rounded-xl"></div>
+                      ) : eventData?.zones && eventData.zones.length > 0 ? (
+                        eventData.zones.map((zone: any, idx: number) => (
+                          <div key={idx} className="bg-surface-container-lowest/30 p-4 rounded-xl border border-outline-variant flex justify-between items-center">
+                            <div>
+                              <span className="font-bold text-on-surface" style={{ color: zone.color }}>{zone.zone}</span>
+                              {zone.benefits && zone.benefits.length > 0 && (
+                                <p className="text-on-surface-variant text-xs mt-1">{zone.benefits.join(', ')}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-primary font-bold">{new Intl.NumberFormat('vi-VN').format(zone.price)} đ</p>
+                              {zone.availableSlots === 0 && (
+                                <span className="inline-block bg-error/20 text-error text-[10px] px-2 py-0.5 rounded uppercase font-bold mt-1">Hết vé</span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-on-surface-variant font-body-sm">Chưa có thông tin giá vé.</p>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              </div>
+              {/* Right Sidebar: Promo & Summary */}
+              <div className="lg:col-span-4 space-y-gutter">
+                {/* Promo Card */}
+                {/* Event Stats */}
 
 
-          </div>
-        </div>
+              </div>
+            </div>
           </>
         )}
       </main>
 
       {/* FAB for quick booking (Mobile) */}
       <div className="md:hidden fixed bottom-6 right-6 z-50">
-        <button className="bg-primary-container text-on-primary-container w-16 h-16 rounded-full shadow-2xl flex items-center justify-center active:scale-95 duration-200">
+        <button onClick={handleBuyClick} className="bg-primary-container text-on-primary-container w-16 h-16 rounded-full shadow-2xl flex items-center justify-center active:scale-95 duration-200">
           <span className="material-symbols-outlined text-3xl">confirmation_number</span>
         </button>
       </div>
@@ -330,6 +342,12 @@ export const EventPage: React.FC = () => {
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
+      />
+      <WaitingRoomModal
+        isOpen={isWaitingRoomOpen}
+        onClose={() => setIsWaitingRoomOpen(false)}
+        concertId={eventId}
+        onSuccess={() => window.location.href = `/seat.html?id=${eventId}`}
       />
     </div>
   );

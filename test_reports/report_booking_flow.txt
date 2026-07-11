@@ -10,129 +10,142 @@
         script: test/k6-booking-flow.js
         output: -
 
-     scenarios: (100.00%) 5 scenarios, 601 max VUs, 1m0s max duration (incl. graceful stop):
+     scenarios: (100.00%) 5 scenarios, 210 max VUs, 1m0s max duration (incl. graceful stop):
               * ga_booking: 1 iterations for each of 50 VUs (maxDuration: 30s, exec: bookGA, gracefulStop: 30s)
-              * quota_limit: 10 iterations shared among 1 VUs (maxDuration: 30s, exec: bookSVIPQuota, gracefulStop: 30s)
+              * quota_limit: 10 iterations shared among 10 VUs (maxDuration: 30s, exec: bookSVIPQuota, gracefulStop: 30s)
               * sold_out: 100 iterations shared among 10 VUs (maxDuration: 30s, exec: bookSoldOut, gracefulStop: 30s)
-              * svip_clash: 500 iterations shared among 500 VUs (maxDuration: 30s, exec: bookSVIPClash, gracefulStop: 30s)
+              * svip_clash: 200 iterations shared among 100 VUs (maxDuration: 30s, exec: bookSVIPClash, gracefulStop: 30s)
               * svip_selection: 1 iterations for each of 40 VUs (maxDuration: 30s, exec: bookSVIPRandom, gracefulStop: 30s)
 
 
-running (0m00.9s), 334/601 VUs, 275 complete and 0 interrupted iterations
-ga_booking       [  16% ] 50 VUs   00.9s/30s  08/50 iters, 1 per VU
-quota_limit      [   0% ] 1 VUs    00.9s/30s  00/10 shared iters
-sold_out         [   8% ] 10 VUs   00.9s/30s  008/100 shared iters
-svip_clash       [  50% ] 500 VUs  00.9s/30s  251/500 shared iters
-svip_selection   [  20% ] 40 VUs   00.9s/30s  08/40 iters, 1 per VU
+running (0m01.0s), 208/210 VUs, 12 complete and 0 interrupted iterations
+ga_booking       [   0% ] 50 VUs   01.0s/30s  00/50 iters, 1 per VU
+quota_limit      [   0% ] 10 VUs   01.0s/30s  00/10 shared iters
+sold_out         [   3% ] 10 VUs   01.0s/30s  003/100 shared iters
+svip_clash       [   4% ] 100 VUs  01.0s/30s  007/200 shared iters
+svip_selection   [   5% ] 40 VUs   01.0s/30s  02/40 iters, 1 per VU
 
-running (0m01.9s), 208/601 VUs, 404 complete and 0 interrupted iterations
-ga_booking       [  38% ] 50 VUs   01.9s/30s  19/50 iters, 1 per VU
-quota_limit      [   0% ] 1 VUs    01.9s/30s  00/10 shared iters
-sold_out         [  11% ] 10 VUs   01.9s/30s  011/100 shared iters
-svip_clash       [  72% ] 500 VUs  01.9s/30s  361/500 shared iters
-svip_selection   [  32% ] 40 VUs   01.9s/30s  13/40 iters, 1 per VU
+running (0m02.0s), 188/210 VUs, 65 complete and 0 interrupted iterations
+ga_booking       [  22% ] 50 VUs   02.0s/30s  11/50 iters, 1 per VU
+quota_limit      [   0% ] 10 VUs   02.0s/30s  00/10 shared iters
+sold_out         [   4% ] 10 VUs   02.0s/30s  004/100 shared iters
+svip_clash       [  20% ] 100 VUs  02.0s/30s  039/200 shared iters
+svip_selection   [  28% ] 40 VUs   02.0s/30s  11/40 iters, 1 per VU
 
-running (0m02.9s), 208/601 VUs, 404 complete and 0 interrupted iterations
-ga_booking       [  38% ] 50 VUs   02.9s/30s  19/50 iters, 1 per VU
-quota_limit      [   0% ] 1 VUs    02.9s/30s  00/10 shared iters
-sold_out         [  11% ] 10 VUs   02.9s/30s  011/100 shared iters
-svip_clash       [  72% ] 500 VUs  02.9s/30s  361/500 shared iters
-svip_selection   [  32% ] 40 VUs   02.9s/30s  13/40 iters, 1 per VU
+running (0m03.0s), 188/210 VUs, 65 complete and 0 interrupted iterations
+ga_booking       [  22% ] 50 VUs   03.0s/30s  11/50 iters, 1 per VU
+quota_limit      [   0% ] 10 VUs   03.0s/30s  00/10 shared iters
+sold_out         [   4% ] 10 VUs   03.0s/30s  004/100 shared iters
+svip_clash       [  20% ] 100 VUs  03.0s/30s  039/200 shared iters
+svip_selection   [  28% ] 40 VUs   03.0s/30s  11/40 iters, 1 per VU
 
-running (0m03.9s), 208/601 VUs, 404 complete and 0 interrupted iterations
-ga_booking       [  38% ] 50 VUs   03.9s/30s  19/50 iters, 1 per VU
-quota_limit      [   0% ] 1 VUs    03.9s/30s  00/10 shared iters
-sold_out         [  11% ] 10 VUs   03.9s/30s  011/100 shared iters
-svip_clash       [  72% ] 500 VUs  03.9s/30s  361/500 shared iters
-svip_selection   [  32% ] 40 VUs   03.9s/30s  13/40 iters, 1 per VU
+running (0m04.0s), 176/210 VUs, 103 complete and 0 interrupted iterations
+ga_booking       [  30% ] 50 VUs   04.0s/30s  15/50 iters, 1 per VU
+quota_limit      [   0% ] 10 VUs   04.0s/30s  00/10 shared iters
+sold_out         [   6% ] 10 VUs   04.0s/30s  006/100 shared iters
+svip_clash       [  32% ] 100 VUs  04.0s/30s  063/200 shared iters
+svip_selection   [  48% ] 40 VUs   04.0s/30s  19/40 iters, 1 per VU
 
-running (0m05.0s), 189/601 VUs, 424 complete and 0 interrupted iterations
-ga_booking       [  46% ] 50 VUs   04.9s/30s  23/50 iters, 1 per VU
-quota_limit      [  10% ] 1 VUs    05.0s/30s  01/10 shared iters
-sold_out         [  11% ] 10 VUs   04.9s/30s  011/100 shared iters
-svip_clash       [  74% ] 500 VUs  04.9s/30s  368/500 shared iters
-svip_selection   [  52% ] 40 VUs   04.9s/30s  21/40 iters, 1 per VU
+running (0m05.0s), 140/210 VUs, 159 complete and 0 interrupted iterations
+ga_booking       [  78% ] 50 VUs   05.0s/30s  39/50 iters, 1 per VU
+quota_limit      [  40% ] 10 VUs   05.0s/30s  04/10 shared iters
+sold_out         [  12% ] 10 VUs   05.0s/30s  012/100 shared iters
+svip_clash       [  38% ] 100 VUs  05.0s/30s  077/200 shared iters
+svip_selection   [  68% ] 40 VUs   05.0s/30s  27/40 iters, 1 per VU
 
-running (0m05.9s), 133/601 VUs, 481 complete and 0 interrupted iterations
-ga_booking       [  62% ] 50 VUs   05.9s/30s  31/50 iters, 1 per VU
-quota_limit      [  10% ] 1 VUs    05.9s/30s  01/10 shared iters
-sold_out         [  12% ] 10 VUs   05.9s/30s  012/100 shared iters
-svip_clash       [  81% ] 500 VUs  05.9s/30s  403/500 shared iters
-svip_selection   [  85% ] 40 VUs   05.9s/30s  34/40 iters, 1 per VU
+running (0m06.0s), 119/210 VUs, 200 complete and 0 interrupted iterations
+ga_booking     Γ£ô [ 100% ] 50 VUs   06.0s/30s  50/50 iters, 1 per VU
+quota_limit      [  60% ] 10 VUs   06.0s/30s  06/10 shared iters
+sold_out         [  13% ] 10 VUs   06.0s/30s  013/100 shared iters
+svip_clash       [  48% ] 100 VUs  06.0s/30s  096/200 shared iters
+svip_selection   [  88% ] 40 VUs   06.0s/30s  35/40 iters, 1 per VU
 
-running (0m06.9s), 075/601 VUs, 541 complete and 0 interrupted iterations
-ga_booking       [  76% ] 50 VUs   06.9s/30s  38/50 iters, 1 per VU
-quota_limit      [  10% ] 1 VUs    06.9s/30s  01/10 shared iters
-sold_out         [  14% ] 10 VUs   06.9s/30s  014/100 shared iters
-svip_clash       [  90% ] 500 VUs  06.9s/30s  451/500 shared iters
-svip_selection   [  92% ] 40 VUs   06.9s/30s  37/40 iters, 1 per VU
+running (0m07.0s), 110/210 VUs, 214 complete and 0 interrupted iterations
+ga_booking     Γ£ô [ 100% ] 50 VUs   06.0s/30s  50/50 iters, 1 per VU
+quota_limit    Γ£ô [ 100% ] 10 VUs   06.4s/30s  10/10 shared iters
+sold_out         [  14% ] 10 VUs   07.0s/30s  014/100 shared iters
+svip_clash       [  50% ] 100 VUs  07.0s/30s  100/200 shared iters
+svip_selection Γ£ô [ 100% ] 40 VUs   06.3s/30s  40/40 iters, 1 per VU
 
-running (0m07.9s), 017/601 VUs, 601 complete and 0 interrupted iterations
-ga_booking       [  98% ] 50 VUs   07.9s/30s  49/50 iters, 1 per VU
-quota_limit      [  10% ] 1 VUs    07.9s/30s  01/10 shared iters
-sold_out         [  16% ] 10 VUs   07.9s/30s  016/100 shared iters
-svip_clash       [  99% ] 500 VUs  07.9s/30s  495/500 shared iters
-svip_selection Γ£ô [ 100% ] 40 VUs   07.8s/30s  40/40 iters, 1 per VU
+running (0m08.0s), 086/210 VUs, 240 complete and 0 interrupted iterations
+ga_booking     Γ£ô [ 100% ] 50 VUs   06.0s/30s  50/50 iters, 1 per VU
+quota_limit    Γ£ô [ 100% ] 10 VUs   06.4s/30s  10/10 shared iters
+sold_out         [  16% ] 10 VUs   08.0s/30s  016/100 shared iters
+svip_clash       [  62% ] 100 VUs  08.0s/30s  124/200 shared iters
+svip_selection Γ£ô [ 100% ] 40 VUs   06.3s/30s  40/40 iters, 1 per VU
 
-running (0m08.9s), 011/601 VUs, 637 complete and 0 interrupted iterations
-ga_booking     Γ£ô [ 100% ] 50 VUs   07.9s/30s  50/50 iters, 1 per VU
-quota_limit      [  80% ] 1 VUs    08.9s/30s  08/10 shared iters
-sold_out         [  39% ] 10 VUs   08.9s/30s  039/100 shared iters
-svip_clash     Γ£ô [ 100% ] 500 VUs  08.1s/30s  500/500 shared iters
-svip_selection Γ£ô [ 100% ] 40 VUs   07.8s/30s  40/40 iters, 1 per VU
+running (0m09.0s), 060/210 VUs, 267 complete and 0 interrupted iterations
+ga_booking     Γ£ô [ 100% ] 50 VUs   06.0s/30s  50/50 iters, 1 per VU
+quota_limit    Γ£ô [ 100% ] 10 VUs   06.4s/30s  10/10 shared iters
+sold_out         [  17% ] 10 VUs   09.0s/30s  017/100 shared iters
+svip_clash       [  75% ] 100 VUs  09.0s/30s  150/200 shared iters
+svip_selection Γ£ô [ 100% ] 40 VUs   06.3s/30s  40/40 iters, 1 per VU
 
-running (0m09.9s), 010/601 VUs, 668 complete and 0 interrupted iterations
-ga_booking     Γ£ô [ 100% ] 50 VUs   07.9s/30s  50/50 iters, 1 per VU
-quota_limit    Γ£ô [ 100% ] 1 VUs    09.2s/30s  10/10 shared iters
-sold_out         [  68% ] 10 VUs   09.9s/30s  068/100 shared iters
-svip_clash     Γ£ô [ 100% ] 500 VUs  08.1s/30s  500/500 shared iters
-svip_selection Γ£ô [ 100% ] 40 VUs   07.8s/30s  40/40 iters, 1 per VU
+running (0m10.0s), 018/210 VUs, 317 complete and 0 interrupted iterations
+ga_booking     Γ£ô [ 100% ] 50 VUs   06.0s/30s  50/50 iters, 1 per VU
+quota_limit    Γ£ô [ 100% ] 10 VUs   06.4s/30s  10/10 shared iters
+sold_out         [  25% ] 10 VUs   10.0s/30s  025/100 shared iters
+svip_clash       [  96% ] 100 VUs  10.0s/30s  192/200 shared iters
+svip_selection Γ£ô [ 100% ] 40 VUs   06.3s/30s  40/40 iters, 1 per VU
+
+running (0m11.0s), 010/210 VUs, 351 complete and 0 interrupted iterations
+ga_booking     Γ£ô [ 100% ] 50 VUs   06.0s/30s  50/50 iters, 1 per VU
+quota_limit    Γ£ô [ 100% ] 10 VUs   06.4s/30s  10/10 shared iters
+sold_out         [  51% ] 10 VUs   11.0s/30s  051/100 shared iters
+svip_clash     Γ£ô [ 100% ] 100 VUs  10.1s/30s  200/200 shared iters
+svip_selection Γ£ô [ 100% ] 40 VUs   06.3s/30s  40/40 iters, 1 per VU
+
+running (0m12.0s), 010/210 VUs, 377 complete and 0 interrupted iterations
+ga_booking     Γ£ô [ 100% ] 50 VUs   06.0s/30s  50/50 iters, 1 per VU
+quota_limit    Γ£ô [ 100% ] 10 VUs   06.4s/30s  10/10 shared iters
+sold_out         [  78% ] 10 VUs   12.0s/30s  078/100 shared iters
+svip_clash     Γ£ô [ 100% ] 100 VUs  10.1s/30s  200/200 shared iters
+svip_selection Γ£ô [ 100% ] 40 VUs   06.3s/30s  40/40 iters, 1 per VU
 
 
   Γûê THRESHOLDS 
 
     http_req_duration
-    Γ£ù 'p(95)<50' p(95)=3.54s
-    Γ£ù 'p(99)<100' p(99)=4.08s
+    Γ£ù 'p(95)<50' p(95)=4.02s
+    Γ£ù 'p(99)<100' p(99)=5.56s
 
     system_error_rate
-    Γ£ù 'rate<0.01' rate=62.14%
+    Γ£ù 'rate<0.01' rate=13.25%
 
 
   Γûê TOTAL RESULTS 
 
-    checks_total.......: 50     4.582263/s
-    checks_succeeded...: 62.00% 31 out of 50
-    checks_failed......: 38.00% 19 out of 50
+    checks_total.......: 50      3.958816/s
+    checks_succeeded...: 100.00% 50 out of 50
+    checks_failed......: 0.00%   0 out of 50
 
-    Γ£ù status is 200/201 or 400
-      Γå│  62% ΓÇö Γ£ô 31 / Γ£ù 19
+    Γ£ô status is 200/201 or 400
 
     CUSTOM
-    system_error_rate..............: 62.14% 435 out of 700
+    system_error_rate..............: 13.25% 53 out of 400
 
     HTTP
-    http_req_duration..............: avg=699.67ms min=0s      med=31.04ms  max=7.16s p(90)=3.5s  p(95)=3.54s
-      { expected_response:true }...: avg=2.19s    min=6.84ms  med=2.8s     max=7.16s p(90)=3.57s p(95)=3.94s
-    http_req_failed................: 70.85% 1488 out of 2100
-    http_reqs......................: 2100   192.455042/s
+    http_req_duration..............: avg=1.17s min=0s     med=453.02ms max=5.75s p(90)=3.38s p(95)=4.02s
+      { expected_response:true }...: avg=1.88s min=8.07ms med=1.69s    max=5.75s p(90)=3.75s p(95)=5.29s
+    http_req_failed................: 39.91% 479 out of 1200
+    http_reqs......................: 1200   95.011576/s
 
     EXECUTION
-    iteration_duration.............: avg=2.38s    min=13.23ms med=791.22ms max=8.09s p(90)=6.95s p(95)=7.44s
-    iterations.....................: 700    64.151681/s
-    vus............................: 10     min=10           max=334
-    vus_max........................: 601    min=601          max=601
+    iteration_duration.............: avg=3.52s min=9.78ms med=4.16s    max=6.88s p(90)=6.31s p(95)=6.47s
+    iterations.....................: 400    31.670525/s
+    vus............................: 10     min=10          max=208
+    vus_max........................: 210    min=210         max=210
 
     NETWORK
-    data_received..................: 688 kB 63 kB/s
-    data_sent......................: 371 kB 34 kB/s
+    data_received..................: 582 kB 46 kB/s
+    data_sent......................: 306 kB 24 kB/s
 
 
 
 
-running (0m10.9s), 000/601 VUs, 700 complete and 0 interrupted iterations
-ga_booking     Γ£ô [ 100% ] 50 VUs   07.9s/30s  50/50 iters, 1 per VU
-quota_limit    Γ£ô [ 100% ] 1 VUs    09.2s/30s  10/10 shared iters
-sold_out       Γ£ô [ 100% ] 10 VUs   10.9s/30s  100/100 shared iters
-svip_clash     Γ£ô [ 100% ] 500 VUs  08.1s/30s  500/500 shared iters
-svip_selection Γ£ô [ 100% ] 40 VUs   07.8s/30s  40/40 iters, 1 per VU
+running (0m12.6s), 000/210 VUs, 400 complete and 0 interrupted iterations
+ga_booking     Γ£ô [ 100% ] 50 VUs   06.0s/30s  50/50 iters, 1 per VU
+quota_limit    Γ£ô [ 100% ] 10 VUs   06.4s/30s  10/10 shared iters
+sold_out       Γ£ô [ 100% ] 10 VUs   12.6s/30s  100/100 shared iters
+svip_clash     Γ£ô [ 100% ] 100 VUs  10.1s/30s  200/200 shared iters
+svip_selection Γ£ô [ 100% ] 40 VUs   06.3s/30s  40/40 iters, 1 per VU

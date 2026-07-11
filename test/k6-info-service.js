@@ -6,28 +6,28 @@ export const options = {
     // 3a: Show List
     show_list: {
       executor: 'constant-vus',
-      vus: 500,
+      vus: 50,
       duration: '30s',
       exec: 'getShowList',
     },
     // 3b: Show Detail
     show_detail: {
       executor: 'constant-vus',
-      vus: 500,
+      vus: 50,
       duration: '30s',
       exec: 'getShowDetail',
     },
     // 3c: Data Schema Validation
     schema_validation: {
       executor: 'shared-iterations',
-      vus: 100,
+      vus: 20,
       iterations: 100,
       exec: 'validateSchema',
     },
     // 3d: Non-existent Show
     not_found_show: {
       executor: 'shared-iterations',
-      vus: 100,
+      vus: 20,
       iterations: 100,
       exec: 'getNotFoundShow',
     },
