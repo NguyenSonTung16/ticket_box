@@ -25,16 +25,15 @@ export const EventCard: React.FC<EventCardProps> = ({
       ? 'bg-primary text-on-primary'
       : 'bg-outline-variant text-on-surface';
 
+  const [imgError, setImgError] = React.useState(false);
+
   return (
     <div className="group bg-surface-container rounded-xl overflow-hidden flex flex-col sm:flex-row border border-transparent hover:border-primary/30 transition-all duration-300 ticket-notch">
       <div className="sm:w-2/5 relative h-48 sm:h-auto overflow-hidden bg-surface-container-highest">
         <img
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          src={image}
-          onError={(e) => {
-            e.currentTarget.src = 'https://images.unsplash.com/photo-1540039155733-d7696d487346?q=80&w=600&auto=format&fit=crop';
-            e.currentTarget.onerror = null;
-          }}
+          src={imgError ? 'https://images.unsplash.com/photo-1540039155733-d7696d487346?q=80&w=600&auto=format&fit=crop' : image}
+          onError={() => setImgError(true)}
           alt={title}
         />
         <div

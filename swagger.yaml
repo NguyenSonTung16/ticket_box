@@ -38,6 +38,14 @@ paths:
   /organizer/concerts:
     post:
       summary: Create a new draft event
+      description: |
+        Creates a new draft event and returns its ID.
+
+        **cURL Example:**
+        ```bash
+        curl -X POST http://localhost:3000/api/organizer/concerts \
+          -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+        ```
       tags:
         - Organizer Events
       responses:
@@ -52,17 +60,57 @@ paths:
                     type: integer
                   status:
                     type: string
+                  current_step:
+                    type: integer
+                  message:
+                    type: string
+              example:
+                event_id: 25
+                status: "DRAFT"
+                current_step: 1
+                message: "Draft created. Proceed to fill step 1."
     get:
       summary: Get all events for the organizer
+      description: |
+        Retrieves a list of all events managed by the currently logged-in organizer.
+
+        **cURL Example:**
+        ```bash
+        curl -X GET http://localhost:3000/api/organizer/concerts \
+          -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+        ```
       tags:
         - Organizer Events
       responses:
         '200':
           description: List of organizer events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+              example:
+                - id: 25
+                  name: "Sự kiện âm nhạc EDM"
+                  date: "2026-08-15T19:00:00.000Z"
+                  venue_name: "Nhà thi đấu Phú Thọ"
+                  image_url: "http://localhost:3000/minio/ticketbox-images/events/25/cover.jpg"
+                  status: "draft"
+                  tickets_sold: 0
+                  total_tickets: 0
 
   /organizer/concerts/{id}/draft:
     get:
       summary: Get an existing draft by ID
+      description: |
+        Gets all current draft steps for a specific event.
+
+        **cURL Example:**
+        ```bash
+        curl -X GET http://localhost:3000/api/organizer/concerts/25/draft \
+          -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+        ```
       tags:
         - Organizer Events
       parameters:
@@ -74,10 +122,39 @@ paths:
       responses:
         '200':
           description: Draft event details
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                event_id: 25
+                status: "DRAFT"
+                current_step: 2
+                step_1:
+                  name: "Sự kiện âm nhạc EDM"
+                  category: "Âm nhạc"
+                  address_type: "OFFLINE"
+                  venue_name: "Nhà thi đấu Phú Thọ"
+                  province: "Hồ Chí Minh"
+                  cover_image_url: "http://localhost:3000/minio/ticketbox-images/events/25/cover.jpg"
+                  organizer_name: "TicketBox Organizer"
+                step_2: null
+                step_3: null
+                step_4: null
 
   /organizer/concerts/{id}/step/1:
     put:
       summary: Save Step 1 (Basic Info)
+      description: |
+        Saves the basic information of the event.
+
+        **cURL Example:**
+        ```bash
+        curl -X PUT http://localhost:3000/api/organizer/concerts/25/step/1 \
+          -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
+          -H "Content-Type: application/json" \
+          -d '{"name": "Sự kiện âm nhạc EDM", "category": "Âm nhạc", "address_type": "OFFLINE", "venue_name": "Nhà thi đấu Phú Thọ", "province": "Hồ Chí Minh", "cover_image_url": "http://localhost:3000/minio/...", "organizer_name": "TicketBox Organizer"}'
+        ```
       tags:
         - Organizer Events
       parameters:
@@ -111,10 +188,29 @@ paths:
       responses:
         '200':
           description: Step 1 saved
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                event_id: 25
+                status: "DRAFT"
+                step_completed: 1
+                next_step: 2
 
   /organizer/concerts/{id}/step/2:
     put:
       summary: Save Step 2 (Time & Tickets)
+      description: |
+        Saves the performance date and ticket configurations.
+
+        **cURL Example:**
+        ```bash
+        curl -X PUT http://localhost:3000/api/organizer/concerts/25/step/2 \
+          -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
+          -H "Content-Type: application/json" \
+          -d '{"start_time": "2026-08-15T19:00:00.000Z", "ticket_types": [{"name": "GA", "price": 500000, "total_quantity": 1000, "is_free": false}]}'
+        ```
       tags:
         - Organizer Events
       parameters:
@@ -140,10 +236,30 @@ paths:
       responses:
         '200':
           description: Step 2 saved
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                event_id: 25
+                status: "DRAFT"
+                step_completed: 2
+                next_step: 3
+                ticket_types_saved: 2
 
   /organizer/concerts/{id}/step/3:
     put:
       summary: Save Step 3 (Settings)
+      description: |
+        Saves event settings like slug and privacy.
+
+        **cURL Example:**
+        ```bash
+        curl -X PUT http://localhost:3000/api/organizer/concerts/25/step/3 \
+          -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
+          -H "Content-Type: application/json" \
+          -d '{"slug": "su-kien-am-nhac-edm", "privacy": "PUBLIC"}'
+        ```
       tags:
         - Organizer Events
       parameters:
@@ -167,10 +283,30 @@ paths:
       responses:
         '200':
           description: Step 3 saved
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                event_id: 25
+                status: "DRAFT"
+                step_completed: 3
+                next_step: 4
+                event_url: "https://ticketbox.vn/su-kien-am-nhac-edm"
 
   /organizer/concerts/{id}/step/4:
     put:
       summary: Save Step 4 (Payment Info & Publish)
+      description: |
+        Saves payment information and transitions the event to ACTIVE status.
+
+        **cURL Example:**
+        ```bash
+        curl -X PUT http://localhost:3000/api/organizer/concerts/25/step/4 \
+          -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
+          -H "Content-Type: application/json" \
+          -d '{"bank_account_name": "NGUYEN VAN A", "bank_account_number": "123456789", "bank_name": "Vietcombank", "vat_business_type": "INDIVIDUAL"}'
+        ```
       tags:
         - Organizer Events
       parameters:
@@ -198,10 +334,35 @@ paths:
       responses:
         '200':
           description: Event published successfully
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                event_id: 25
+                status: "ACTIVE"
+                message: "Event published successfully."
+                event_url: "https://ticketbox.vn/su-kien-am-nhac-edm"
 
   /organizer/concerts/{id}/upload-url:
     get:
       summary: Get a presigned URL to upload images directly to MinIO
+      description: |
+        Generates an AWS S3 presigned PUT URL.
+
+        **cURL Example:**
+        ```bash
+        curl -X GET "http://localhost:3000/api/organizer/concerts/25/upload-url?type=cover_image_url&ext=jpg" \
+          -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+        ```
+        
+        **Note on actual Image Upload:**
+        Once you receive the `presignedUrl`, you perform a PUT request directly to it with the image binary:
+        ```bash
+        curl -X PUT "<presignedUrl_value_here>" \
+          -H "Content-Type: image/jpeg" \
+          --data-binary "@path/to/your/image.jpg"
+        ```
       tags:
         - Organizer Events
       parameters:
@@ -228,19 +389,22 @@ paths:
             application/json:
               schema:
                 type: object
-                properties:
-                  presignedUrl:
-                    type: string
-                  objectKey:
-                    type: string
-                  expiresIn:
-                    type: integer
-                  maxSizeBytes:
-                    type: integer
+              example:
+                presignedUrl: "http://localhost:3000/minio/ticketbox-images/events/25/cover_image_url_abc123.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...&X-Amz-Date=...&X-Amz-Expires=900&X-Amz-Signature=..."
+                objectKey: "events/25/cover_image_url_abc123.jpg"
+                expiresIn: 900
+                maxSizeBytes: 5242880
 
   /concerts:
     get:
       summary: List all public events
+      description: |
+        Public endpoint to get a list of active events.
+
+        **cURL Example:**
+        ```bash
+        curl -X GET "http://localhost:3000/api/concerts?page=1&limit=20"
+        ```
       tags:
         - Public Events
       security: []
@@ -258,10 +422,33 @@ paths:
       responses:
         '200':
           description: List of events
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                data:
+                  - id: 25
+                    name: "Sự kiện âm nhạc EDM"
+                    date: "2026-08-15T19:00:00.000Z"
+                    venue_name: "Nhà thi đấu Phú Thọ"
+                    image_url: "http://localhost:3000/minio/ticketbox-images/events/25/cover.jpg"
+                    status: "ACTIVE"
+                    slug: "su-kien-am-nhac-edm"
+                total: 1
+                page: 1
+                limit: 20
 
   /concerts/{id}:
     get:
       summary: Get event details by ID
+      description: |
+        Public endpoint to get the detailed info of a single event.
+
+        **cURL Example:**
+        ```bash
+        curl -X GET http://localhost:3000/api/concerts/25
+        ```
       tags:
         - Public Events
       security: []
@@ -274,6 +461,25 @@ paths:
       responses:
         '200':
           description: Event details
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                id: 25
+                name: "Sự kiện âm nhạc EDM"
+                category: "Âm nhạc"
+                address_type: "OFFLINE"
+                venue_name: "Nhà thi đấu Phú Thọ"
+                status: "ACTIVE"
+                slug: "su-kien-am-nhac-edm"
+                ticket_types:
+                  - id: 1
+                    name: "GA"
+                    price: 500000
+                    total_quantity: 1000
+                    available: 1000
+                    sold: 0
 
   /admin/concerts/{id}:
     put:
@@ -302,6 +508,14 @@ paths:
       responses:
         '200':
           description: Event cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                id: 25
+                status: "CANCELLED"
+                message: "Event cancelled. Refund process initiated."
 
   /internal/concerts/{id}/seat-counts/{zone}:
     put:
@@ -335,3 +549,9 @@ paths:
       responses:
         '200':
           description: Seat counts updated
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                updated: true
