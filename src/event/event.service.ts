@@ -8,7 +8,7 @@ import {
   GoneException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, Not } from 'typeorm';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -256,7 +256,7 @@ export class EventService {
         date: c.performanceDate || new Date().toISOString(),
         venue_name: info['venue_name'] || 'Chưa thiết lập',
         image_url: info['cover_image_url'] || 'https://images.unsplash.com/photo-1540039155733-d7696d487346?q=80&w=600&auto=format&fit=crop',
-        status: c.status === ConcertStatus.ACTIVE ? 'selling' : 'draft',
+        status: c.status === ConcertStatus.ACTIVE ? 'selling' : c.status === ConcertStatus.CANCELLED ? 'CANCELLED' : 'draft',
         tickets_sold: 0,
         total_tickets: 0,
       };

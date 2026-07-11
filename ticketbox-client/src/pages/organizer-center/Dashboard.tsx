@@ -3,9 +3,10 @@ import { EventCard } from './components/EventCard';
 import { eventService } from '../../features/events/eventService';
 
 export const OrganizerDashboard: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'draft' | 'cancelled'>('all');
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelingId, setCancelingId] = useState<number | null>(null);
 
   useEffect(() => {
     eventService.getOrganizerEvents().then(data => {
@@ -21,21 +22,30 @@ export const OrganizerDashboard: React.FC = () => {
     { key: 'all' as const, label: 'Tất cả' },
     { key: 'published' as const, label: 'Đã đăng' },
     { key: 'draft' as const, label: 'Bản nháp' },
+    { key: 'cancelled' as const, label: 'Đã xóa' },
   ];
 
-  const handleCancel = async (id: number) => {
-    if (window.confirm('Bạn có chắc chắn muốn hủy sự kiện này? Hành động này không thể hoàn tác.')) {
-      try {
-        await eventService.cancelEvent(id);
-        alert('Hủy sự kiện thành công');
-        setEvents(events.map(e => e.id === id ? { ...e, status: 'CANCELLED' } : e));
-      } catch (err: any) {
-        alert(err.response?.data?.message || 'Có lỗi xảy ra khi hủy sự kiện');
-      }
+  const handleCancel = (id: number) => {
+    setCancelingId(id);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelingId) return;
+    try {
+      await eventService.cancelEvent(cancelingId);
+      alert('Hủy sự kiện thành công');
+      setEvents(events.map(e => e.id === cancelingId ? { ...e, status: 'CANCELLED' } : e));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi hủy sự kiện');
+    } finally {
+      setCancelingId(null);
     }
   };
 
   const filteredEvents = events.filter((event) => {
+    if (activeFilter === 'cancelled') return event.status === 'CANCELLED';
+    if (event.status === 'CANCELLED') return false;
+    
     if (activeFilter === 'all') return true;
     if (activeFilter === 'published') return event.status === 'selling';
     if (activeFilter === 'draft') return event.status === 'draft';
@@ -116,6 +126,30 @@ export const OrganizerDashboard: React.FC = () => {
               event_busy
             </span>
             <p className="text-text-medium-emphasis">Không tìm thấy sự kiện nào.</p>
+          </div>
+        )}
+
+        {/* Custom Confirm Modal */}
+        {cancelingId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-surface-container-high rounded-2xl p-6 max-w-sm w-full border border-outline-variant shadow-xl">
+              <h3 className="text-xl font-bold text-white mb-2">Hủy sự kiện</h3>
+              <p className="text-on-surface-variant mb-6">Bạn có chắc chắn muốn hủy sự kiện này? Hành động này không thể hoàn tác.</p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setCancelingId(null)}
+                  className="px-4 py-2 rounded-lg text-sm font-bold text-on-surface hover:bg-surface-container-highest transition-colors"
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={confirmCancel}
+                  className="px-4 py-2 rounded-lg text-sm font-bold bg-error text-on-error hover:brightness-110 transition-colors"
+                >
+                  Xác nhận hủy
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
