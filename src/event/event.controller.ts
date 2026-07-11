@@ -27,6 +27,12 @@ export class EventController {
     return this.eventService.createDraft(req.user.userId);
   }
 
+  @Get('organizer/concerts')
+  @UseGuards(JwtAuthGuard)
+  async getOrganizerEvents(@Request() req: any) {
+    return this.eventService.getOrganizerEvents(req.user.userId);
+  }
+
   @Put('organizer/concerts/:id/step/1')
   @UseGuards(JwtAuthGuard)
   async saveStep1(@Param('id', ParseIntPipe) eventId: number, @Body() body: SaveStep1Dto, @Request() req: any) {

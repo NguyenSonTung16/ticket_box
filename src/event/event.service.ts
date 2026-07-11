@@ -236,6 +236,33 @@ export class EventService {
     return result;
   }
 
+  async getOrganizerEvents(organizerId: string) {
+    const concerts = await this.concertRepo.find({
+      where: { organizer_id: organizerId },
+      order: { created_at: 'DESC' },
+    });
+
+    const showIds = concerts.map(c => c.id);
+    const infos = showIds.length ? await this.showInfoModel.find({ showId: { $in: showIds } }).lean() : [];
+    const infoMap = new Map(infos.map(i => [i['showId'], i]));
+
+    const data = concerts.map(c => {
+      const info = infoMap.get(c.id) || {};
+      return {
+        id: c.id,
+        name: info['name'] || `Sự kiện chưa đặt tên #${c.id}`,
+        date: c.performanceDate || new Date().toISOString(),
+        venue_name: info['venue_name'] || 'Chưa thiết lập',
+        image_url: info['cover_image_url'] || 'https://images.unsplash.com/photo-1540039155733-d7696d487346?q=80&w=600&auto=format&fit=crop',
+        status: c.status === ConcertStatus.ACTIVE ? 'selling' : 'draft',
+        tickets_sold: 0,
+        total_tickets: 0,
+      };
+    });
+
+    return data;
+  }
+
   async getEventDetail(eventId: number): Promise<any> {
     const cacheKey = `event:${eventId}`;
     const cached = await this.redis.get(cacheKey);

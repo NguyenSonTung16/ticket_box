@@ -1,9 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EventCard } from './components/EventCard';
-import { MOCK_EVENTS } from './utils/mockData';
+import { eventService } from '../../features/events/eventService';
 
 export const OrganizerDashboard: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    eventService.getOrganizerEvents().then(data => {
+      setEvents(data);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
 
   const filters = [
     { key: 'all' as const, label: 'Tất cả' },
@@ -11,7 +23,7 @@ export const OrganizerDashboard: React.FC = () => {
     { key: 'draft' as const, label: 'Bản nháp' },
   ];
 
-  const filteredEvents = MOCK_EVENTS.filter((event) => {
+  const filteredEvents = events.filter((event) => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'published') return event.status === 'selling';
     if (activeFilter === 'draft') return event.status === 'draft';
@@ -63,13 +75,19 @@ export const OrganizerDashboard: React.FC = () => {
         </div>
 
         {/* Event Cards Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {filteredEvents.map((event) => (
-            <EventCard key={event.id} {...event} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-20">
+            <p className="text-text-medium-emphasis">Đang tải dữ liệu sự kiện...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {filteredEvents.map((event) => (
+              <EventCard key={event.id} {...event} />
+            ))}
+          </div>
+        )}
 
-        {filteredEvents.length === 0 && (
+        {!loading && filteredEvents.length === 0 && (
           <div className="text-center py-20">
             <span className="material-symbols-outlined text-6xl text-text-medium-emphasis mb-4 block">
               event_busy
