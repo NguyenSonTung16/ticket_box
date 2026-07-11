@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import debounce from 'lodash.debounce';
 import { useAuth } from '../context/AuthContext';
 import { LoginModal } from '../components/LoginModal';
 import { WaitingRoomModal } from '../components/WaitingRoomModal';
+import { Header } from '../components/Header';
 
 import { useSearchParams } from 'react-router-dom';
 import axiosClient from '../utils/axiosClient';
@@ -11,9 +11,7 @@ export const EventPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('id') || '1';
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isWaitingRoomOpen, setIsWaitingRoomOpen] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
@@ -28,28 +26,7 @@ export const EventPage: React.FC = () => {
   };
   const [error, setError] = useState<string | null>(null);
 
-  // Bọc API call trong Debounce 300ms
-  const fetchSearchResults = useMemo(
-    () =>
-      debounce(async (query: string) => {
-        if (!query.trim()) {
-          setSearchResults([]);
-          return;
-        }
-        try {
-          const res = await axiosClient.get(`/search?q=${query}`);
-          setSearchResults(res.data);
-        } catch (error) {
-          console.error('Search failed', error);
-        }
-      }, 300),
-    []
-  );
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    fetchSearchResults(e.target.value);
-  };
 
   // Đã gỡ bỏ hook useTicketEvents khỏi EventPage để tối ưu hóa, không mở 80.000 kết nối SSE khi xem show
 
@@ -113,67 +90,7 @@ export const EventPage: React.FC = () => {
   return (
     <div className="bg-background text-on-surface font-body-md overflow-x-hidden">
       {/* TopNavBar */}
-      <nav className="bg-primary-container dark:bg-primary-container docked full-width top-0 z-50 shadow-sm transition-all duration-300">
-        <div className="flex justify-between items-center px-margin-desktop py-4 w-full max-w-container-max mx-auto">
-          <div className="flex items-center gap-gutter">
-            <a href="/" className="text-headline-lg font-headline-lg font-bold text-on-primary-container hover:opacity-80 transition-opacity cursor-pointer inline-block">ticketbox</a>
-            <div className="hidden md:flex flex-col relative min-w-[320px]">
-              <div className="flex items-center bg-white/20 rounded-lg px-4 py-2 gap-2">
-                <span className="material-symbols-outlined text-on-primary-container/70">search</span>
-                <input
-                  className="bg-transparent border-none focus:ring-0 text-on-primary-container placeholder:text-on-primary-container/60 w-full font-body-sm"
-                  placeholder="Bạn tìm gì hôm nay?"
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                />
-                <button className="bg-white text-on-primary-container px-3 py-1 rounded font-label-md hover:bg-white/90 transition-colors">Tìm kiếm</button>
-              </div>
-              {/* Typeahead Suggestions */}
-              {searchResults.length > 0 && (
-                <div className="absolute top-12 left-0 w-full bg-white rounded-lg shadow-xl overflow-hidden z-50 flex flex-col">
-                  {searchResults.map((show, idx) => (
-                    <div key={idx} className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded overflow-hidden">
-                        <img src={show.thumbnail} alt={show.name} className="w-full h-full object-cover" />
-                      </div>
-                      <span className="text-black font-body-sm font-semibold">{show.name}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-4 lg:gap-6">
-            <div className="hidden lg:flex items-center gap-6">
-              <a className="text-on-primary-container/80 font-label-md hover:text-white transition-colors" href="#">Tạo sự kiện</a>
-              <a className="text-on-primary-container/80 font-label-md hover:text-white transition-colors" href="#">Vé của tôi</a>
-            </div>
-            {user ? (
-              <div className="flex items-center gap-3 bg-white/10 rounded-full px-3 py-1.5 backdrop-blur-sm">
-                <span className="text-sm font-medium text-white hidden sm:block">{user.email}</span>
-                <span className="text-sm font-medium text-white sm:hidden">{user.email.split('@')[0]}</span>
-                <button
-                  onClick={logout}
-                  className="text-xs text-on-primary-container/80 hover:text-red-400 transition-colors font-label-md"
-                >
-                  Đăng xuất
-                </button>
-              </div>
-            ) : (
-              <div
-                className="flex items-center gap-2 text-on-primary-container/80 font-label-md cursor-pointer hover:text-white transition-colors"
-                onClick={() => setIsLoginModalOpen(true)}
-              >
-                <span className="material-symbols-outlined text-[24px]">account_circle</span>
-                <span className="hidden sm:block">Đăng nhập</span>
-                <span className="material-symbols-outlined text-[16px] hidden sm:block">expand_more</span>
-              </div>
-            )}
-
-          </div>
-        </div>
-      </nav>
+      <Header />
 
       <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop pt-margin-desktop space-y-margin-desktop">
         {error ? (
