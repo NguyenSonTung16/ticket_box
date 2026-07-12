@@ -5,7 +5,7 @@ import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 // Dynamic mapping of roles to permissions (RBAC) to avoid DB overhead
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   USER: [],
-  CHECKIN_STAFF: ['CHECKIN_SCAN'],
+  CHECKIN_STAFF: ['CHECKIN_SCAN', 'CHECKIN_VIEW_HISTORY'],
   ORGANIZER: ['AI_BIO_UPLOAD', 'CHECKIN_SCAN', 'CHECKIN_VIEW_HISTORY'],
 };
 

@@ -422,8 +422,13 @@ export class CheckinService implements OnModuleInit {
     };
   }
 
-  async getMockTickets() {
+  async getMockTickets(concertId?: string) {
+    const whereClause: any = {};
+    if (concertId) {
+      whereClause.concert_id = Number(concertId);
+    }
     const tickets = await this.ticketRepo.find({
+      where: whereClause,
       take: 30,
     });
 

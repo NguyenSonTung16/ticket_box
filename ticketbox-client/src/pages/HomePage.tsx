@@ -80,13 +80,7 @@ export const HomePage: React.FC = () => {
             
             {/* Conditional Organizer panel removed as requested */}
 
-            {/* Conditional Checkin panel */}
-            {user && (user.role === 'ADMIN' || user.role === 'CHECKIN_STAFF') && (
-              <button onClick={() => navigate('/checkin')} className="bg-primary-container border border-primary text-primary px-4 py-2 rounded-full font-bold hover:brightness-110 transition-all flex items-center gap-1.5 shadow-md text-xs">
-                <span className="material-symbols-outlined text-[16px]">qr_code_scanner</span>
-                Soát vé
-              </button>
-            )}
+            {/* Conditional Checkin panel removed as requested */}
 
 
 

@@ -10,6 +10,7 @@ const services = [
   { name: 'payment', port: 3004, color: '\x1b[31m' },    // Red
   { name: 'event', port: 3005, color: '\x1b[35m' },      // Magenta
   { name: 'worker', port: 3006, color: '\x1b[90m' },     // Gray
+  { name: 'checkin', port: 3007, color: '\x1b[36m' },    // Cyan
   { name: 'ai', port: 3008, color: '\x1b[37m' },         // White
 ];
 

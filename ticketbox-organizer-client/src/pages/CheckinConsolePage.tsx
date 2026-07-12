@@ -60,8 +60,9 @@ export const CheckinConsolePage: React.FC = () => {
 
   const fetchMockTickets = async () => {
     try {
-      const res = await axiosClient.get('/checkin/mock-tickets');
-      setMockTickets(res.data || []);
+      const res = await axiosClient.get(`/checkin/mock-tickets?concertId=${concertId}`);
+      const data = res.data;
+      setMockTickets(Array.isArray(data) ? data : (data?.data || []));
     } catch (err) {
       console.error('Failed to fetch mock tickets:', err);
     }
@@ -69,7 +70,7 @@ export const CheckinConsolePage: React.FC = () => {
 
   useEffect(() => {
     fetchMockTickets();
-  }, []);
+  }, [concertId]);
 
   // Handle Scan Verification
   const handleScanSubmit = async (e: React.FormEvent) => {
@@ -206,15 +207,10 @@ export const CheckinConsolePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0d0f] text-white p-6 font-sans">
+    <div className="flex-grow lg:ml-64 px-4 md:px-6 lg:px-10 pb-36 pt-24 md:pt-28 lg:pt-32 bg-[#0d0d0f] text-white font-sans min-h-screen">
       {/* Header bar */}
-      <header className="flex justify-between items-center pb-6 border-b border-white/10 mb-8">
+      <header className="flex justify-between items-center pb-6 border-b border-white/10 mb-8 max-w-7xl mx-auto">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="flex items-center gap-1 hover:text-primary transition-colors">
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            Trang chủ
-          </button>
-          <div className="h-6 w-[1px] bg-white/20"></div>
           <h1 className="text-xl font-bold flex items-center gap-2">
             <span className="material-symbols-outlined text-primary">qr_code_scanner</span>
             BÀN SOÁT VÉ DI ĐỘNG (GATE CONSOLE)
@@ -284,7 +280,7 @@ export const CheckinConsolePage: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-md font-bold flex items-center gap-2 text-white/90">
                 <span className="material-symbols-outlined text-primary text-[18px]">confirmation_number</span>
-                Danh sách vé Test Case (Database)
+                Danh sách vé thật (Concert ID: {concertId})
               </h2>
               <button 
                 type="button" 

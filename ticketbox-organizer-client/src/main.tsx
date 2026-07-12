@@ -22,8 +22,7 @@ import { ArtistBioManualPage } from './pages/organizer-center/ArtistBioManualPag
 import { StatsPage } from './pages/organizer-center/StatsPage';
 import { OrganizerCheckinHistoryPage } from './pages/organizer-center/OrganizerCheckinHistoryPage';
 
-// Check-in & Bio Approval (Removed)
-
+import { CheckinConsolePage } from './pages/CheckinConsolePage';
 const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
@@ -46,6 +45,7 @@ if (container) {
               <Route path="artists" element={<ArtistBioListPage />} />
               <Route path="stats/:id" element={<StatsPage />} />
               <Route path="checkin-history" element={<OrganizerCheckinHistoryPage />} />
+              <Route path="checkin" element={<CheckinConsolePage />} />
             </Route>
           </Routes>
         </BrowserRouter>

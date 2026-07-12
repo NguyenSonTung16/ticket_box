@@ -5,7 +5,7 @@ import { useAuth } from '../../../context/AuthContext';
 export const OrganizerSideNav: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/organizer') {
@@ -17,49 +17,64 @@ export const OrganizerSideNav: React.FC = () => {
   return (
     <aside className="hidden lg:flex fixed left-0 top-16 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant flex-col py-6 gap-2 z-40">
       <div className="flex flex-col gap-1 px-2">
+        {user?.role !== 'CHECKIN_STAFF' && (
+          <>
+            <Link
+              to="/organizer"
+              className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
+                isActive('/organizer') && !location.pathname.includes('/files') && !location.pathname.includes('/create')
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
+              }`}
+            >
+              <span className="material-symbols-outlined">event</span>
+              <span className="text-sm font-semibold">Sự kiện của tôi</span>
+            </Link>
+            <Link
+              to="/organizer/files"
+              className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
+                isActive('/organizer/files')
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
+              }`}
+            >
+              <span className="material-symbols-outlined">folder</span>
+              <span className="text-sm font-semibold">Quản lý file</span>
+            </Link>
+            <Link
+              to="/organizer/bio"
+              className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
+                isActive('/organizer/bio')
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
+              }`}
+            >
+              <span className="material-symbols-outlined">badge</span>
+              <span className="text-sm font-semibold">Tạo tiểu sử</span>
+            </Link>
+            <Link
+              to="/organizer/artists"
+              className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
+                isActive('/organizer/artists')
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
+              }`}
+            >
+              <span className="material-symbols-outlined">groups</span>
+              <span className="text-sm font-semibold">Danh sách nghệ sĩ</span>
+            </Link>
+          </>
+        )}
         <Link
-          to="/organizer"
+          to="/organizer/checkin"
           className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
-            isActive('/organizer') && !location.pathname.includes('/files') && !location.pathname.includes('/create')
+            isActive('/organizer/checkin') && !location.pathname.includes('/checkin-history')
               ? 'bg-primary/10 text-primary font-bold'
               : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
           }`}
         >
-          <span className="material-symbols-outlined">event</span>
-          <span className="text-sm font-semibold">Sự kiện của tôi</span>
-        </Link>
-        <Link
-          to="/organizer/files"
-          className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
-            isActive('/organizer/files')
-              ? 'bg-primary/10 text-primary font-bold'
-              : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
-          }`}
-        >
-          <span className="material-symbols-outlined">folder</span>
-          <span className="text-sm font-semibold">Quản lý file</span>
-        </Link>
-        <Link
-          to="/organizer/bio"
-          className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
-            isActive('/organizer/bio')
-              ? 'bg-primary/10 text-primary font-bold'
-              : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
-          }`}
-        >
-          <span className="material-symbols-outlined">badge</span>
-          <span className="text-sm font-semibold">Tạo tiểu sử</span>
-        </Link>
-        <Link
-          to="/organizer/artists"
-          className={`rounded-xl flex items-center gap-3 px-4 py-3 transition-all ${
-            isActive('/organizer/artists')
-              ? 'bg-primary/10 text-primary font-bold'
-              : 'text-text-medium-emphasis hover:text-white hover:bg-surface-variant'
-          }`}
-        >
-          <span className="material-symbols-outlined">groups</span>
-          <span className="text-sm font-semibold">Danh sách nghệ sĩ</span>
+          <span className="material-symbols-outlined">qr_code_scanner</span>
+          <span className="text-sm font-semibold">Bàn soát vé</span>
         </Link>
         <Link
           to="/organizer/checkin-history"

@@ -26,6 +26,11 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // ── Checkin Service
+      '/checkin': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
       // ── Info Service
       '/info': {
         target: 'http://localhost:3000',

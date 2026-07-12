@@ -39,9 +39,9 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'SUCCESS' | 'CONFLICT'>('ALL');
 
-  // Enforce access control: Organizer only
+  // Enforce access control: Organizer or Staff
   useEffect(() => {
-    if (!user || user.role !== 'ORGANIZER') {
+    if (!user || (user.role !== 'ORGANIZER' && user.role !== 'CHECKIN_STAFF')) {
       alert('Bạn không có quyền truy cập trang lịch sử soát vé.');
       navigate('/');
     }
@@ -69,7 +69,7 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user && user.role === 'ORGANIZER') {
+    if (user && (user.role === 'ORGANIZER' || user.role === 'CHECKIN_STAFF')) {
       fetchLogs();
     }
   }, [selectedConcertId, page]);

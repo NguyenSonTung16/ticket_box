@@ -30,8 +30,8 @@ export class CheckinController {
   }
 
   @Get('mock-tickets')
-  async getMockTickets() {
-    return this.checkinService.getMockTickets();
+  async getMockTickets(@Query('concertId') concertId?: string) {
+    return this.checkinService.getMockTickets(concertId);
   }
 
   @Get('history')

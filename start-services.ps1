@@ -15,6 +15,7 @@ Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:info" -WindowStyle
 Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:payment" -WindowStyle Hidden
 Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:worker" -WindowStyle Hidden
 Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:booking" -WindowStyle Hidden
+Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:checkin" -WindowStyle Hidden
 
 Write-Host "Starting Frontend in background..."
 Set-Location -Path "ticketbox-client"

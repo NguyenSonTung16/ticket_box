@@ -12,11 +12,6 @@ import { PaymentSuccessPage } from './pages/PaymentSuccessPage';
 import { AuthProvider } from './context/AuthContext';
 
 
-
-// Check-in & Bio Approval
-import { CheckinConsolePage } from './pages/CheckinConsolePage';
-import { BioApprovalPage } from './pages/BioApprovalPage';
-
 const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
@@ -32,9 +27,6 @@ if (container) {
             <Route path="/payment.html" element={<PaymentPage />} />
             <Route path="/payment-success.html" element={<PaymentSuccessPage />} />
             
-            {/* Check-in & Bio Approval */}
-            <Route path="/checkin" element={<CheckinConsolePage />} />
-            <Route path="/organizer/bio-approval" element={<BioApprovalPage />} />
 
 
           </Routes>

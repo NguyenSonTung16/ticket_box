@@ -48,9 +48,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userId = payload.sub;
       const role = payload.role || 'USER';
 
-      // Strictly check for ORGANIZER role
-      if (role !== 'ORGANIZER' && role !== 'ADMIN') {
-        throw new Error('Unauthorized. Only organizers can access this portal.');
+      // Strictly check for ORGANIZER, ADMIN, or CHECKIN_STAFF role
+      if (role !== 'ORGANIZER' && role !== 'ADMIN' && role !== 'CHECKIN_STAFF') {
+        throw new Error('Unauthorized. Only organizers and staff can access this portal.');
       }
 
       localStorage.setItem('access_token', accessToken);

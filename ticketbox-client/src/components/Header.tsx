@@ -62,7 +62,7 @@ export const Header: React.FC = () => {
   };
 
   // Determine if user has special roles for Star Studio
-  const hasStudioAccess = user && ['CHECKIN_STAFF', 'ORGANIZER'].includes(user.role);
+  const hasStudioAccess = user && user.role === 'ORGANIZER';
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -162,16 +162,7 @@ export const Header: React.FC = () => {
                     Công cụ Studio
                   </div>
                   
-                  {/* Soát vé Option */}
-                  {(user?.role === 'CHECKIN_STAFF' || user?.role === 'ORGANIZER') && (
-                    <button 
-                      onClick={() => { setIsStudioOpen(false); navigate('/checkin'); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-on-primary-container hover:bg-on-primary-container/5 transition-colors flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-[18px] text-blue-400">qr_code_scanner</span>
-                      Soát vé (Check-in)
-                    </button>
-                  )}
+                  {/* Soát vé Option removed */}
 
                   {/* Organizer Center Option */}
                   {user?.role === 'ORGANIZER' && (
@@ -296,15 +287,7 @@ export const Header: React.FC = () => {
             {hasStudioAccess && (
               <div className="flex flex-col gap-2.5 pt-2 border-t border-on-primary-container/10">
                 <span className="text-xs font-bold text-on-primary-container/70 uppercase tracking-wider px-1">Star Studio</span>
-                {(user?.role === 'CHECKIN_STAFF' || user?.role === 'ORGANIZER') && (
-                  <button 
-                    onClick={() => { setIsMobileMenuOpen(false); navigate('/checkin'); }}
-                    className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-1.5 pl-3 text-sm transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[18px] text-blue-400">qr_code_scanner</span>
-                    Soát vé (Check-in)
-                  </button>
-                )}
+                {/* Soát vé Option removed */}
                 {user?.role === 'ORGANIZER' && (
                   <button 
                     onClick={() => { setIsMobileMenuOpen(false); navigate('/organizer'); }}
