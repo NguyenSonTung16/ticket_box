@@ -1,105 +1,126 @@
-# TicketBox - Hệ Thống Bán Vé Tải Cực Hạn (Flash Sale)
+# TicketBox HA - Hướng Dẫn Cài Đặt & Khởi Chạy (Setup Guide)
 
-TicketBox là một hệ thống mô phỏng nền tảng bán vé sự kiện âm nhạc, được thiết kế chuyên biệt để chịu tải cực hạn (Flash Sale) lên tới hàng chục nghìn người truy cập đồng thời mà không sập hệ thống hay sai lệch dữ liệu.
+TicketBox là hệ thống bán vé mô phỏng khả năng chịu tải cao (High Availability / Flash Sale). Hệ thống đã được tách thành kiến trúc Microservices chạy Cluster qua Nginx Load Balancer, kết hợp Hybrid Caching (Redis + Node Cache), Message Queue (RabbitMQ) và Server-Sent Events (SSE).
 
-Dự án áp dụng kiến trúc Hybrid Caching (Redis + Node Cache), Message Queue (RabbitMQ), và xử lý bất đồng bộ kết hợp Server-Sent Events (SSE) để truyền trạng thái sơ đồ ghế Real-time.
-
-## 🚀 Công nghệ sử dụng
-- **Backend:** NestJS, TypeORM
-- **Frontend:** Vanilla JS, HTML, CSS (Không cần build tool)
-- **Cơ sở dữ liệu:** PostgreSQL
-- **Caching & Real-time:** Redis (Cluster mode mô phỏng)
-- **Message Broker:** RabbitMQ
-- **Tìm kiếm:** Meilisearch
+Dưới đây là hướng dẫn chi tiết từng bước để clone dự án về và chạy trên môi trường Local.
 
 ---
 
-## 🛠 Yêu cầu hệ thống (Prerequisites)
-Trước khi cài đặt, đảm bảo máy tính của bạn đã cài đặt sẵn các công cụ sau:
+## 🛠 1. Yêu cầu hệ thống (Prerequisites)
+Hãy đảm bảo máy tính của bạn đã cài đặt:
 1. **Node.js** (Phiên bản >= 18.x)
-2. **Docker** & **Docker Compose** (Dùng để chạy hệ sinh thái cơ sở dữ liệu)
-3. **Git**
+2. **Docker** & **Docker Compose** (Dùng để chạy các Database/Services nền)
+3. **Nginx** (Bắt buộc phải có để chạy Load Balancer cho Booking Service)
+4. **Git**
 
 ---
 
-## ⚙️ Hướng dẫn Cài đặt & Chạy dự án (Local Development)
+## ⚙️ 2. Khởi động các Dịch vụ Nền (Infrastructure)
+Hệ thống yêu cầu các nền tảng: PostgreSQL, Redis, RabbitMQ, MeiliSearch và MinIO. 
+Tất cả đã được gói gọn trong file `docker-compose.yml`.
 
-### Bước 1: Khởi động hệ sinh thái Cơ sở dữ liệu (Infrastructure)
-Hệ thống yêu cầu PostgreSQL, Redis, RabbitMQ và Meilisearch để hoạt động. Bạn không cần cài đặt thủ công từng món, chỉ cần dùng Docker Compose.
-
-Mở terminal tại thư mục gốc của dự án (`ticket-box/`) và chạy:
+1. Mở Terminal tại thư mục gốc của dự án (`ticket_box/`).
+2. Chạy lệnh sau để tải Image và chạy dưới nền:
 ```bash
 docker-compose up -d
 ```
-*Ghi chú: Lệnh này sẽ kéo các images về và khởi chạy nền. RabbitMQ Management có thể truy cập tại `http://localhost:15672` (guest/guest).*
+3. *(Lựa chọn)* Kiểm tra xem các container đã up chưa bằng lệnh `docker ps`.
 
-### Bước 2: Cài đặt và Chạy Backend (NestJS)
-1. Vẫn ở thư mục gốc (`ticket-box/`), tiến hành cài đặt thư viện:
+---
+
+## 📦 3. Cài đặt Thư viện & Cấu hình
+Bạn cần cài đặt các gói NPM cho cả Backend và Frontend.
+
+**Đối với Backend:**
+1. Tại thư mục gốc, chạy lệnh:
 ```bash
 npm install
 ```
-2. Khởi động Backend Server:
-```bash
-npm run start
-```
-*Backend sẽ tự động đồng bộ schema với PostgreSQL (TypeORM sync), tự động nạp Cache Warm-up từ DB lên Redis và chạy tại địa chỉ: `http://localhost:3000`.*
+2. Copy file `.env.example` thành `.env` (Nếu chưa có, hãy đảm bảo bạn có file `.env` chứa đủ các biến môi trường cho Postgres, Redis, MongoDB, MinIO...).
 
-### Bước 3: Cài đặt và Chạy Frontend
-1. Dự án này sử dụng Frontend thuần (Vanilla JS/HTML/CSS) nên cực kỳ nhẹ và không cần bước build phức tạp. Mở một cửa sổ terminal mới, di chuyển vào thư mục Frontend:
+**Đối với Frontend:**
+1. Di chuyển vào thư mục Frontend:
 ```bash
-cd frontend
+cd ticketbox-client
+npm install
+cd ..
 ```
-2. Khởi động một static server đơn giản. Bạn có thể dùng `http-server` (nếu đã cài sẵn qua npm) hoặc Python:
-```bash
-npx http-server -p 8080
-```
-*(Hoặc nếu có Python: `python -m http.server 8080`)*
-3. Mở trình duyệt và truy cập: `http://localhost:8080` để trải nghiệm hệ thống.
 
 ---
 
-## 🏗 Kiến trúc Cốt lõi & Luồng Vận hành
-Nếu bạn muốn tìm hiểu sâu về cách hệ thống chống sập và xử lý tranh chấp vé (Zero Seat Clash), hãy đọc các tài liệu đặc tả đính kèm:
-1. **`blueprint/specs/caching.md`**: Chi tiết chiến lược Hybrid Caching 2 tầng và luồng xử lý bất đồng bộ.
-2. **`cache_solution.txt`**: Giải thích cặn kẽ 3 phương án Cache và lý do chọn phương án tối ưu.
-3. **SSE & Redis Pub/Sub**: Nằm trong `sse.service.ts` và `booking.controller.ts`, lo nhiệm vụ "bơm" trạng thái ghế xuống giao diện tức thì.
-4. **Worker Queue**: `notifications.service.ts` chịu trách nhiệm chạy các Background Worker xử lý Timeout nhả vé sau 10 phút, và đồng bộ dữ liệu vào PostgreSQL.
+## 🗄️ 4. Khởi tạo Database & Dữ liệu mẫu (Auto Setup)
+Vì dự án sử dụng TypeORM và Mongoose, cấu trúc bảng (Schema) sẽ được tự động tạo khi chạy code. Bạn **không cần** chạy lệnh SQL tạo bảng.
 
-## 👥 Chức năng chính
-- Hiển thị trang chủ và sơ đồ ghế bằng SSR / Caching.
-- Cho phép người dùng giữ chỗ trong 10 phút (Chống đụng độ ghế bằng cơ chế khóa nguyên tử `HSETNX` trên Redis).
-- Hết 10 phút không thanh toán: Worker RabbitMQ tự động thu hồi và nhả vé (Rollback) cập nhật real-time cho toàn hệ thống.
-- Luồng thanh toán kết hợp kiến trúc **Hybrid Synchronous-Asynchronous Caching**: Giữ chỗ thần tốc trên Redis, nhưng Chốt chặn thanh toán tuyệt đối an toàn bằng lệnh cập nhật Đồng bộ dưới Database (PostgreSQL) chống Oversell 100%.
+**Cụ thể vị trí cấu trúc:**
+- **Schema (PostgreSQL):** Hệ thống tự động quét các file `*.entity.ts` (VD: `src/booking/entities/zone-inventory.entity.ts`).
+- **Schema (MongoDB):** Hệ thống tự động quét các file `*.schema.ts` (VD: `src/info/schemas/show-info.schema.ts`).
+- **Seed Data (Dữ liệu mẫu):** Nằm gọn trong thư mục `src/database-setup/`.
+
+Để tạo các dữ liệu mẫu ban đầu (Concerts, Zones, Tickets, Setup Minio bucket, Check-in...):
+1. Đảm bảo Docker (Postgres, Redis...) đang chạy.
+2. Từ thư mục gốc, chạy lệnh gộp setup:
+```bash
+npm run setup
+```
+*(Lệnh này sẽ chạy 3 file seed trong `src/database-setup/` để tạo Bucket trên MinIO, nạp hàng ngàn vé trống vào Database và Redis, cũng như đồng bộ Search Engine).*
 
 ---
 
-## 🌍 Cấu hình Ngrok để nhận Webhook (Thanh toán & Gửi Email)
-Vì hệ thống chạy ở Localhost, cổng thanh toán PayPal không thể gửi thông báo (Webhook) về khi thanh toán thành công, dẫn đến việc không thể gửi email vé cho khách. Bạn cần cấu hình Ngrok để tạo đường dẫn Public:
+## 🚀 5. Khởi động Cụm Backend (Microservices Cluster)
+Dự án được phân chia thành nhiều Microservice. Bạn có 2 cách khởi động:
 
-### Bước 1: Cài đặt và chạy Ngrok
-1. Tải Ngrok về máy từ [ngrok.com/download](https://ngrok.com/download) và giải nén.
-2. Đăng nhập vào Ngrok để lấy Authtoken, cấu hình terminal:
-   ```bash
-   ngrok config add-authtoken <YOUR_AUTHTOKEN>
-   ```
-3. Chạy Ngrok để public cổng của Backend (Ví dụ: 3333):
-   ```bash
-   ngrok http 3333
-   ```
-4. Copy đường dẫn Forwarding (ví dụ: `https://abcd-123.ngrok-free.app`).
+**Cách 1: Chạy toàn bộ Cluster (Nhanh nhất)**
+Chạy script tự động mở tất cả 7 Node (Auth, Booking x3, Info, Payment, Worker) trong cùng 1 Terminal:
+```bash
+node start-cluster.js
+```
+*(Bạn sẽ thấy Terminal in ra log của tất cả các server, chạy trên các cổng 3001, 3002, 3012, 3022, 3003, 3004, 3005).*
 
-### Bước 2: Cấu hình Webhook trên PayPal Developer
-1. Đăng nhập vào [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/applications).
-2. Vào **Apps & Credentials** -> Mở App Sandbox của bạn.
-3. Cuộn xuống phần **Webhooks** và nhấn **Add Webhook** (hoặc Edit).
-4. Dán đường dẫn Ngrok vừa copy và thêm `/payment/webhook` vào cuối (VD: `https://abcd-123.ngrok-free.app/payment/webhook`).
-5. Ở Event types, chọn **Payment capture completed** (hoặc All events). Nhấn Save.
+**Cách 2: Chạy độc lập từng Service (Để debug hoặc phát triển)**
+Bạn có thể mở từng Terminal riêng biệt và chạy từng lệnh NPM có sẵn:
+- **Auth Service:** `npm run start:auth` (Cổng 3001)
+- **Booking Service:** `npm run start:booking` (Cổng 3002)
+- **Info Service:** `npm run start:info` (Cổng 3003)
+- **Event Service:** `npm run start:event` (Cổng 3004)
+- **Payment Service:** `npm run start:payment` (Cổng 3004)
+- **Worker Service:** `npm run start:worker` (Cổng 3005)
 
-### Bước 3: Cập nhật Webhook ID vào hệ thống
-1. Copy **Webhook ID** mới được cấp từ PayPal.
-2. Mở file `.env` ở thư mục gốc của dự án.
-3. Sửa dòng cấu hình Webhook ID:
-   ```env
-   PAYPAL_WEBHOOK_ID=<Webhook_ID_Mới>
-   ```
-4. Khởi động lại Backend để nhận cấu hình. Bây giờ, khi thanh toán thành công, hệ thống sẽ tự động cập nhật trạng thái vé và gửi Email!
+*(Bạn chỉ cần bật những service liên quan đến module đang code).*
+
+---
+
+## ⚖️ 6. Khởi động Nginx Load Balancer (Quan trọng)
+Frontend sẽ không gọi thẳng vào cổng 3002 mà gọi qua Nginx ở cổng **8080** để được phân tải đều (Round Robin / Least Conn) cho 3 Node Booking (3002, 3012, 3022).
+
+1. Tìm file `nginx.conf` ở thư mục gốc dự án.
+2. Thay thế file cấu hình của Nginx trên máy bạn (thường ở `C:\nginx\conf\nginx.conf` trên Windows hoặc `/etc/nginx/nginx.conf` trên Linux/Mac) bằng nội dung của file này.
+3. Khởi động Nginx:
+   - **Windows:** Chạy file `nginx.exe` hoặc lệnh `start nginx`
+   - **Linux/Mac:** `sudo systemctl restart nginx` hoặc `sudo nginx -s reload`
+
+---
+
+## 🎨 7. Khởi động Frontend
+Frontend sử dụng Vite.
+
+1. Mở một Terminal mới, di chuyển vào thư mục Client:
+```bash
+cd ticketbox-client
+```
+2. Khởi động môi trường dev:
+```bash
+npm run dev
+```
+3. Truy cập vào đường dẫn do Vite cung cấp (thường là `http://localhost:5173`) để trải nghiệm hệ thống!
+
+---
+
+## 🌍 (Mở rộng) Cấu hình Ngrok để nhận Webhook thanh toán PayPal
+Khi chạy Local, PayPal không thể gửi thông báo thanh toán thành công về máy bạn, dẫn đến vé không được chốt (Paid).
+1. Cài đặt Ngrok. Chạy: `ngrok http 8080` (Cổng của Nginx).
+2. Lấy link `https://<...>.ngrok-free.app`
+3. Vào [PayPal Developer](https://developer.paypal.com/dashboard/applications), cài đặt Webhook URL thành: `https://<...>.ngrok-free.app/payment/webhook` (Chọn event *Payment capture completed*).
+4. Sửa `PAYPAL_WEBHOOK_ID` trong file `.env` của dự án thành ID mới nhất PayPal cung cấp.
+5. Khởi động lại Backend cluster.
+
+Chúc bạn triển khai thành công hệ thống TicketBox! 🚀
