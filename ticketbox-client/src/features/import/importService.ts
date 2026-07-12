@@ -3,41 +3,53 @@ import axios from 'axios';
 
 export interface ImportJob {
   id: string;
-  show_id: number;
-  sponsor_id: number;
-  file_key: string;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  total_records: number;
-  processed_records: number;
-  success_count: number;
-  error_count: number;
-  error_details?: any[];
-  created_at: string;
-  updated_at: string;
+  showId: string;
+  sponsorId: string;
+  fileKey: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED';
+  totalRows: number;
+  processedRows: number;
+  successCount: number;
+  errorCount: number;
+  errorDetails?: Array<{ row: number; seatNo: string; reason: string }>;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
 }
 
 export const importService = {
-  // Lấy danh sách các bản ghi import của một sự kiện
-  listImports: async (showId: number): Promise<ImportJob[]> => {
+  /** Lấy danh sách import jobs của một show (mới nhất trước). */
+  listImports: async (showId: number | string): Promise<ImportJob[]> => {
     const response = await axiosClient.get(`/api/admin/imports?showId=${showId}`);
     return response.data;
   },
 
-  // Xem chi tiết một job import
+  /** Lấy trạng thái + tiến độ của một job (dùng cho polling). */
   getImportStatus: async (jobId: string): Promise<ImportJob> => {
     const response = await axiosClient.get(`/api/admin/imports/${jobId}`);
     return response.data;
   },
 
-  // Lấy URL upload trực tiếp lên MinIO (Pre-signed URL)
-  getUploadUrl: async (showId: number, sponsorId: number): Promise<{ upload_url: string; file_key: string }> => {
-    const response = await axiosClient.get(`/api/admin/guests/csv-upload-url?showId=${showId}&sponsorId=${sponsorId}`);
-    return response.data;
+  /**
+   * Lấy Pre-signed URL để upload file CSV trực tiếp lên MinIO.
+   * Frontend upload thẳng lên MinIO, không qua backend server.
+   */
+  getUploadUrl: async (
+    showId: number | string,
+    sponsorId: number | string,
+  ): Promise<{ presignedUrl: string; objectKey: string }> => {
+    const response = await axiosClient.get(
+      `/api/admin/guests/csv-upload-url?showId=${showId}&sponsorId=${sponsorId}`,
+    );
+    // Backend trả về: { presignedUrl, objectKey, expiresIn, maxSizeBytes }
+    return {
+      presignedUrl: response.data.presignedUrl,
+      objectKey: response.data.objectKey,
+    };
   },
 
-  // Upload file lên MinIO bằng URL được cấp
+  /** Upload file lên MinIO bằng presigned PUT URL (không đính kèm auth token). */
   uploadToMinIO: async (presignedUrl: string, file: File): Promise<void> => {
-    // Dùng axios mặc định (không đính kèm token auth) để put file lên S3/MinIO
     await axios.put(presignedUrl, file, {
       headers: {
         'Content-Type': file.type || 'text/csv',
@@ -45,12 +57,22 @@ export const importService = {
     });
   },
 
-  // Kích hoạt worker bắt đầu xử lý file CSV đã upload
-  triggerImport: async (fileKey: string, showId: number, sponsorId: number): Promise<{ job_id: string; message: string }> => {
+  /**
+   * Báo backend tạo import job sau khi upload MinIO thành công.
+   * Returns 202 Accepted với { job_id, message }.
+   *
+   * Field names phải match TriggerImportDto của backend:
+   *   fileKey (camelCase), showId, sponsorId
+   */
+  triggerImport: async (
+    fileKey: string,
+    showId: number | string,
+    sponsorId: number | string,
+  ): Promise<{ job_id: string; message: string }> => {
     const response = await axiosClient.post('/api/admin/guests/import', {
-      file_key: fileKey,
-      show_id: showId,
-      sponsor_id: sponsorId,
+      fileKey,           // ✅ match backend TriggerImportDto (không phải file_key)
+      showId: String(showId),
+      sponsorId: String(sponsorId),
     });
     return response.data;
   },

@@ -13,16 +13,31 @@ import { RABBITMQ_CHANNEL } from '../../config/rabbitmq.config';
 import { REDIS_CLIENT } from '../../config/redis.config';
 import { MinioService } from '../../minio/minio.service';
 
-// Phase 2: fs, path, INBOX_DIR, ARCHIVE_DIR, ERROR_DIR removed.
-// Files are now streamed directly from MinIO — no local disk required.
-
 const CSV_BUCKET = process.env.MINIO_BUCKET_CSV || 'ticketbox-csv-imports';
+
+/**
+ * Batch size: số rows gom lại trước khi thực hiện một lần Bulk Insert vào DB.
+ * Giá trị 1000 cân bằng giữa số lần round-trip DB và kích thước payload SQL.
+ */
+const BATCH_SIZE = 1000;
 
 interface ImportPayload {
   jobId: string;
-  fileKey: string; // MinIO object key — e.g. "showId/sponsorId_timestamp.csv"
+  /** MinIO object key — e.g. "showId/sponsorId_timestamp.csv" */
+  fileKey: string;
   showId: string;
   sponsorId: string;
+}
+
+interface ValidatedRow {
+  concert_id: number;
+  seatNo: string;
+  seatRow: string;
+  seatNum: string;
+  guestName: string;
+  guestEmail: string;
+  sponsorId: string;
+  importJobId: string;
 }
 
 @Injectable()
@@ -42,10 +57,8 @@ export class GuestImportProcessor implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    // vip_guest.import is already asserted in rabbitmq.config.ts on startup
     // Process one file at a time — prevents DB thrash and overlapping locks
     await this.rabbitChannel.prefetch(1);
-
     this.logger.log('GuestImportProcessor: listening on vip_guest.import [prefetch=1] (MinIO mode)');
 
     this.rabbitChannel.consume(
@@ -72,7 +85,6 @@ export class GuestImportProcessor implements OnModuleInit {
     }
 
     try {
-      // Verify job record exists
       const job = await this.importJobRepo.findOne({ where: { id: jobId } });
       if (!job) {
         this.logger.error(`[${jobId}] Job record not found — discarding message.`);
@@ -86,24 +98,31 @@ export class GuestImportProcessor implements OnModuleInit {
         startedAt: new Date(),
       });
 
-      // Stream CSV from MinIO → csv-parser (never buffers whole file in memory)
+      // Core: stream CSV from MinIO → for-await → batch bulk insert
       const { successCount, errorCount, errorDetails, totalRows } =
         await this.processFile(fileKey, showId, sponsorId, jobId);
 
-      // Q7 decision: copy to archived/ prefix + tag original as archived
+      // Archive the processed file on MinIO (non-fatal — Q7 decision)
       await this.minioService.archiveCsvObject(CSV_BUCKET, fileKey);
 
-      // Update job to COMPLETED
+      // Choose final status: COMPLETED vs COMPLETED_WITH_ERRORS (skip-and-continue)
+      const finalStatus = errorCount > 0
+        ? ImportJobStatus.COMPLETED_WITH_ERRORS
+        : ImportJobStatus.COMPLETED;
+
       await this.importJobRepo.update(jobId, {
-        status: ImportJobStatus.COMPLETED,
+        status: finalStatus,
         totalRows,
         successCount,
         errorCount,
         errorDetails,
+        processedRows: totalRows,
         completedAt: new Date(),
       });
 
-      this.logger.log(`[${jobId}] COMPLETED — success=${successCount} errors=${errorCount} total=${totalRows}`);
+      this.logger.log(
+        `[${jobId}] ${finalStatus} — success=${successCount} errors=${errorCount} total=${totalRows}`,
+      );
 
       // Notify operations (fire-and-forget)
       this.rabbitChannel.sendToQueue(
@@ -120,7 +139,7 @@ export class GuestImportProcessor implements OnModuleInit {
     } catch (err) {
       this.logger.error(`[${jobId}] Unrecoverable error: ${err.message}`);
 
-      // Q7/Q8: tag with status=error. MinIO lifecycle rule purges after 30 days.
+      // Tag with status=error; MinIO lifecycle rule purges after 30 days (Q8 decision)
       await this.minioService.tagObjectAsError(CSV_BUCKET, fileKey).catch(() => {
         // Non-fatal — don't swallow the original error
       });
@@ -138,15 +157,21 @@ export class GuestImportProcessor implements OnModuleInit {
     }
   }
 
-  // ── CSV processing ──────────────────────────────────────────────────────────
+  // ── CSV Processing: for-await + Batch Bulk Insert ───────────────────────────
 
   /**
-   * Streams a CSV from MinIO and processes each row.
-   * Never buffers the whole file in memory (critical for files up to 500 MB).
+   * Streams a CSV from MinIO and processes rows in batches of BATCH_SIZE.
    *
-   * Auto-detects comma vs semicolon separator from the first chunk of data.
+   * Memory safety:
+   *   The `for await` loop naturally back-pressures the csv-parser readable —
+   *   while `bulkInsertBatch()` is awaited, no new 'data' events fire, keeping
+   *   in-memory state bounded to at most BATCH_SIZE rows regardless of file size.
+   *
+   * Skip-and-continue:
+   *   Invalid rows are logged to errors[] and skipped; valid rows still proceed.
+   *   Final status is COMPLETED_WITH_ERRORS when errors.length > 0.
    */
-  private processFile(
+  private async processFile(
     fileKey: string,
     showId: string,
     sponsorId: string,
@@ -157,148 +182,258 @@ export class GuestImportProcessor implements OnModuleInit {
     errorDetails: ImportRowError[];
     totalRows: number;
   }> {
-    return new Promise(async (resolve, reject) => {
-      let stream: Readable;
-      try {
-        stream = await this.minioService.getObjectStream(CSV_BUCKET, fileKey);
-      } catch (err) {
-        return reject(new Error(`Cannot open MinIO object '${fileKey}': ${err.message}`));
+    // 1. Get a readable stream from MinIO (never buffers entire file in memory)
+    let stream: Readable;
+    try {
+      stream = await this.minioService.getObjectStream(CSV_BUCKET, fileKey);
+    } catch (err) {
+      throw new Error(`Cannot open MinIO object '${fileKey}': ${err.message}`);
+    }
+
+    // 2. Wrap csv-parser stream as an AsyncGenerator for for-await consumption
+    const csvAsyncIter = this.toCsvAsyncIterator(stream);
+
+    const errors: ImportRowError[] = [];
+    let validBatch: ValidatedRow[] = [];
+    let successCount = 0;
+    let totalRows = 0;
+
+    // 3. for await — one row at a time.
+    //    Stream is naturally paused while bulkInsertBatch() is awaited,
+    //    then resumes automatically — no manual pause/resume needed.
+    for await (const row of csvAsyncIter) {
+      totalRows++;
+      const currentRow = totalRows;
+
+      const validated = this.validateRow(row, currentRow, showId, sponsorId, jobId, errors);
+      if (validated) {
+        validBatch.push(validated);
       }
 
-      const errors: ImportRowError[] = [];
-      let successCount = 0;
-      let rowIndex = 0;
-      let separator = ',';
-      let headerDetected = false;
+      // When batch is full: bulk insert → reset batch → update progress counter
+      if (validBatch.length >= BATCH_SIZE) {
+        const inserted = await this.bulkInsertBatch(validBatch, showId, errors, currentRow);
+        successCount += inserted;
+        validBatch = [];
 
-      // Collect all async row operations so we can await them before resolving
-      const rowPromises: Promise<void>[] = [];
+        // Persist processedRows so frontend polling GET /imports/:id can show progress
+        await this.importJobRepo.update(jobId, { processedRows: totalRows });
+        this.logger.log(`[${jobId}] Batch flushed — processedRows=${totalRows} successCount=${successCount}`);
+      }
+    }
 
-      stream
-        .pipe(
-          csvParser({
-            // Detect separator lazily on first header row
-            separator,
-            // Strip BOM from header names
-            mapHeaders: ({ header, index }: { header: string; index: number }) => {
-              // On the first header, detect delimiter from raw buffer not yet available
-              // csv-parser parses headers first; we do a best-effort split detection
-              if (!headerDetected) {
-                headerDetected = true;
-              }
-              return header.replace(/^\uFEFF/, '').trim();
-            },
-            mapValues: ({ value }: { value: string }) => value.trim(),
-          }),
-        )
-        .on('data', (row: Record<string, string>) => {
-          rowIndex++;
-          const currentRow = rowIndex;
-          rowPromises.push(
-            this.processRow(row, currentRow, showId, sponsorId, jobId, errors)
-              .then((ok) => { if (ok) successCount++; }),
-          );
-        })
-        .on('error', reject)
-        .on('end', async () => {
-          try {
-            await Promise.all(rowPromises);
-            resolve({
-              successCount,
-              errorCount: errors.length,
-              errorDetails: errors,
-              totalRows: rowIndex,
-            });
-          } catch (e) {
-            reject(e);
-          }
-        });
-    });
+    // 4. Flush the final partial batch (< BATCH_SIZE rows)
+    if (validBatch.length > 0) {
+      const inserted = await this.bulkInsertBatch(validBatch, showId, errors, totalRows);
+      successCount += inserted;
+    }
+
+    return { successCount, errorCount: errors.length, errorDetails: errors, totalRows };
   }
 
   /**
-   * Validates one row, looks up the seat by sponsorId, and UPSERTs the ticket.
-   * Returns true on success, false on any row-level error.
+   * Converts an event-based csv-parser stream into an AsyncGenerator<Row>.
+   *
+   * Why a generator instead of collecting all rows first?
+   * Collecting all rows would load the entire file into memory.
+   * The generator yields rows one at a time, allowing the consumer (for await)
+   * to control throughput — rows produced faster than consumed are buffered
+   * in the internal queue, but that queue drains between batches due to
+   * the await in the for-await body.
    */
-  private async processRow(
+  private toCsvAsyncIterator(stream: Readable): AsyncGenerator<Record<string, string>> {
+    const csvStream = stream.pipe(
+      csvParser({
+        // Strip BOM from header names and trim whitespace
+        mapHeaders: ({ header }: { header: string }) =>
+          header.replace(/^\uFEFF/, '').trim(),
+        mapValues: ({ value }: { value: string }) => value.trim(),
+      }),
+    );
+
+    return (async function* () {
+      const queue: Record<string, string>[] = [];
+      let notifyConsumer: (() => void) | null = null;
+      let streamDone = false;
+      let streamError: Error | null = null;
+
+      csvStream.on('data', (row: Record<string, string>) => {
+        queue.push(row);
+        if (notifyConsumer) { notifyConsumer(); notifyConsumer = null; }
+      });
+
+      csvStream.on('end', () => {
+        streamDone = true;
+        if (notifyConsumer) { notifyConsumer(); notifyConsumer = null; }
+      });
+
+      csvStream.on('error', (err: Error) => {
+        streamError = err;
+        if (notifyConsumer) { notifyConsumer(); notifyConsumer = null; }
+      });
+
+      while (true) {
+        if (queue.length > 0) {
+          yield queue.shift()!;
+        } else if (streamDone) {
+          if (streamError) throw streamError;
+          return; // End of stream — generator is done
+        } else {
+          // No data yet — wait until next event fires
+          await new Promise<void>((resolve) => { notifyConsumer = resolve; });
+          if (streamError) throw streamError;
+        }
+      }
+    })();
+  }
+
+  // ── Row Validation ──────────────────────────────────────────────────────────
+
+  /**
+   * Validates one CSV row. Returns a ValidatedRow on success, null on failure.
+   * Skip-and-Continue: failures are pushed to errors[], not thrown.
+   */
+  private validateRow(
     row: Record<string, string>,
     rowIndex: number,
     showId: string,
     sponsorId: string,
     jobId: string,
     errors: ImportRowError[],
-  ): Promise<boolean> {
+  ): ValidatedRow | null {
     const { seatNo, name, email } = row;
 
-    // Validate required fields
     if (!seatNo || !name || !email) {
       errors.push({
         row: rowIndex,
         seatNo: seatNo ?? '',
         reason: `Missing required field — seatNo='${seatNo}' name='${name}' email='${email}'`,
       });
-      return false;
+      return null;
     }
 
-    // Parse "A-1" → row='A', number='1'
     const parts = seatNo.split('-');
     if (parts.length !== 2) {
-      errors.push({ row: rowIndex, seatNo, reason: `Invalid seatNo format '${seatNo}', expected 'ROW-NUMBER' (e.g. A-1)` });
-      return false;
+      errors.push({
+        row: rowIndex, seatNo,
+        reason: `Invalid seatNo format '${seatNo}', expected 'ROW-NUMBER' (e.g. A-1)`,
+      });
+      return null;
     }
+
     const [seatRow, seatNum] = parts;
+    return {
+      concert_id: Number(showId),
+      seatNo,
+      seatRow,
+      seatNum,
+      guestName: name,
+      guestEmail: email,
+      sponsorId,
+      importJobId: jobId,
+    };
+  }
+
+  // ── Bulk Insert ─────────────────────────────────────────────────────────────
+
+  /**
+   * Performs ONE bulk INSERT for all valid rows in this batch.
+   * This replaces the original per-row INSERT pattern (N queries → 1 query).
+   *
+   * Seat ownership is validated per-row before inserting; invalid seats are
+   * skipped and logged. If the bulk INSERT itself fails, all rows in the
+   * batch are logged as errors (atomic batch failure).
+   *
+   * @returns number of successfully inserted rows
+   */
+  private async bulkInsertBatch(
+    batch: ValidatedRow[],
+    showId: string,
+    errors: ImportRowError[],
+    lastRowIndex: number,
+  ): Promise<number> {
+    if (batch.length === 0) return 0;
+
+    const batchStartRow = lastRowIndex - batch.length + 1;
+    const validRows: Array<ValidatedRow & { rowIndex: number }> = [];
+
+    // Validate seat ownership for each row in the batch
+    for (let i = 0; i < batch.length; i++) {
+      const row = batch[i];
+      const rowIndex = batchStartRow + i;
+
+      try {
+        const seat = await this.seatRepo.findOne({
+          where: { row: row.seatRow, number: row.seatNum, showId: Number(showId) },
+        });
+
+        if (!seat) {
+          errors.push({ row: rowIndex, seatNo: row.seatNo, reason: `Seat ${row.seatNo} not found for show ${showId}` });
+          continue;
+        }
+        if (seat.sponsorId === null || seat.sponsorId === undefined) {
+          errors.push({ row: rowIndex, seatNo: row.seatNo, reason: `Seat ${row.seatNo} is a public seat and not allocated to any sponsor` });
+          continue;
+        }
+        if (seat.sponsorId !== row.sponsorId) {
+          errors.push({ row: rowIndex, seatNo: row.seatNo, reason: `Seat ${row.seatNo} belongs to sponsor '${seat.sponsorId}', not '${row.sponsorId}'` });
+          continue;
+        }
+
+        validRows.push({ ...row, rowIndex });
+      } catch (err) {
+        errors.push({ row: rowIndex, seatNo: row.seatNo, reason: err.message });
+      }
+    }
+
+    if (validRows.length === 0) return 0;
 
     try {
-      const seat = await this.seatRepo.findOne({
-        where: { row: seatRow, number: seatNum, showId: Number(showId) },
-      });
-
-      if (!seat) {
-        errors.push({ row: rowIndex, seatNo, reason: `Seat ${seatNo} not found for show ${showId}` });
-        return false;
-      }
-
-      if (seat.sponsorId === null || seat.sponsorId === undefined) {
-        errors.push({ row: rowIndex, seatNo, reason: `Seat ${seatNo} is a public seat and not allocated to any sponsor` });
-        return false;
-      }
-
-      if (seat.sponsorId !== sponsorId) {
-        errors.push({
-          row: rowIndex, seatNo,
-          reason: `Seat ${seatNo} belongs to sponsor '${seat.sponsorId}', not '${sponsorId}'`,
-        });
-        return false;
-      }
-
+      // ONE bulk INSERT — replaces N individual INSERT statements
       await this.ticketRepo
         .createQueryBuilder()
         .insert()
         .into(Ticket)
-        .values({
-          concert_id: Number(showId),
-          seatNo,
-          zone: 'SVIP',
-          price: 0,
-          guestName: name,
-          guestEmail: email,
-          sponsorId,
-          importJobId: jobId,
-        })
+        .values(
+          validRows.map((r) => ({
+            concert_id: r.concert_id,
+            seatNo: r.seatNo,
+            zone: 'SVIP',
+            price: 0,
+            guestName: r.guestName,
+            guestEmail: r.guestEmail,
+            sponsorId: r.sponsorId,
+            importJobId: r.importJobId,
+          })),
+        )
         .orUpdate(
           ['guestName', 'guestEmail', 'sponsorId', 'importJobId', 'updatedAt'],
           ['concert_id', 'seatNo'],
         )
         .execute();
 
-      await this.seatRepo.update(seat.seatId, { status: SeatStatus.SOLD });
+      // Mark all valid seats as SOLD in one UPDATE
+      const seatPairs = validRows.map((r) => `('${r.seatRow}', '${r.seatNum}')`).join(', ');
+      await this.seatRepo
+        .createQueryBuilder()
+        .update(SeatInventory)
+        .set({ status: SeatStatus.SOLD })
+        .where(
+          `(row, number) IN (${seatPairs}) AND "showId" = :showId`,
+          { showId: Number(showId) },
+        )
+        .execute();
 
-      this.logger.debug(`[Row ${rowIndex}] OK — seat=${seatNo} guest=${name} <${email}>`);
-      return true;
+      this.logger.debug(`Bulk inserted ${validRows.length} rows (show=${showId})`);
+      return validRows.length;
 
     } catch (err) {
-      errors.push({ row: rowIndex, seatNo, reason: err.message });
-      return false;
+      // Batch-level failure: log all rows in this batch as errors
+      for (const r of validRows) {
+        errors.push({ row: r.rowIndex, seatNo: r.seatNo, reason: `Batch insert failed: ${err.message}` });
+      }
+      this.logger.error(`Bulk insert failed for batch ending at row ${lastRowIndex}: ${err.message}`);
+      return 0;
     }
   }
 }

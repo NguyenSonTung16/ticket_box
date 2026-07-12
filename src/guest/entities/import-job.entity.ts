@@ -6,10 +6,11 @@ import {
 } from 'typeorm';
 
 export enum ImportJobStatus {
-  PENDING    = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED  = 'COMPLETED',
-  FAILED     = 'FAILED',
+  PENDING               = 'PENDING',
+  PROCESSING            = 'PROCESSING',
+  COMPLETED             = 'COMPLETED',
+  COMPLETED_WITH_ERRORS = 'COMPLETED_WITH_ERRORS',
+  FAILED                = 'FAILED',
 }
 
 export interface ImportRowError {
@@ -55,6 +56,13 @@ export class ImportJob {
 
   @Column({ type: 'int', default: 0 })
   errorCount: number;
+
+  /**
+   * Number of rows processed so far (updated per batch).
+   * Used by the frontend polling to render a real-time progress bar.
+   */
+  @Column({ type: 'int', default: 0 })
+  processedRows: number;
 
   /** Per-row error details — populated by the worker */
   @Column({ type: 'jsonb', default: [] })

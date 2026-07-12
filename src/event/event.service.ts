@@ -12,6 +12,7 @@ import { Repository, DataSource, Not, In } from 'typeorm';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { SseService } from '../booking/sse.service';
 import Redis from 'ioredis';
 import * as crypto from 'crypto';
 
@@ -21,6 +22,7 @@ import { Concert, ConcertStatus } from '../info/entities/concert.entity';
 import { EventTicketType } from '../info/entities/event-ticket-type.entity';
 import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { Invoice } from '../booking/entities/invoice.entity';
+import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
 import { ShowInfo, ShowInfoDocument } from '../info/schemas/show-info.schema';
 import { ArtistBio } from '../ai/entities/artist-bio.entity';
 
@@ -116,10 +118,21 @@ export class EventService {
 
   private async _saveStep2(eventId: number, data: SaveStep2Dto) {
     await this.concertRepo.update(eventId, { performanceDate: new Date(data.start_time) });
-    await this.ticketTypeRepo.delete({ showId: eventId });
+    
     if (data.ticket_types?.length) {
-      const entities = data.ticket_types.map((tt, idx) =>
-        this.ticketTypeRepo.create({
+      const zoneRepo = this.dataSource.getRepository(ZoneInventory);
+      
+      // Delete old tickets that are NOT in the payload (if they had an ID)
+      const providedIds = data.ticket_types.filter(t => t.id).map(t => t.id);
+      if (providedIds.length > 0) {
+        await this.ticketTypeRepo.delete({ showId: eventId, id: Not(In(providedIds)) });
+      } else {
+        await this.ticketTypeRepo.delete({ showId: eventId });
+      }
+
+      for (let idx = 0; idx < data.ticket_types.length; idx++) {
+        const tt = data.ticket_types[idx];
+        const payload = {
           showId: eventId,
           name: tt.name,
           price: tt.is_free ? 0 : tt.price,
@@ -132,10 +145,26 @@ export class EventService {
           description: tt.description ?? null,
           ticket_image_url: tt.ticket_image_url ?? null,
           sort_order: idx,
-        }),
-      );
-      await this.ticketTypeRepo.save(entities);
+        };
+
+        if (tt.id) {
+          await this.ticketTypeRepo.update(tt.id, payload);
+        } else {
+          await this.ticketTypeRepo.save(this.ticketTypeRepo.create(payload));
+        }
+
+        // Update ZoneInventory for Booking Service
+        await zoneRepo.query(`
+          INSERT INTO zone_inventory (zone, concert_id, "totalCapacity", "availableSlots", price)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (zone, concert_id) 
+          DO UPDATE SET "totalCapacity" = $3, price = $5, "availableSlots" = zone_inventory."availableSlots" + ($3 - zone_inventory."totalCapacity")
+        `, [tt.name, eventId, tt.total_quantity, tt.total_quantity, payload.price]);
+      }
     }
+
+    // Invalidate event details cache
+    await this.redis.del(`event:${eventId}`);
   }
 
   private async _saveStep3(eventId: number, data: SaveStep3Dto) {

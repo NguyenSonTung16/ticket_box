@@ -18,6 +18,7 @@ export interface EventData {
 }
 
 export interface TicketTypeData {
+  id?: string;
   name: string;
   price: number;
   total_quantity: number;

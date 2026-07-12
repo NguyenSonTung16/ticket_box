@@ -1,4 +1,5 @@
 export class TicketTypeDto {
+  id?: string;
   name: string;
   price: number;
   is_free: boolean;

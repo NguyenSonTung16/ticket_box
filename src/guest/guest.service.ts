@@ -77,6 +77,7 @@ export class GuestService {
       sponsorId:    job.sponsorId,
       status:       job.status,
       totalRows:    job.totalRows,
+      processedRows: job.processedRows,
       successCount: job.successCount,
       errorCount:   job.errorCount,
       errorDetails: job.errorDetails,
