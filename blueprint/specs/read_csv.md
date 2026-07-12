@@ -44,123 +44,82 @@ A-2,Tran Thi B,b@example.com
 
 ### Phase 1: Upload và Dispatch
 
-```
-Sponsor
-    │
-    └─[1]─► POST /api/guest/import  (multipart/form-data: file CSV, showId, sponsorId)
-                │
-                ├─ Validate: Content-Type phải là text/csv hoặc application/octet-stream
-                ├─ [Pre-flight] Đọc chỉ dòng đầu tiên (header row) để kiểm tra columns
-                │       └─ Header PHẢI chứa: seatNo, name, email
-                │       └─ Nếu thiếu → 400 Bad Request ngay (trước khi lưu MinIO)
-                │
-                ├─ MinIO: PUT bucket "ticketbox-csv-imports"
-                │         object key: "{showId}/{sponsorId}_{timestamp}.csv"
-                │
-                ├─ PostgreSQL: INSERT ImportJob
-                │         { id (uuid), showId, sponsorId, fileKey, status: "PENDING",
-                │           totalRows: 0, successCount: 0, errorCount: 0, processedRows: 0 }
-                │
-                ├─ RabbitMQ: publish → queue "vip_guest.import"
-                │         payload: { jobId, fileKey, showId, sponsorId }
-                │
-                └─► Response HTTP 201: { jobId, status: "PENDING" }  ← TRẢ VỀ NGAY
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Sponsor
+    participant API as API Server
+    participant MinIO
+    participant DB as PostgreSQL
+    participant MQ as RabbitMQ
+
+    Sponsor->>API: POST /api/guest/import (CSV file)
+    Note over API: Check header file (seatNo, name, email)
+    alt Header không hợp lệ
+        API-->>Sponsor: 400 Bad Request
+    else Header hợp lệ
+        API->>MinIO: Lưu file (bucket: ticketbox-csv-imports)
+        API->>DB: INSERT ImportJob {status: PENDING}
+        API->>MQ: Publish message tới "vip_guest.import"
+        API-->>Sponsor: 201 Created {jobId} (Trả về ngay lập tức)
+    end
 ```
 
 ### Phase 2: Stream Processing (Van Tiết Lưu)
 
-```
-GuestImportProcessor
-(RabbitMQ consumer, prefetch=1 — chỉ nhận 1 message tại 1 thời điểm)
-    │
-    ├─[A]─ Nhận message từ queue "vip_guest.import"
-    │
-    ├─[B]─ Redis Distributed Lock (NX):
-    │           SET lock:vip_import:{showId}:{sponsorId} {jobId} EX 1800 NX
-    │           Nếu lock đã tồn tại → NACK (requeue=true) → chờ lần sau
-    │
-    ├─[C]─ DB: UPDATE ImportJob { status: "PROCESSING", startedAt: now() }
-    │
-    ├─[D]─ MinIO.getObjectStream("ticketbox-csv-imports", fileKey)
-    │           → Readable stream (KHÔNG buffer toàn bộ file)
-    │
-    ├─[E]─ Tạo AsyncGenerator từ stream:
-    │           stream.pipe(csvParser({ mapHeaders, mapValues }))
-    │           → toCsvAsyncIterator(stream)  ← wrapper chuyển event-based sang async iterable
-    │
-    ├─[F]─ VAN TIẾT LƯU — vòng lặp for await:
-    │   ┌────────────────────────────────────────────────────────────────┐
-    │   │  for await (const row of csvAsyncIter) {                      │
-    │   │    totalRows++                                                 │
-    │   │    validated = validateRow(row)  // kiểm tra seatNo, name, email│
-    │   │    if (validated) validBatch.push(validated)                  │
-    │   │                                                                │
-    │   │    if (validBatch.length >= BATCH_SIZE) {  // BATCH_SIZE = 1000│
-    │   │      // ─── VALVE CLOSE (stream tự pause do for-await block) ─│
-    │   │      await bulkInsertBatch(validBatch)    // Bulk INSERT 1 lần │
-    │   │      // ─── VALVE OPEN (for-await tiếp tục đọc row tiếp theo) │
-    │   │      validBatch = []                                           │
-    │   │      await importJobRepo.update(jobId, { processedRows: totalRows })│
-    │   │    }                                                           │
-    │   │  }                                                             │
-    │   │  // Flush batch cuối (< 1000 dòng)                            │
-    │   │  if (validBatch.length > 0) await bulkInsertBatch(validBatch)  │
-    │   └────────────────────────────────────────────────────────────────┘
-    │
-    │   [Cơ chế back-pressure tự nhiên:]
-    │   Trong khi bulkInsertBatch() đang được await, vòng for-await
-    │   KHÔNG đọc thêm row mới từ stream. csvParser dừng emit 'data' events.
-    │   RAM được giới hạn tối đa = BATCH_SIZE rows = ~1.000 dòng.
-    │
-    ├─[G]─ MinIO: archiveCsvObject (move file sang thư mục "archived/")
-    │
-    ├─[H]─ DB: UPDATE ImportJob
-    │           { status: COMPLETED | COMPLETED_WITH_ERRORS,
-    │             totalRows, successCount, errorCount, errorDetails, completedAt }
-    │
-    ├─[I]─ RabbitMQ: publish → queue "notification_queue"
-    │           { type: "VIP_IMPORT_COMPLETE", jobId, successCount, errorCount }
-    │
-    ├─[J]─ channel.ack(msg)
-    │
-    └─[K]─ Redis: DEL lock:vip_import:{showId}:{sponsorId}
-```
+```mermaid
+sequenceDiagram
+    autonumber
+    participant MQ as RabbitMQ
+    participant Worker as GuestImportProcessor
+    participant Cache as Redis
+    participant DB as PostgreSQL
+    participant MinIO
 
-### Phase 3: Bulk Insert per Batch
-
-```
-bulkInsertBatch(batch: ValidatedRow[]):
-    │
-    ├─ Với mỗi row trong batch:
-    │       └─ SELECT seat FROM seat_inventory WHERE row=seatRow, number=seatNum, showId=?
-    │               ├─ Không tìm thấy seat → skip + log error (seat not found)
-    │               ├─ seat.sponsorId = null → skip + log error (public seat)
-    │               └─ seat.sponsorId ≠ row.sponsorId → skip + log error (wrong sponsor)
-    │
-    ├─ ONE bulk INSERT (toàn bộ valid rows trong batch):
-    │       INSERT INTO tickets (concert_id, seatNo, guestName, guestEmail, sponsorId, ...)
-    │       ON CONFLICT (concert_id, seatNo) DO UPDATE SET guestName=..., guestEmail=...
-    │       (Upsert: duplicate seatNo không gây lỗi, chỉ cập nhật thông tin khách)
-    │
-    └─ ONE bulk UPDATE seats:
-            UPDATE seat_inventory SET status='SOLD'
-            WHERE (row, number) IN (...pairs...) AND showId=?
+    MQ-->>Worker: Consume message (prefetch=1)
+    
+    Worker->>Cache: SET lock:vip_import (Ngăn chặn duplicate job)
+    Worker->>DB: UPDATE ImportJob {status: PROCESSING}
+    Worker->>MinIO: Tạo Readable Stream (KHÔNG load vào RAM)
+    
+    Note over Worker, DB: Vòng lặp For Await (Van Tiết Lưu)
+    loop Đọc từng dòng CSV
+        Worker->>Worker: Validate dòng (seatNo, name, email)
+        Worker->>Worker: Thêm vào mảng validBatch
+        
+        opt Nếu validBatch đủ 1.000 dòng
+            Note over Worker: VALVE CLOSE (Tạm dừng đọc luồng Stream)
+            Worker->>DB: Bulk INSERT 1.000 dòng vào Tickets
+            Worker->>DB: Bulk UPDATE 1.000 dòng trong SeatInventory
+            Worker->>DB: Cập nhật ImportJob.processedRows += 1000
+            Worker->>Worker: Clear validBatch
+            Note over Worker: VALVE OPEN (Tiếp tục đọc luồng Stream)
+        end
+    end
+    
+    opt Nếu validBatch còn dư (< 1.000 dòng)
+        Worker->>DB: Bulk Insert & Update phần còn lại
+    end
+    
+    Worker->>MinIO: Move file CSV sang thư mục archived
+    Worker->>DB: UPDATE ImportJob {status: COMPLETED}
+    Worker->>MQ: Publish thông báo VIP_IMPORT_COMPLETE
+    Worker->>Cache: DEL lock:vip_import
 ```
 
 ### Theo dõi tiến độ từ phía Organizer
 
-```
-Organizer
-    └─► GET /api/imports/:jobId  (polling mỗi 5 giây)
-            └─ Response:
-               {
-                 status: "PENDING|PROCESSING|COMPLETED|COMPLETED_WITH_ERRORS|FAILED",
-                 processedRows: 7500,    ← được cập nhật sau mỗi batch
-                 totalRows: 10000,
-                 successCount: 7450,
-                 errorCount: 50,
-                 errorDetails: [{ row: 12, seatNo: "A-5", reason: "Seat not found" }, ...]
-               }
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Org as Organizer
+    participant API as API Server
+    
+    loop Mỗi 5 giây
+        Org->>API: GET /api/imports/:jobId
+        API-->>Org: {status, processedRows, totalRows, errorCount}
+        Note over Org: Cập nhật Progress Bar trên giao diện
+    end
 ```
 
 ---
@@ -179,52 +138,39 @@ Organizer
 - **Xử lý hiện tại (đã implement):** Row bị skip, push vào `errors[]`. Các dòng hợp lệ khác tiếp tục xử lý bình thường.
 - **Kết quả:** `ImportJob.status = COMPLETED_WITH_ERRORS`, `errorDetails` chứa danh sách lỗi kèm row number.
 
-### Lỗi 3: Batch INSERT thất bại (Batch-level failure)
+### Lỗi 3: Lỗi không thể phục hồi (Wipe and Retry)
 
-- **Kích hoạt:** DB connection timeout, constraint violation ở cấp batch
-- **Xử lý hiện tại (đã implement):** Toàn bộ rows trong batch đó được log là lỗi. Worker tiếp tục xử lý batch tiếp theo (không dừng toàn bộ job).
-- **Log:** `ERROR: Bulk insert failed for batch ending at row {N}: {message}`
-
-### Lỗi 4: Lỗi không thể phục hồi (Wipe and Retry)
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> PENDING: Upload
+    PENDING --> PROCESSING: Đang chạy
+    PROCESSING --> COMPLETED: Thành công 100%
+    PROCESSING --> COMPLETED_WITH_ERRORS: Vài dòng lỗi, bị skip
+    PROCESSING --> FAILED: Lỗi nghiêm trọng (Database down)
+    
+    FAILED --> PENDING: Wipe & Retry (Admin trigger)
+    COMPLETED --> [*]
+    COMPLETED_WITH_ERRORS --> [*]
+```
 
 > **Đã làm được (hiện tại):** Khi Worker gặp lỗi unrecoverable (MinIO down, DB crash hoàn toàn), hệ thống:
-> 1. Gắn tag `status=error` cho MinIO object (MinIO lifecycle rule sẽ xóa sau 30 ngày)
-> 2. Update `ImportJob.status = FAILED`
-> 3. `channel.nack(msg, false, false)` → RabbitMQ route message vào **Dead Letter Queue (DLQ)**
-> 4. Xóa distributed Redis lock
+> 1. Gắn tag `status=error` cho MinIO object.
+> 2. Update `ImportJob.status = FAILED`.
+> 3. `channel.nack` đẩy message vào **Dead Letter Queue (DLQ)**.
+> 4. Xóa Redis lock.
 >
-> **Giới hạn:** DLQ không tự động retry. Dữ liệu đã insert một phần (batch 1–K thành công, batch K+1 fail) vẫn còn trong DB — không có rollback.
-
 > **Thiết kế mục tiêu (Wipe and Retry):**
-> Thêm endpoint hoặc DLQ consumer để Organizer có thể trigger re-process:
->
-> ```
-> POST /api/imports/:jobId/retry
->     │
->     ├─[1] Kiểm tra job.status = FAILED (chỉ retry khi đã fail)
->     │
->     ├─[2] WIPE — Xóa toàn bộ dữ liệu đã insert của job này:
->     │         DELETE FROM tickets WHERE importJobId = :jobId
->     │         UPDATE seat_inventory SET status='AVAILABLE'
->     │           WHERE seatNo IN (SELECT seatNo FROM tickets WHERE importJobId = :jobId)
->     │
->     ├─[3] RESET — Đặt lại trạng thái ImportJob:
->     │         UPDATE ImportJob SET status='PENDING', processedRows=0,
->     │           successCount=0, errorCount=0, errorDetails=[], startedAt=NULL
->     │
->     ├─[4] RE-ENQUEUE — Publish lại message vào queue:
->     │         RabbitMQ: publish → "vip_guest.import" { jobId, fileKey, showId, sponsorId }
->     │
->     └─[5] Response 202 Accepted: { jobId, status: "PENDING", message: "Job re-queued" }
-> ```
->
-> Cơ chế này đảm bảo tính **idempotency**: file gốc vẫn còn trong MinIO (chưa bị xóa khi job fail), có thể được đọc lại hoàn toàn từ đầu.
+> Thêm endpoint để Organizer có thể trigger chạy lại:
+> `POST /api/imports/:jobId/retry`
+> 1. WIPE: Xóa toàn bộ dữ liệu đã insert dở dang của job này (`DELETE FROM tickets...`).
+> 2. RESET: Đặt lại `ImportJob.status = PENDING`.
+> 3. RE-ENQUEUE: Publish lại message vào queue để đọc file lại từ đầu.
 
-### Lỗi 5: Duplicate job cùng show + sponsor (Race condition)
+### Lỗi 4: Duplicate job cùng show + sponsor (Race condition)
 
 - **Kích hoạt:** 2 sponsor upload đồng thời 2 file cho cùng `showId + sponsorId`
 - **Xử lý hiện tại (đã implement):** Redis lock `NX` với TTL 30 phút. Worker thứ 2 không acquire được lock → `NACK (requeue=true)` → message quay lại queue, chờ lock được giải phóng.
-- **Đảm bảo:** Không có 2 import job cho cùng show+sponsor chạy song song.
 
 ---
 
@@ -238,32 +184,11 @@ Organizer
 | Worker prefetch | `1` | 1 file tại 1 thời điểm — không overlap |
 | `BATCH_SIZE` | `1.000 dòng` | Cân bằng giữa số round-trip DB và RAM usage |
 | Redis lock TTL | `1800 giây` | Key: `lock:vip_import:{showId}:{sponsorId}` |
-| MinIO error tag TTL | `30 ngày` | Lifecycle rule tự xóa object lỗi |
 
 ### Bộ nhớ (Memory Safety)
-- **Tại mọi thời điểm**, Worker chỉ giữ tối đa `BATCH_SIZE = 1.000 rows` trong RAM
-- `for await` tự động back-pressure stream: stream không emit thêm `data` khi `bulkInsertBatch()` đang `await`
-- File CSV 500MB với 1 triệu dòng → RAM Worker chỉ tăng thêm ~vài MB (size của 1 batch)
-
-### Bảo mật & quyền
-- Sponsor chỉ được import vào show mà họ được phân quyền (`sponsorId` được gắn với `showId`)
-- Seat phải thuộc `sponsorId` tương ứng — không thể ghi đè ghế của sponsor khác
-
-### Hiệu năng
-| Scenario | Kết quả mong đợi |
-|---|---|
-| File 10.000 dòng | < 30 giây (10 batch × ~3 giây/batch) |
-| File 100.000 dòng | < 5 phút |
-| 5 sponsor upload đồng thời | Tuần tự hóa qua queue — không crash |
-
-### ImportJob status transitions
-```
-PENDING → PROCESSING → COMPLETED
-                     → COMPLETED_WITH_ERRORS  (có row lỗi nhưng vẫn xử lý được)
-                     → FAILED                 (lỗi unrecoverable)
-
-FAILED ──[Wipe & Retry]──► PENDING → PROCESSING → ...
-```
+- **Tại mọi thời điểm**, Worker chỉ giữ tối đa `BATCH_SIZE = 1.000 rows` trong RAM.
+- `for await` tự động back-pressure stream: stream không emit thêm `data` khi `bulkInsertBatch()` đang `await`.
+- File CSV 500MB với 1 triệu dòng → RAM Worker chỉ tăng thêm ~vài MB.
 
 ---
 
