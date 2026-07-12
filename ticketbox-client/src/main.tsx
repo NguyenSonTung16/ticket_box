@@ -23,10 +23,11 @@ import { ArtistBiographyPage } from './pages/organizer-center/ArtistBiographyPag
 import { ArtistBioListPage } from './pages/organizer-center/ArtistBioListPage';
 import { ArtistBioManualPage } from './pages/organizer-center/ArtistBioManualPage';
 import { StatsPage } from './pages/organizer-center/StatsPage';
+import { OrganizerCheckinHistoryPage } from './pages/organizer-center/OrganizerCheckinHistoryPage';
 
-// Check-in & Admin Approval
+// Check-in & Bio Approval
 import { CheckinConsolePage } from './pages/CheckinConsolePage';
-import { AdminApprovalPage } from './pages/AdminApprovalPage';
+import { BioApprovalPage } from './pages/BioApprovalPage';
 
 const container = document.getElementById('root');
 if (container) {
@@ -43,9 +44,9 @@ if (container) {
             <Route path="/payment.html" element={<PaymentPage />} />
             <Route path="/payment-success.html" element={<PaymentSuccessPage />} />
             
-            {/* Check-in & Admin Approval */}
+            {/* Check-in & Bio Approval */}
             <Route path="/checkin" element={<CheckinConsolePage />} />
-            <Route path="/admin" element={<AdminApprovalPage />} />
+            <Route path="/organizer/bio-approval" element={<BioApprovalPage />} />
 
             {/* Organizer Center */}
             <Route path="/organizer" element={<OrganizerLayout />}>
@@ -59,6 +60,7 @@ if (container) {
               <Route path="bio-manual" element={<ArtistBioManualPage />} />
               <Route path="artists" element={<ArtistBioListPage />} />
               <Route path="stats/:id" element={<StatsPage />} />
+              <Route path="checkin-history" element={<OrganizerCheckinHistoryPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

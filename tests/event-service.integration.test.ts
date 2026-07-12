@@ -291,7 +291,7 @@ describe('1.3. Public Flow', () => {
 describe('1.4. Admin Event Management', () => {
   it('PUT /api/admin/concerts/:id → Cập nhật mô tả thành công', async () => {
     const res = await api.put(
-      `/api/admin/concerts/${eventId}`,
+      `/api/organizer/concerts/${eventId}`,
       { description: 'Updated by integration test' },
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
@@ -300,14 +300,14 @@ describe('1.4. Admin Event Management', () => {
   });
 
   it('[Negative] PUT /api/admin/concerts/:id không có token → 401', async () => {
-    const res = await api.put(`/api/admin/concerts/${eventId}`, {
+    const res = await api.put(`/api/organizer/concerts/${eventId}`, {
       description: 'Should fail',
     });
     expect(res.status).toBe(401);
   });
 
   it('DELETE /api/admin/concerts/:id → Hủy sự kiện, status = CANCELLED', async () => {
-    const res = await api.delete(`/api/admin/concerts/${eventId}`, {
+    const res = await api.delete(`/api/organizer/concerts/${eventId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     expect(res.status).toBe(200);
@@ -316,7 +316,7 @@ describe('1.4. Admin Event Management', () => {
   });
 
   it('[Negative] DELETE /api/admin/concerts/99999 → 404 Not Found', async () => {
-    const res = await api.delete('/api/admin/concerts/99999', {
+    const res = await api.delete('/api/organizer/concerts/99999', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     expect(res.status).toBe(404);

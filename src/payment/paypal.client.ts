@@ -104,8 +104,37 @@ export class PaypalClient {
 
     if (!response.ok) {
       const errorText = await response.text();
+      if (response.status === 422 && errorText.includes('ORDER_ALREADY_CAPTURED')) {
+        this.logger.log(`[PayPal] Order ${orderId} đã được capture từ trước (via Webhook hoặc tự động). Tiếp tục xử lý thành công.`);
+        return { status: 'COMPLETED', id: orderId };
+      }
       this.logger.error(`PayPal captureOrder failed: ${response.status} ${errorText}`);
       throw new Error(`PayPal captureOrder failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Refund a captured payment
+   */
+  async refundCapture(captureId: string, amountUSD?: string): Promise<any> {
+    const token = await this.getAccessToken();
+    const body = amountUSD ? JSON.stringify({ amount: { value: amountUSD, currency_code: 'USD' } }) : '{}';
+
+    const response = await fetch(`${this.baseUrl}/v2/payments/captures/${captureId}/refund`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`PayPal refundCapture failed: ${response.status} ${errorText}`);
+      throw new Error(`PayPal refundCapture failed: ${response.status}`);
     }
 
     return response.json();
@@ -116,27 +145,31 @@ export class PaypalClient {
    */
   async verifyWebhookSignature(headers: Record<string, string>, body: string): Promise<boolean> {
     const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+    this.logger.log(`[Webhook Verification] Using webhook_id: ${webhookId}`);
     if (!webhookId) {
       this.logger.warn('PAYPAL_WEBHOOK_ID not set, skipping verification in dev mode');
       return true; // Dev mode: skip verification
     }
 
     const token = await this.getAccessToken();
+    const payloadString = JSON.stringify({
+      auth_algo: headers['paypal-auth-algo'],
+      cert_url: headers['paypal-cert-url'],
+      transmission_id: headers['paypal-transmission-id'],
+      transmission_sig: headers['paypal-transmission-sig'],
+      transmission_time: headers['paypal-transmission-time'],
+      webhook_id: webhookId,
+    });
+    // Insert the raw body exactly as received into the webhook_event field to preserve formatting for CRC32
+    const bodyToSend = payloadString.slice(0, -1) + `,"webhook_event":${body}}`;
+
     const response = await fetch(`${this.baseUrl}/v1/notifications/verify-webhook-signature`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        auth_algo: headers['paypal-auth-algo'],
-        cert_url: headers['paypal-cert-url'],
-        transmission_id: headers['paypal-transmission-id'],
-        transmission_sig: headers['paypal-transmission-sig'],
-        transmission_time: headers['paypal-transmission-time'],
-        webhook_id: webhookId,
-        webhook_event: JSON.parse(body),
-      }),
+      body: bodyToSend,
     });
 
     if (!response.ok) {
@@ -145,6 +178,7 @@ export class PaypalClient {
     }
 
     const result = await response.json();
+    this.logger.log(`PayPal webhook verification result: ${JSON.stringify(result)}`);
     return result.verification_status === 'SUCCESS';
   }
 }

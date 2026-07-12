@@ -23,38 +23,34 @@
   Γûê THRESHOLDS 
 
     checks
-    Γ£ù 'rate>0.99' rate=0.00%
+    Γ£ù 'rate>0.99' rate=88.88%
 
 
   Γûê TOTAL RESULTS 
 
-    checks_total.......: 90      1800.442909/s
-    checks_succeeded...: 0.00%   0 out of 90
-    checks_failed......: 100.00% 90 out of 90
+    checks_total.......: 90     2652.332284/s
+    checks_succeeded...: 88.88% 80 out of 90
+    checks_failed......: 11.11% 10 out of 90
 
-    Γ£ù status is 502
-      Γå│  0% ΓÇö Γ£ô 0 / Γ£ù 30
-    Γ£ù body has message
-      Γå│  0% ΓÇö Γ£ô 0 / Γ£ù 20
-    Γ£ù status is 200 or 502
-      Γå│  0% ΓÇö Γ£ô 0 / Γ£ù 20
-    Γ£ù body is JSON and has message
-      Γå│  0% ΓÇö Γ£ô 0 / Γ£ù 10
+    Γ£ô status is 200 or 502
     Γ£ù CORS header present
       Γå│  0% ΓÇö Γ£ô 0 / Γ£ù 10
+    Γ£ô status is 502
+    Γ£ô body has message
+    Γ£ô body is JSON and has message
 
     HTTP
-    http_req_duration....: avg=0s      min=0s      med=0s      max=0s      p(90)=0s      p(95)=0s     
+    http_req_duration....: avg=15.5ms  min=5.14ms  med=17.92ms max=21.93ms p(90)=21.4ms  p(95)=21.45ms
     http_req_failed......: 100.00% 60 out of 60
-    http_reqs............: 60      1200.295273/s
+    http_reqs............: 60      1768.221523/s
 
     EXECUTION
-    iteration_duration...: avg=28.19ms min=12.81ms med=25.77ms max=49.98ms p(90)=39.82ms p(95)=49.45ms
-    iterations...........: 60      1200.295273/s
+    iteration_duration...: avg=26.96ms min=16.73ms med=29.13ms max=33.93ms p(90)=32.87ms p(95)=33.4ms 
+    iterations...........: 60      1768.221523/s
 
     NETWORK
-    data_received........: 0 B     0 B/s
-    data_sent............: 0 B     0 B/s
+    data_received........: 19 kB   553 kB/s
+    data_sent............: 5.9 kB  174 kB/s
 
 
 

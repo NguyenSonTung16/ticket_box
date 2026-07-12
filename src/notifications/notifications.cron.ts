@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import * as amqp from 'amqplib';
 import { RABBITMQ_CHANNEL } from '../config/rabbitmq.config';
+import { Invoice } from '../booking/entities/invoice.entity';
 import { ImportJob, ImportJobStatus } from '../guest/entities/import-job.entity';
 
 @Injectable()
@@ -12,8 +13,8 @@ export class NotificationsCron {
 
   constructor(
     @Inject(RABBITMQ_CHANNEL) private readonly rabbitChannel: amqp.Channel,
-    @InjectRepository(ImportJob)
-    private readonly importJobRepo: Repository<ImportJob>,
+    @InjectRepository(Invoice) private readonly invoiceRepo: Repository<Invoice>,
+    @InjectRepository(ImportJob) private readonly importJobRepo: Repository<ImportJob>,
   ) {}
 
   // Chạy mỗi ngày vào lúc 00:00 để gửi nhắc nhở 24h trước khi sự kiện diễn ra
@@ -21,32 +22,43 @@ export class NotificationsCron {
   async handleDailyReminders() {
     this.logger.log('Bắt đầu chạy Cronjob gửi nhắc nhở sự kiện 24h tới...');
     
-    // 1. Lấy danh sách users cần gửi nhắc nhở từ Database (Giả lập)
-    // Bulk API Batching: Thay vì lấy tất cả, lấy <= 1000 users mỗi lần (Phân trang bằng cursor hoặc offset)
-    const totalUsers = 2500;
-    const batchSize = 1000;
-    
-    for (let offset = 0; offset < totalUsers; offset += batchSize) {
-      this.logger.log(`Đang xử lý batch từ ${offset} đến ${offset + batchSize}`);
-      const batch = this.fetchUsersBatch(offset, batchSize);
-      
+    // 1. Lấy danh sách users đã mua vé thành công từ Database (Thực tế)
+    const paidInvoices = await this.invoiceRepo.find({
+      where: { status: 'PAID' },
+      relations: ['user'],
+    });
+
+    const usersMap = new Map();
+    for (const inv of paidInvoices) {
+      if (inv.user && inv.user.email) {
+        usersMap.set(inv.user.id, { id: inv.user.id, email: inv.user.email });
+      }
+    }
+
+    const realUsers = Array.from(usersMap.values());
+    if (realUsers.length === 0) {
+      this.logger.log('Không có người dùng nào đã thanh toán vé để gửi nhắc nhở.');
+      return;
+    }
+
+    // 2. Chia batch gửi vào RabbitMQ
+    const batchSize = 500;
+    for (let i = 0; i < realUsers.length; i += batchSize) {
+      const batch = realUsers.slice(i, i + batchSize);
       try {
-        // Gửi toàn bộ batch thành 1 message duy nhất (Bulk Message) vào queue để Worker Pool xử lý
         this.rabbitChannel.sendToQueue('notification_queue', Buffer.from(JSON.stringify({
           type: 'BULK_REMINDER', 
-          showId: '11111111-1111-1111-1111-111111111111',
+          concert_id: 1,
+          showName: 'Sự kiện âm nhạc TicketBox',
           batchSize: batch.length,
           users: batch
-        })));
-        this.logger.log(`Đã đẩy thành công 1 Bulk Message chứa ${batch.length} users vào queue.`);
+        })), { persistent: true });
+        this.logger.log(`Đã đẩy thành công batch ${batch.length} users thực tế vào hàng đợi notification_queue.`);
       } catch (error) {
-        // Dead Letter Queue (DLQ) bằng cách tạo riêng 1 queue xử lý lỗi cron
-        this.logger.error(`Lỗi khi đẩy bulk message chứa ${batch.length} users vào queue. Đưa vào DLQ.`);
-        // (RabbitMQ đã được thiết lập mặc định, nếu channel lỗi có thể fallback)
+        this.logger.error(`Lỗi khi đẩy batch ${batch.length} users vào queue: ${error.message}`);
       }
     }
   }
-
   private fetchUsersBatch(offset: number, limit: number) {
     const users = [];
     for (let i = 0; i < limit; i++) {

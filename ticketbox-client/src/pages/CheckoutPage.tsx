@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBookingTimer } from '../hooks/useBookingTimer';
+import axiosClient from '../utils/axiosClient';
 
 export const CheckoutPage: React.FC = () => {
   const location = useLocation();
@@ -15,6 +16,14 @@ export const CheckoutPage: React.FC = () => {
     timeLeft: initialTimeLeft = 300
   } = location.state || {};
   const { timeLeft, m, s } = useBookingTimer(initialTimeLeft);
+
+  const [eventData, setEventData] = useState<any>(null);
+
+  useEffect(() => {
+    axiosClient.get(`/info/show/${concert_id}`)
+      .then(res => setEventData(res.data))
+      .catch(() => {});
+  }, [concert_id]);
 
   return (
     <div className="bg-black text-on-surface font-body-md overflow-x-hidden min-h-screen flex flex-col">
@@ -35,15 +44,15 @@ export const CheckoutPage: React.FC = () => {
               <div className="flex items-center gap-4">
                 <button onClick={() => navigate(`/seat.html?id=${concert_id}`)} className="material-symbols-outlined text-primary hover:bg-surface-bright transition-all p-2 rounded-full">arrow_back</button>
                 <div className="flex flex-col">
-                  <h1 className="font-headline-md text-headline-md text-primary">Liveshow Góc Ban Công: Vệt Nắng</h1>
+                  <h1 className="font-headline-md text-headline-md text-primary">{eventData?.name || '...'}</h1>
                   <div className="flex flex-wrap gap-4 mt-1">
                     <div className="flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant">
                       <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                      20:00 - 22:00, 13 Tháng 06, 2026
+                      {eventData?.performanceDate ? new Date(eventData.performanceDate).toLocaleString('vi-VN') : ''}
                     </div>
                     <div className="flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant">
                       <span className="material-symbols-outlined text-[18px]">location_on</span>
-                      Hội trường Trung tâm Văn hoá Thể thao Quần Ngựa
+                      {eventData?.venue_name || ''}
                     </div>
                   </div>
                 </div>

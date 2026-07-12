@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axiosClient from '../utils/axiosClient';
 import { useAuth } from '../context/AuthContext';
 
-export const AdminApprovalPage: React.FC = () => {
+export const BioApprovalPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -32,9 +32,9 @@ export const AdminApprovalPage: React.FC = () => {
   const [isApproving, setIsApproving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Check auth - redirect if not admin or organizer
+  // Check auth - redirect if not organizer
   useEffect(() => {
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'ORGANIZER')) {
+    if (!user || user.role !== 'ORGANIZER') {
       alert('Bạn không có quyền truy cập trang kiểm duyệt.');
       navigate('/');
     }

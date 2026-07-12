@@ -82,33 +82,83 @@ graph TB
 
 ---
 
-## 3. Thiết kế Cơ sở dữ liệu tối giản (Database Schema)
-Để phục vụ việc lưu trữ thông tin concert và số vé gốc, hệ thống sử dụng PostgreSQL với các bảng được chuẩn hóa:
+## 3. Thiết kế Cơ sở dữ liệu (Database Schema)
+Để phục vụ việc lưu trữ thông tin concert, sơ đồ ghế và xử lý thanh toán, hệ thống sử dụng PostgreSQL với các bảng được chuẩn hóa như sau:
 
 ```mermaid
 erDiagram
-    CONCERT ||--o{ TICKET_TYPE : "has"
-    CONCERT {
-        bigint id PK
-        varchar title
-        text description
-        timestamp event_date
-        varchar status "DRAFT, PUBLISHED, CANCELLED"
-        timestamp created_at
+    users ||--o{ invoices : "has"
+    users ||--o{ seat_inventory : "holds/books"
+    concerts ||--o{ zone_inventory : "has zones"
+    concerts ||--o{ seat_inventory : "has seats"
+    invoices ||--|{ tickets : "contains"
+
+    users {
+        uuid id PK
+        varchar email
+        varchar passwordHash
+        timestamp createdAt
     }
-    TICKET_TYPE {
-        bigint id PK
-        bigint concert_id FK
-        varchar name "SVIP, VIP, CAT1, CAT2, GA"
-        numeric price
-        integer total_quantity
-        integer remaining_quantity
+    concerts {
+        int id PK
+        varchar name
+        timestamp performanceDate
+        varchar location
+        varchar status
+    }
+    zone_inventory {
+        varchar zone PK
+        int concert_id PK
+        int totalCapacity
+        int availableSlots
+        int price
+        int ticketLimit
+    }
+    seat_inventory {
+        varchar seatNo PK
+        int concert_id PK
+        varchar zone
+        varchar status "AVAILABLE, RESERVED, BOOKED"
+        uuid reservedBy FK
+        timestamp expiryTime
+    }
+    invoices {
+        uuid id PK
+        uuid userId FK
+        int concert_id FK
+        decimal totalAmount
+        varchar status
+        timestamp createdAt
+    }
+    tickets {
+        uuid id PK
+        uuid invoiceId FK
+        int concert_id FK
+        varchar seatNo FK
+        varchar zone FK
+        decimal price
+        varchar qrCodeUrl
+    }
+    idempotency_keys {
+        uuid id PK
+        varchar key UK
+        uuid userId FK
+        varchar status
+        int concert_id FK
+        jsonb requestPayload
+        jsonb responsePayload
+        varchar paypalOrderId
+        timestamp createdAt
+        timestamp expiresAt
     }
 ```
 
 ### Chi tiết Schema:
 *   **Bảng `concerts`**: Lưu thông tin tĩnh của show diễn. Dữ liệu này ít khi thay đổi nên sẽ được cache rất lâu.
-*   **Bảng `ticket_types`**: Lưu thông tin giá vé và số lượng vé còn lại (`remaining_quantity`). Dữ liệu này biến động liên tục khi có giao dịch và cần được đồng bộ cực nhanh lên tầng Cache.
+*   **Bảng `zone_inventory`**: Quản lý sức chứa và số lượng vé trống của các khu vực chung (không có ghế ngồi cố định, ví dụ: VIP, Normal). Chứa cấu hình `ticketLimit` giới hạn mua.
+*   **Bảng `seat_inventory`**: Quản lý từng ghế ngồi vật lý độc lập (Dùng cho hạng vé SVIP). Có cơ chế Lock giữ ghế bằng `expiryTime` và `reservedBy`.
+*   **Bảng `invoices` & `tickets`**: Quản lý hóa đơn và vé thực tế xuất ra cho người dùng sau khi thanh toán.
+*   **Bảng `idempotency_keys`**: Lưu khóa chống trùng lặp để ngăn ngừa lỗi thanh toán đúp (Double-charge) khi người dùng spam nút thanh toán.
 
 ---
 
@@ -126,35 +176,46 @@ Hệ thống kết hợp 2 tầng cache để tối ưu hóa hiệu năng:
 *   **Công nghệ:** Redis Cluster đảm bảo phân tán dữ liệu và tính sẵn sàng cao.
 *   **Quy ước Key:**
     *   Thông tin Concert: `concert:{concert_id}:info` (TTL = 1 giờ).
-    *   Số lượng vé còn lại: `concert:{concert_id}:tickets` (Hash key lưu `{ticket_type_id}: {remaining_qty}`). Không đặt TTL (vô hạn) vì Redis đóng vai trò là single source of truth cho số lượng vé trong suốt thời gian mở bán.
+    *   Số lượng vé khu vực tự do: `concert:{concert_id}:inventory` (Hash key lưu `{zone}: {availableSlots}`).
+    *   Trạng thái ghế ngồi SVIP: `concert:{concert_id}:seats` (Hash key lưu `{seatNo}: {userId}` để giữ chỗ bằng lệnh `HSETNX`). Không đặt TTL (vô hạn) vì Redis đóng vai trò là chốt chặn chống Double-booking trong thời gian thực.
 
 ### Cơ chế Invalidation & Push thời gian thực (Redis Pub/Sub + SSE)
 Khi có giao dịch mua vé thành công, hệ thống không đợi 1 giây TTL của Local Cache hết hạn mà thực hiện đồng bộ chủ động:
 
 ```
-[MUA VÉ THÀNH CÔNG]
+[KHÁCH HÀNG BẤM THANH TOÁN (CHECKOUT)]
        │
        ▼
-1. Trừ số lượng vé trên RAM Redis Cluster (Tầng 2) trước.
-   Nếu thành công (còn vé), đẩy message "Đơn hàng" vào Message Queue (RabbitMQ) và nhả kết nối.
+1. Lưu giỏ hàng: Backend chèn 1 dòng `PENDING` kèm `requestPayload` vào bảng `idempotency_keys` trên PostgreSQL để khóa giao dịch chống đúp (Double-charge).
        │
        ▼
-2. Background Worker lấy message từ Queue và cập nhật dữ liệu gốc vào PostgreSQL (Asynchronous Write).
+2. Giữ vé tạm thời: Thực hiện trừ số vé trên RAM Redis Cluster bằng lệnh `HINCRBY` (cho Zone) hoặc `HSETNX` (cho Seat). Trả link PayPal cho khách đi thanh toán.
        │
        ▼
-3. Worker phát một message lên kênh Redis Pub/Sub: `{"concert_id": "1", "ticket_type_id": "A", "remaining": 198}`.
+[PAYPAL BÁO THANH TOÁN THÀNH CÔNG BẰNG WEBHOOK]
        │
        ▼
-4. Tất cả các App Server Node đăng ký kênh này lập tức nhận được message:
-   ├── Xóa dữ liệu cũ trong RAM cục bộ (Local Cache Tầng 1).
-   └── Ghi đè con số mới `198` vào Local Cache ngay lập tức.
+3. Đẩy tin nhắn Webhook vào Message Queue (RabbitMQ) và trả phản hồi ngay cho PayPal.
        │
        ▼
-5. Các App Server chủ động đẩy (push) sự thay đổi này xuống trình duyệt của khách hàng 
+4. Background Worker (Chạy ngầm) bốc tin nhắn từ Queue ra xử lý:
+   ├── Đọc PostgreSQL: Kéo giỏ hàng từ bảng `idempotency_keys` ra.
+   └── Ghi PostgreSQL: Lưu dữ liệu gốc vào các bảng `invoices`, `tickets`. Cập nhật trạng thái ghế sang `BOOKED` tại `seat_inventory` và trừ `availableSlots` tại `zone_inventory`.
+       │
+       ▼
+5. Worker phát một message lên kênh Redis Pub/Sub: `{"concert_id": 1, "zone": "VIP", "availableSlots": 198}` hoặc `{"seatNo": "A-1", "status": "BOOKED"}`.
+       │
+       ▼
+6. Tất cả các App Server Node đăng ký kênh này lập tức nhận được message:
+   ├── Xóa trạng thái ghế/vé cũ trong RAM cục bộ (Local Cache Tầng 1).
+   └── Ghi đè trạng thái mới nhất vào Local Cache.
+       │
+       ▼
+7. Các App Server chủ động đẩy (push) sự thay đổi này xuống trình duyệt của khách hàng 
    đang xem show qua đường ống SSE (Server-Sent Events) đang duy trì.
        │
        ▼
-6. Trình duyệt nhận sự kiện và cập nhật trực tiếp lên UI (Số lượng vé tự động giảm từ 200 -> 198).
+8. Trình duyệt nhận sự kiện và cập nhật trực tiếp lên UI (Ví dụ: Ghế A-1 đột nhiên chuyển sang màu xám).
 ```
 
 ---

@@ -116,13 +116,13 @@ export class EventController {
     return this.eventService.getEventDetail(eventId);
   }
 
-  @Put('admin/concerts/:id')
+  @Put('organizer/concerts/:id')
   @UseGuards(JwtAuthGuard)
   async updateEvent(@Param('id', ParseIntPipe) eventId: number, @Body() body: UpdateEventDto, @Request() req: any) {
     return this.eventService.updateEvent(eventId, body, req.user.userId);
   }
 
-  @Delete('admin/concerts/:id')
+  @Delete('organizer/concerts/:id')
   @UseGuards(JwtAuthGuard)
   async cancelEventAdmin(@Param('id', ParseIntPipe) eventId: number) {
     return this.eventService.cancelEvent(eventId);

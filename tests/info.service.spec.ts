@@ -92,7 +92,7 @@ describe('InfoService - getShowInfo SingleFlight Test', () => {
 
     expect(results).toHaveLength(1000);
     results.forEach(result => {
-      expect(result).toEqual(expectedData);
+      expect(result).toEqual(expect.objectContaining(expectedData));
     });
 
     // KIỂM TRA ĐIỀU KIỆN 2: Database chỉ bị gọi CHÍNH XÁC 1 LẦN

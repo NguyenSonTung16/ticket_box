@@ -16,4 +16,7 @@ export class ZoneInventory {
 
   @Column({ type: 'int', default: 0 })
   price: number;
+
+  @Column({ type: 'int', default: 4 })
+  ticketLimit: number;
 }

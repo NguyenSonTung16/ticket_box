@@ -24,6 +24,13 @@ export const PaymentPage: React.FC = () => {
 
   const isProcessingRef = useRef(false);
 
+  const [eventData, setEventData] = useState<any>(null);
+  useEffect(() => {
+    axiosClient.get(`/info/show/${concert_id}`)
+      .then(res => setEventData(res.data))
+      .catch(() => {});
+  }, [concert_id]);
+
   const fetchConfig = () => {
     setPaymentServiceError(null);
     // Lấy config PayPal Client ID từ backend
@@ -94,6 +101,7 @@ export const PaymentPage: React.FC = () => {
   const handleApprove = async (data: any) => {
     try {
       isProcessingRef.current = true;
+      /* Tạm thời disable theo yêu cầu: hệ thống chỉ xài webhook của paypal để capture
       const res = await axiosClient.post('/payment/capture', {
         paypalOrderId: data.orderID,
         idempotencyKey: idempotencyKey || sessionStorage.getItem('idempotency_key'),
@@ -107,6 +115,10 @@ export const PaymentPage: React.FC = () => {
         isProcessingRef.current = false;
         navigate('/payment-success.html', { replace: true });
       }
+      */
+      // Chuyển hướng luôn, để backend tự lo webhook capture
+      isProcessingRef.current = false;
+      navigate('/payment-success.html', { replace: true });
     } catch (error: any) {
       isProcessingRef.current = false;
       alert(error.response?.data?.message || 'Thanh toán không thành công');
@@ -133,7 +145,7 @@ export const PaymentPage: React.FC = () => {
               <button onClick={() => navigate('/checkout.html', { state: location.state })} className="p-2 hover:bg-surface-bright rounded-full transition-all">
                 <span className="material-symbols-outlined text-primary">arrow_back</span>
               </button>
-              <h1 className="font-headline-md text-headline-md text-primary font-bold">Liveshow Góc Ban Công: Vệt Nắng</h1>
+              <h1 className="font-headline-md text-headline-md text-primary font-bold">{eventData?.name || '...'}</h1>
             </div>
             <div className="flex items-center gap-4">
               <div className="glass-timer flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant" style={{ backdropFilter: 'blur(12px)', background: 'rgba(28, 27, 27, 0.8)' }}>

@@ -70,3 +70,36 @@ Nếu bạn muốn tìm hiểu sâu về cách hệ thống chống sập và x�
 - Cho phép người dùng giữ chỗ trong 10 phút (Chống đụng độ ghế bằng cơ chế khóa nguyên tử `HSETNX` trên Redis).
 - Hết 10 phút không thanh toán: Worker RabbitMQ tự động thu hồi và nhả vé (Rollback) cập nhật real-time cho toàn hệ thống.
 - Luồng thanh toán kết hợp kiến trúc **Hybrid Synchronous-Asynchronous Caching**: Giữ chỗ thần tốc trên Redis, nhưng Chốt chặn thanh toán tuyệt đối an toàn bằng lệnh cập nhật Đồng bộ dưới Database (PostgreSQL) chống Oversell 100%.
+
+---
+
+## 🌍 Cấu hình Ngrok để nhận Webhook (Thanh toán & Gửi Email)
+Vì hệ thống chạy ở Localhost, cổng thanh toán PayPal không thể gửi thông báo (Webhook) về khi thanh toán thành công, dẫn đến việc không thể gửi email vé cho khách. Bạn cần cấu hình Ngrok để tạo đường dẫn Public:
+
+### Bước 1: Cài đặt và chạy Ngrok
+1. Tải Ngrok về máy từ [ngrok.com/download](https://ngrok.com/download) và giải nén.
+2. Đăng nhập vào Ngrok để lấy Authtoken, cấu hình terminal:
+   ```bash
+   ngrok config add-authtoken <YOUR_AUTHTOKEN>
+   ```
+3. Chạy Ngrok để public cổng của Backend (Ví dụ: 3333):
+   ```bash
+   ngrok http 3333
+   ```
+4. Copy đường dẫn Forwarding (ví dụ: `https://abcd-123.ngrok-free.app`).
+
+### Bước 2: Cấu hình Webhook trên PayPal Developer
+1. Đăng nhập vào [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/applications).
+2. Vào **Apps & Credentials** -> Mở App Sandbox của bạn.
+3. Cuộn xuống phần **Webhooks** và nhấn **Add Webhook** (hoặc Edit).
+4. Dán đường dẫn Ngrok vừa copy và thêm `/payment/webhook` vào cuối (VD: `https://abcd-123.ngrok-free.app/payment/webhook`).
+5. Ở Event types, chọn **Payment capture completed** (hoặc All events). Nhấn Save.
+
+### Bước 3: Cập nhật Webhook ID vào hệ thống
+1. Copy **Webhook ID** mới được cấp từ PayPal.
+2. Mở file `.env` ở thư mục gốc của dự án.
+3. Sửa dòng cấu hình Webhook ID:
+   ```env
+   PAYPAL_WEBHOOK_ID=<Webhook_ID_Mới>
+   ```
+4. Khởi động lại Backend để nhận cấu hình. Bây giờ, khi thanh toán thành công, hệ thống sẽ tự động cập nhật trạng thái vé và gửi Email!

@@ -76,11 +76,10 @@ export class PaymentController {
   @Post('webhook')
   async handleWebhook(
     @Headers() headers: Record<string, string>,
-    @Body() body: any,
-    @Req() req: Request,
+    @Req() req: RawBodyRequest<Request>,
   ) {
     // Sử dụng raw body string cho signature verification
-    const rawBody = JSON.stringify(body);
+    const rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body);
     return this.paymentService.handleWebhook(headers, rawBody);
   }
 }

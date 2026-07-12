@@ -59,8 +59,8 @@ export class SearchService {
     return promise;
   }
 
-  // Admin đồng bộ lại Index (Khi có show mới/sửa tên show)
-  async syncAdminData(showData: any) {
+  // Organizer đồng bộ lại Index (Khi có show mới/sửa tên show)
+  async syncConcertData(showData: any) {
     const showId = crypto.randomUUID();
     showData.id = showId;
 
