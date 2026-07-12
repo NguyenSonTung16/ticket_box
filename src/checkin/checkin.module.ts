@@ -8,9 +8,12 @@ import { OfflineSyncLog } from './entities/offline-sync-log.entity';
 import { Ticket } from '../booking/entities/ticket.entity';
 import { User } from '../auth/entities/user.entity';
 
+import { AuthModule } from '../auth/auth.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([GateDevice, Checkin, OfflineSyncLog, Ticket, User]),
+    AuthModule,
   ],
   controllers: [CheckinController],
   providers: [CheckinService],

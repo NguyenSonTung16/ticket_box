@@ -6,6 +6,7 @@ import { Model } from 'mongoose';
 import * as amqp from 'amqplib';
 import * as crypto from 'crypto';
 import pdfParse from 'pdf-parse';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 import { RABBITMQ_CHANNEL } from '../config/rabbitmq.config';
 import { MinioService } from '../minio/minio.service';
@@ -169,6 +170,76 @@ Dữ liệu thô của nghệ sĩ:
       status: 'PENDING',
       message: 'File uploaded successfully. AI processing initiated.',
     };
+  }
+
+  async generateEventDescriptionFromFile(file: any): Promise<{ description: string }> {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    let rawText = '';
+    try {
+      const ext = (file.originalname || '').split('.').pop()?.toLowerCase();
+      if (ext === 'pdf') {
+        const parsed = await pdfParse(file.buffer);
+        rawText = (parsed.text || '').replace(/\s+/g, ' ').trim();
+      } else {
+        // DOCX / DOC / TXT
+        rawText = file.buffer.toString('utf8').replace(/\s+/g, ' ').trim();
+      }
+    } catch (parseErr) {
+      throw new BadRequestException(`Failed to extract text from file: ${parseErr.message}`);
+    }
+
+    if (rawText.length < 20) {
+      // Attempt raw UTF-8 recovery
+      rawText = file.buffer.toString('utf8').replace(/\s+/g, ' ').trim();
+      if (rawText.length < 20) {
+        throw new BadRequestException('File content is too short to generate a description.');
+      }
+    }
+
+    const apiKey = (process.env.GEMINI_API_KEY || '').replace(/"/g, '').trim();
+    if (!apiKey) {
+      this.logger.warn('GEMINI_API_KEY not set. Using fallback description.');
+      return {
+        description: `(Sự kiện mẫu do thiếu API Key) Đây là một sự kiện vô cùng thú vị và hấp dẫn. Trích xuất từ tài liệu: ${file.originalname}`
+      };
+    }
+
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+      const prompt = `Bạn là chuyên gia tổ chức sự kiện. Hãy đọc thông tin sự kiện thô sau đây và viết một đoạn mô tả sự kiện thật lôi cuốn, chuyên nghiệp để thu hút khách hàng mua vé.
+Trình bày kết quả dưới dạng chuỗi JSON có đúng 1 trường là "description". Tuyệt đối không bao gồm markdown code blocks (như \`\`\`json) hay ký tự thừa.
+
+Thông tin thô:
+---
+${rawText}
+---`;
+
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const textResponse = result.response.text();
+      let jsonText = textResponse.trim();
+      if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+      }
+
+      const bioData = JSON.parse(jsonText);
+      return {
+        description: bioData.description || textResponse
+      };
+    } catch (geminiError) {
+      this.logger.error(`Gemini API invocation failed: ${geminiError.message}`);
+      throw new InternalServerErrorException('Failed to generate description using AI.');
+    }
   }
 
 

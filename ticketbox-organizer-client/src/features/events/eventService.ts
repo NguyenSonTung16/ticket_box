@@ -120,4 +120,16 @@ export const eventService = {
     const response = await axiosClient.get('/artist/bios');
     return response.data;
   },
+
+  // (AI) Generate Event Description from File
+  generateEventDescriptionFromAi: async (file: File): Promise<{ description: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axiosClient.post('/artist/generate-event-description', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };

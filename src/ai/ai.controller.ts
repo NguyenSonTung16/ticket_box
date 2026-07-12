@@ -22,6 +22,15 @@ export class AiController {
     return this.aiService.uploadArtistDocument(file, Number(concertId), userId);
   }
 
+  @Post('generate-event-description')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  async generateEventDescription(
+    @UploadedFile() file: any,
+  ) {
+    return this.aiService.generateEventDescriptionFromFile(file);
+  }
+
   @Post('generate-bio')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('AI_BIO_UPLOAD')

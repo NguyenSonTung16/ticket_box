@@ -12,6 +12,9 @@ export const CreateStep1: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const aiFileInputRef = useRef<HTMLInputElement>(null);
+  
   // Image upload states
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
@@ -127,6 +130,25 @@ export const CreateStep1: React.FC = () => {
       setError(err.response?.data?.message || 'Có lỗi xảy ra khi lưu thông tin');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAiGenerate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsGeneratingAI(true);
+      setError('');
+      const data = await eventService.generateEventDescriptionFromAi(file);
+      if (data.description) {
+        setDescription(data.description);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi tạo mô tả bằng AI');
+    } finally {
+      setIsGeneratingAI(false);
+      if (aiFileInputRef.current) aiFileInputRef.current.value = '';
     }
   };
 
@@ -249,9 +271,29 @@ export const CreateStep1: React.FC = () => {
               </h2>
             </div>
             <div className="p-4 md:p-6">
-              <label className="block text-xs font-bold text-text-medium-emphasis mb-2 uppercase">
-                Mô tả sự kiện
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold text-text-medium-emphasis uppercase">
+                  Mô tả sự kiện
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={aiFileInputRef}
+                    className="hidden"
+                    accept=".pdf,.txt,.docx,.doc"
+                    onChange={handleAiGenerate}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => aiFileInputRef.current?.click()}
+                    disabled={isGeneratingAI}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                    {isGeneratingAI ? 'Đang tạo...' : 'Tạo bằng AI từ file'}
+                  </button>
+                </div>
+              </div>
               <textarea
                 className="w-full h-32 px-4 py-3 border border-outline-variant rounded-lg bg-input-level-2 text-on-surface outline-none resize-y"
                 placeholder="Nhập thông tin chi tiết về sự kiện của bạn..."

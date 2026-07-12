@@ -7,6 +7,7 @@ import { LoginModal } from '../../components/LoginModal';
 
 export const OrganizerLayout: React.FC = () => {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>;
@@ -21,7 +22,6 @@ export const OrganizerLayout: React.FC = () => {
     );
   }
 
-  const location = useLocation();
   if (user.role === 'CHECKIN_STAFF' && (location.pathname === '/organizer' || location.pathname === '/organizer/')) {
     return <Navigate to="/organizer/checkin" replace />;
   }
