@@ -9,29 +9,74 @@ Kiến trúc Caching của TicketBox được thiết kế theo mô hình **Cach
 
 ```mermaid
 graph TD
-    Client[Browser Khán Giả] -->|1. GET /api/concerts/1| LB[Load Balancer]
-    LB --> App1[App Server Node 1]
-    LB --> App2[App Server Node 2]
-    
-    subgraph AppServer1 [App Server 1]
-        App1 -->|1.1 Check local| LocalCache1[("Tier 1: Local Memory Cache")]
-    end
-    
-    subgraph AppServer2 [App Server 2]
-        App2 -->|Check local| LocalCache2[("Tier 1: Local Memory Cache")]
+    %% ==========================================
+    %% TẦNG 4: CỬA NGÕ & ROUTING (Ít quan trọng nhất về lưu trữ)
+    %% ==========================================
+    subgraph EdgeTier [4. Tầng Cửa Ngõ]
+        Client[Browser Khán Giả]
+        Admin[Browser Ban Tổ Chức]
+        LB[Load Balancer]
     end
 
-    LocalCache1 -->|1.2 Cache Miss| Redis[Tier 2: Redis Cluster]
-    Redis -->|1.3 Cache Miss| DB[("PostgreSQL Main DB")]
-    
-    Worker[Background Worker] -->|2. Có đơn hàng thành công| DB
-    Worker -->|3. Publish Invalidation| RedisPubSub[Redis Pub/Sub Channel]
-    RedisPubSub -.->|4. Broadcast update event| App1
-    RedisPubSub -.->|4. Broadcast update event| App2
-    
-    App1 -->|5. Evict & Update Local Cache| LocalCache1
-    App2 -->|5. Evict & Update Local Cache| LocalCache2
-    
+    %% ==========================================
+    %% TẦNG 3: ỨNG DỤNG (Stateless - Có thể tự động scale/thay thế)
+    %% ==========================================
+    subgraph AppTier [3. Tầng Ứng Dụng]
+        App1[App Server Node 1]
+        LocalCache1[("Local Cache 1")]
+        App2[App Server Node 2]
+        LocalCache2[("Local Cache 2")]
+    end
+
+    %% ==========================================
+    %% TẦNG 2: XỬ LÝ NỀN (High Priority - Đảm bảo luồng dữ liệu)
+    %% ==========================================
+    subgraph AsyncTier [2. Tầng Xử Lý Nền]
+        Worker[Background Worker]
+        RedisPubSub[Redis Pub/Sub Channel]
+    end
+
+    %% ==========================================
+    %% TẦNG 1: DỮ LIỆU CHỦ LÕI (Critical - Quan trọng nhất)
+    %% ==========================================
+    subgraph DataTier [1. Tầng Dữ Liệu & Trạng Thái]
+        Redis[("Tier 2: Redis Cluster")]
+        DB[("PostgreSQL Main DB")]
+        MinIO[("MinIO Object Storage")]
+    end
+
+    %% --- ĐỊNH TUYẾN DỮ LIỆU (DATA ROUTING) ---
+
+    %% Edge Routing
+    Client -->|1. GET /api/concerts/1| LB
+    Admin -->|Upload Ảnh/CSV| LB
+    LB --> App1
+    LB --> App2
+    Client -.->|Tải ảnh trực tiếp| MinIO
+
+    %% App to Local Cache
+    App1 -->|1.1 Check| LocalCache1
+    App2 -->|1.1 Check| LocalCache2
+
+    %% App to Core Data
+    LocalCache1 -->|1.2 Cache Miss| Redis
+    LocalCache2 -->|1.2 Cache Miss| Redis
+    Redis -->|1.3 Cache Miss| DB
+    App1 -->|Ghi file| MinIO
+    App2 -->|Ghi file| MinIO
+
+    %% Background Processing
+    Worker -->|Đọc file CSV| MinIO
+    Worker -->|2. Có đơn hàng thành công| DB
+    Worker -->|3. Publish Invalidation| RedisPubSub
+
+    %% PubSub to App Servers
+    RedisPubSub -.->|4. Broadcast update| App1
+    RedisPubSub -.->|4. Broadcast update| App2
+    App1 -->|5. Evict Cache| LocalCache1
+    App2 -->|5. Evict Cache| LocalCache2
+
+    %% Realtime Feedback
     App1 -->|6. Push SSE| Client
 ```
 
@@ -52,9 +97,13 @@ Thể hiện mối liên hệ giữa các tác nhân và hệ thống TicketBox 
 
 ```mermaid
 graph LR
-    User["Khán Giả (Audience)"] -->|Xem thông tin concert & Số vé còn lại realtime| TicketBox["Hệ Thống TicketBox (Caching System)"]
-    Admin["Ban Tổ Chức (Organizer)"] -->|Tạo show / Cập nhật số vé| TicketBox
+    User["Khán Giả (User)"] -->|Xem thông tin concert và Số vé| TicketBox["Hệ Thống TicketBox (Caching System)"]
+    Admin["Ban Tổ Chức (Organizer)"] -->|Tạo show / Cập nhật số vé / Upload File| TicketBox
+    
+    User -.->|Tải ảnh sự kiện trực tiếp| MinIO["MinIO (Object Storage)"]
+    
     TicketBox -->|Truy vấn dữ liệu gốc| DB["PostgreSQL Database"]
+    TicketBox -->|Lưu trữ file Ảnh, CSV, PDF| MinIO
 ```
 
 ### Level 2 — Container
@@ -62,22 +111,67 @@ Phân rã các thành phần bên trong hệ thống TicketBox phục vụ cho k
 
 ```mermaid
 graph TB
-    Browser["Trình duyệt Khán Giả (Next.js)"] -->|Duyệt API qua HTTP| LB["Load Balancer (Nút phân tải hỗ trợ HTTP/2)"]
-    Browser -->|"Kết nối HTTP Streaming (SSE)"| LB
-    
-    LB -->|Proxy Requests| AppServer1["App Server Node 1 (Node.js)"]
-    LB -->|Proxy Requests| AppServer2["App Server Node 2 (Node.js)"]
-    
-    subgraph AppServers [Các App Server Node]
-        AppServer1 -->|Đọc/Ghi nhanh Tầng 1| LocalRAM1["node-cache (In-Memory RAM)"]
-        AppServer2 -->|Đọc/Ghi nhanh Tầng 1| LocalRAM2["node-cache (In-Memory RAM)"]
+    %% ==========================================
+    %% KHAI BÁO CÁC INSTANCE (Từ quan trọng nhất đến ít quan trọng)
+    %% ==========================================
+
+    %% TẦNG 1: DỮ LIỆU LÕI (Critical - Không thể thay thế ngay lập tức)
+    subgraph DataTier [1. Tầng Dữ Liệu & Trạng Thái]
+        Postgres["PostgreSQL Database"]
+        Redis["Redis Cluster (Centralized Cache)"]
+        MinIO["MinIO (Object Storage)"]
     end
-    
-    AppServer1 -->|Đọc Tầng 2 / Pub-Sub| Redis["Redis Cluster (Centralized Cache)"]
+
+    %% TẦNG 2: XỬ LÝ NỀN (Đảm bảo tính nhất quán dữ liệu)
+    subgraph AsyncTier [2. Tầng Xử Lý Nền]
+        Worker["Background Worker (Node.js)"]
+    end
+
+    %% TẦNG 3: ỨNG DỤNG (Stateless - Có thể thay thế, tự động scale)
+    subgraph AppTier [3. Tầng Ứng Dụng]
+        AppServer1["App Server Node 1 (Node.js)"]
+        LocalRAM1["node-cache (In-Memory RAM)"]
+        AppServer2["App Server Node 2 (Node.js)"]
+        LocalRAM2["node-cache (In-Memory RAM)"]
+    end
+
+    %% TẦNG 4: CỬA NGÕ & ROUTING (Điểm chạm đầu tiên)
+    subgraph EdgeTier [4. Tầng Cửa Ngõ]
+        LB["Load Balancer (Nút phân tải)"]
+        Browser["Trình duyệt Khán Giả và BTC (Next.js)"]
+    end
+
+    %% ==========================================
+    %% ĐỊNH TUYẾN KẾT NỐI (Luồng dữ liệu)
+    %% ==========================================
+
+    %% 1. Luồng Cửa ngõ (Client -> Load Balancer & Storage)
+    Browser -->|Duyệt API qua HTTP / Upload File| LB
+    Browser -->|Kết nối HTTP Streaming SSE| LB
+    Browser -.->|Tải ảnh tĩnh trực tiếp| MinIO
+
+    %% 2. Luồng Định tuyến (Load Balancer -> App Servers)
+    LB -->|Proxy Requests| AppServer1
+    LB -->|Proxy Requests| AppServer2
+
+    %% 3. Luồng App Server tương tác Cache cục bộ (Tier 1)
+    AppServer1 -->|Đọc/Ghi nhanh Tầng 1| LocalRAM1
+    AppServer2 -->|Đọc/Ghi nhanh Tầng 1| LocalRAM2
+
+    %% 4. Luồng App Server tương tác Dữ liệu lõi (Tier 2 & DB)
+    AppServer1 -->|Đọc Tầng 2 / Pub-Sub| Redis
     AppServer2 -->|Đọc Tầng 2 / Pub-Sub| Redis
     
-    AppServer1 -->|Đọc/Ghi dữ liệu gốc| Postgres["PostgreSQL Database (Dữ liệu gốc)"]
+    AppServer1 -->|Đọc/Ghi dữ liệu gốc| Postgres
     AppServer2 -->|Đọc/Ghi dữ liệu gốc| Postgres
+    
+    AppServer1 -->|Ghi file gốc Ảnh, CSV, PDF| MinIO
+    AppServer2 -->|Ghi file gốc Ảnh, CSV, PDF| MinIO
+
+    %% 5. Luồng Xử lý ngầm (Worker tương tác Dữ liệu lõi)
+    Worker -->|Kéo stream xử lý ngầm| MinIO
+    Worker -->|Cập nhật trạng thái| Postgres
+    Worker -->|Bắn sự kiện Invalidate Cache| Redis
 ```
 
 ---
