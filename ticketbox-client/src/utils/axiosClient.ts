@@ -5,7 +5,9 @@ const getToken = () => localStorage.getItem('access_token');
 const setToken = (token: string) => localStorage.setItem('access_token', token);
 const getRefreshToken = () => localStorage.getItem('refresh_token');
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333';
+// Khi chạy qua Vite dev server: baseURL rỗng → relative path → Vite proxy xử lý
+// Khi chạy production (NestJS serve static): relative path tự động đúng
+const baseURL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 const axiosClient = axios.create({
   baseURL, // Sửa lại sử dụng biến môi trường hoặc fallback 3333
