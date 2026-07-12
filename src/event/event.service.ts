@@ -289,7 +289,7 @@ export class EventService {
 
             if (!counts || Object.keys(counts).length === 0) {
               const rows = await this.dataSource.query(
-                `SELECT status, COUNT(*)::int AS cnt FROM seat_inventory WHERE "showId" = $1 AND zone = $2 GROUP BY status`,
+                `SELECT status, COUNT(*)::int AS cnt FROM seat_inventory WHERE concert_id = $1 AND zone = $2 GROUP BY status`,
                 [eventId, tt.name],
               );
               counts = { available: '0', reserved: '0', sold: '0', locked: '0' };
@@ -408,12 +408,12 @@ export class EventService {
   async expireStaleReservations() {
     const result = await this.dataSource.query(`
       UPDATE seat_inventory SET status = 'AVAILABLE', "reservedBy" = NULL, "expiryTime" = NULL
-      WHERE status = 'RESERVED' AND "expiryTime" < NOW() RETURNING "showId", zone
+      WHERE status = 'RESERVED' AND "expiryTime" < NOW() RETURNING concert_id, zone
     `);
 
     if (!result.length) return;
 
-    const affected = [...new Set(result.map((r: any) => `${r.showId}:${r.zone}`))];
+    const affected = [...new Set(result.map((r: any) => `${r.concert_id}:${r.zone}`))];
     for (const key of affected) {
       const [showId, zone] = (key as string).split(':');
       await this.redis.del(`seat_counts:${showId}:${zone}`);

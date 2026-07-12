@@ -62,8 +62,10 @@ export class BookingController {
   @Post('hold')
   async bookHold(@Req() req, @Body() body: { concert_id: number; seats: string[]; ticketCounts: Record<string, number> }) {
     const userId = req.user.userId;
-    for (const seat of body.seats || []) {
-      await this.bookingService.bookSVIPTicket(body.concert_id, userId, seat);
+    
+    // Đặt toàn bộ ghế SVIP bằng 1 giao dịch nguyên tử (Lua Script & Bulk Update)
+    if (body.seats && body.seats.length > 0) {
+      await this.bookingService.bookMultipleSVIPTickets(body.concert_id, userId, body.seats);
     }
     const counts = body.ticketCounts || {};
     for (const [zone, count] of Object.entries(counts)) {

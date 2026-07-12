@@ -150,15 +150,15 @@ async function bootstrap() {
     console.log(`Đã Seed các zone với mức giá riêng biệt cho Concert ${cData.id} vào Postgres.`);
 
     // Adapt to new SeatInventory schema
-    const seatCount = await seatInventoryRepo.count({ where: { showId: cData.id } });
+    const seatCount = await seatInventoryRepo.count({ where: { concert_id: cData.id } });
     if (seatCount === 0) {
+      console.log(`[PG] Đang tạo 90 ghế SVIP cho Show ${cData.id}...`);
       const seats = [];
-      const rows = ['A', 'B'];
-      const cols = 20;
+      const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
       for (const row of rows) {
-        for (let i = 1; i <= cols; i++) {
-          const sponsorId = (cData.id === 1 && row === 'A' && (i === 1 || i === 2)) ? 'sponsor-test' : null;
-          seats.push({ row, number: String(i), showId: cData.id, status: 'AVAILABLE', zone: 'SVIP', sponsorId });
+        for (let i = 1; i <= 10; i++) {
+          const sponsorId = (row === 'A') ? 'vinamilk' : null;
+          seats.push({ seatNo: row + '-' + String(i), concert_id: cData.id, status: 'AVAILABLE', zone: 'SVIP', sponsorId });
         }
       }
       await seatInventoryRepo.insert(seats);

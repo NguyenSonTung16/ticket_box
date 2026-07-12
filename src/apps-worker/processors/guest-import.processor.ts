@@ -242,15 +242,9 @@ export class GuestImportProcessor implements OnModuleInit {
 
     // Parse "A-1" → row='A', number='1'
     const parts = seatNo.split('-');
-    if (parts.length !== 2) {
-      errors.push({ row: rowIndex, seatNo, reason: `Invalid seatNo format '${seatNo}', expected 'ROW-NUMBER' (e.g. A-1)` });
-      return false;
-    }
-    const [seatRow, seatNum] = parts;
-
     try {
       const seat = await this.seatRepo.findOne({
-        where: { row: seatRow, number: seatNum, showId: Number(showId) },
+        where: { seatNo: seatNo, concert_id: Number(showId) },
       });
 
       if (!seat) {

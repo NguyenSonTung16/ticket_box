@@ -51,13 +51,7 @@ export const Header: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleCreateEvent = () => {
-    if (!user) {
-      setIsLoginModalOpen(true);
-    } else {
-      navigate('/organizer');
-    }
-  };
+
 
   const handleMyTickets = () => {
     if (!user) {
@@ -140,15 +134,6 @@ export const Header: React.FC = () => {
 
         {/* NAVIGATION ITEMS (Desktop) */}
         <div className="hidden md:flex items-center gap-6">
-          {/* Nút Tạo Sự Kiện */}
-          <button 
-            onClick={handleCreateEvent}
-            className="flex items-center gap-1.5 text-on-primary-container/85 hover:text-on-primary-container font-medium text-sm transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">add_circle</span>
-            Tạo sự kiện
-          </button>
-
           {/* Vé Của Tôi */}
           <button 
             onClick={handleMyTickets}
@@ -298,13 +283,7 @@ export const Header: React.FC = () => {
 
           {/* MOBILE NAV ITEMS */}
           <div className="flex flex-col gap-4">
-            <button 
-              onClick={() => { setIsMobileMenuOpen(false); handleCreateEvent(); }}
-              className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-2 text-base transition-colors"
-            >
-              <span className="material-symbols-outlined text-[22px] text-on-primary-container/50">add_circle</span>
-              Tạo sự kiện
-            </button>
+
             <button 
               onClick={() => { setIsMobileMenuOpen(false); handleMyTickets(); }}
               className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-2 text-base transition-colors"

@@ -120,27 +120,31 @@ export class PaypalClient {
    */
   async verifyWebhookSignature(headers: Record<string, string>, body: string): Promise<boolean> {
     const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+    this.logger.log(`[Webhook Verification] Using webhook_id: ${webhookId}`);
     if (!webhookId) {
       this.logger.warn('PAYPAL_WEBHOOK_ID not set, skipping verification in dev mode');
       return true; // Dev mode: skip verification
     }
 
     const token = await this.getAccessToken();
+    const payloadString = JSON.stringify({
+      auth_algo: headers['paypal-auth-algo'],
+      cert_url: headers['paypal-cert-url'],
+      transmission_id: headers['paypal-transmission-id'],
+      transmission_sig: headers['paypal-transmission-sig'],
+      transmission_time: headers['paypal-transmission-time'],
+      webhook_id: webhookId,
+    });
+    // Insert the raw body exactly as received into the webhook_event field to preserve formatting for CRC32
+    const bodyToSend = payloadString.slice(0, -1) + `,"webhook_event":${body}}`;
+
     const response = await fetch(`${this.baseUrl}/v1/notifications/verify-webhook-signature`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        auth_algo: headers['paypal-auth-algo'],
-        cert_url: headers['paypal-cert-url'],
-        transmission_id: headers['paypal-transmission-id'],
-        transmission_sig: headers['paypal-transmission-sig'],
-        transmission_time: headers['paypal-transmission-time'],
-        webhook_id: webhookId,
-        webhook_event: JSON.parse(body),
-      }),
+      body: bodyToSend,
     });
 
     if (!response.ok) {
@@ -149,6 +153,7 @@ export class PaypalClient {
     }
 
     const result = await response.json();
+    this.logger.log(`PayPal webhook verification result: ${JSON.stringify(result)}`);
     return result.verification_status === 'SUCCESS';
   }
 }

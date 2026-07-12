@@ -5,25 +5,23 @@ export enum SeatStatus {
   RESERVED = 'RESERVED',
   SOLD = 'SOLD',
   LOCKED = 'LOCKED',
+  BOOKED = 'BOOKED',
 }
 
 @Entity('seat_inventory')
-@Index('idx_seat_inventory_lookup', ['showId', 'zone', 'status'])
+@Index('idx_seat_inventory_lookup', ['concert_id', 'zone', 'status'])
 export class SeatInventory {
   @PrimaryGeneratedColumn('uuid')
   seatId: string;
 
   @Column({ type: 'int' })
-  showId: number;
+  concert_id: number;
 
   @Column({ type: 'varchar', length: 100 })
   zone: string; // Maps to EventTicketType.name
 
   @Column({ type: 'varchar', length: 50, nullable: true })
-  row: string; // Only for seated events
-
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  number: string; // Only for seated events
+  seatNo: string; // e.g. "A-9"
 
   @Column({ type: 'varchar', length: 20, default: SeatStatus.AVAILABLE })
   status: string;

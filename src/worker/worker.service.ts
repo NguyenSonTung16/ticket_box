@@ -84,13 +84,13 @@ export class WorkerService implements OnModuleInit {
         .getMany();
 
       for (const seat of expiredSeats) {
-        // SeatInventory uses: seatId (PK), row, number, showId — NOT seatNo/concert_id
-        const seatLabel = `${seat.row}-${seat.number}`;
+        // SeatInventory uses: seatId (PK), seatNo, concert_id
+          const seatLabel = seat.seatNo;
         await this.seatInventoryRepo.update(
           { seatId: seat.seatId },
           { status: 'AVAILABLE', reservedBy: null, expiryTime: null },
         );
-        pipeline.hdel(`concert:${seat.showId}:svip_seats`, seatLabel);
+        pipeline.hdel(`concert:${seat.concert_id}:svip_seats`, seatLabel);
         this.logger.log(`[Warm-up Repair] Nhả ghế hết hạn: ${seatLabel}`);
       }
 
@@ -145,7 +145,7 @@ export class WorkerService implements OnModuleInit {
     }
 
     // Bước 3: Kiểm tra DB — phòng trường hợp Redis chưa cập nhật :PAID
-    const dbSeat = await this.seatInventoryRepo.findOne({ where: { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId: concert_id } });
+    const dbSeat = await this.seatInventoryRepo.findOne({ where: { seatNo, concert_id } });
     if (!dbSeat) return;
 
     if (dbSeat.status === 'BOOKED') {
@@ -172,7 +172,7 @@ export class WorkerService implements OnModuleInit {
       await pipeline.exec();
 
       await this.seatInventoryRepo.update(
-        { row: seatNo.split('-')[0], number: seatNo.split('-')[1], showId: concert_id, status: 'RESERVED' },
+        { seatNo, concert_id, status: 'RESERVED' },
         { status: 'AVAILABLE', reservedBy: null, expiryTime: null },
       );
 
