@@ -364,7 +364,7 @@ export class GuestImportProcessor implements OnModuleInit {
 
       try {
         const seat = await this.seatRepo.findOne({
-          where: { row: row.seatRow, number: row.seatNum, showId: Number(showId) },
+          where: { seatNo: row.seatNo, concert_id: Number(showId) },
         });
 
         if (!seat) {
@@ -413,13 +413,13 @@ export class GuestImportProcessor implements OnModuleInit {
         .execute();
 
       // Mark all valid seats as SOLD in one UPDATE
-      const seatPairs = validRows.map((r) => `('${r.seatRow}', '${r.seatNum}')`).join(', ');
+      const seatNos = validRows.map((r) => `'${r.seatNo}'`).join(', ');
       await this.seatRepo
         .createQueryBuilder()
         .update(SeatInventory)
         .set({ status: SeatStatus.SOLD })
         .where(
-          `(row, number) IN (${seatPairs}) AND "showId" = :showId`,
+          `"seatNo" IN (${seatNos}) AND "concert_id" = :showId`,
           { showId: Number(showId) },
         )
         .execute();
