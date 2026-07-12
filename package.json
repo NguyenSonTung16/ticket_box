@@ -19,7 +19,11 @@
     "start:checkin": "cross-env PORT=3007 SERVICE_NAME=checkin ts-node-dev --respawn --transpile-only src/main.ts",
     "start:dev": "npm run clean-ports && npx concurrently -c \"blue,green,yellow,magenta,cyan,red,white,gray\" \"npm run start:auth\" \"npm run start:booking\" \"npm run start:info\" \"npm run start:event\" \"npm run start:payment\" \"npm run start:ai\" \"npm run start:worker\" \"npm run start:checkin\"",
     "clean-ports": "npx kill-port 3001 3002 3003 3004 3005 3006 3007 3008",
-    "seed:organizer": "ts-node src/scripts/seed-organizer.ts"
+    "seed:organizer": "ts-node src/scripts/seed-organizer.ts",
+    "seed:db": "docker exec -i ticketbox-postgres psql -U ticketbox -d ticketbox_db < seed_all.sql",
+    "install:all": "npm install && npm install --prefix ticketbox-client && npm install --prefix ticketbox-organizer-client",
+    "start:frontends": "npx concurrently -c \"blue,green\" \"npm run dev --prefix ticketbox-client\" \"npm run dev --prefix ticketbox-organizer-client\"",
+    "start:all": "npx concurrently -c \"yellow,cyan\" \"npm run start:dev\" \"npm run start:frontends\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

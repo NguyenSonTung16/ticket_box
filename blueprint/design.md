@@ -82,8 +82,11 @@ graph TB
 
 ---
 
-## 3. Thiết kế Cơ sở dữ liệu (Database Schema)
-Để phục vụ việc lưu trữ thông tin concert, sơ đồ ghế và xử lý thanh toán, hệ thống sử dụng PostgreSQL với các bảng được chuẩn hóa như sau:
+## 3. Thiết kế Cơ sở dữ liệu (Polyglot Persistence Architecture)
+Hệ thống áp dụng kiến trúc **Polyglot Persistence** phân chia dữ liệu trên 3 hệ thống khác nhau tùy theo đặc tính nghiệp vụ:
+
+### 3.1. PostgreSQL (Relational Database)
+Lưu trữ các dữ liệu cốt lõi yêu cầu tính nhất quán cao (ACID) như thông tin giao dịch, khóa chống trùng lặp, và trạng thái hệ thống:
 
 ```mermaid
 erDiagram
@@ -92,6 +95,7 @@ erDiagram
     concerts ||--o{ zone_inventory : "has zones"
     concerts ||--o{ seat_inventory : "has seats"
     invoices ||--|{ tickets : "contains"
+    import_jobs ||--o{ concerts : "belongs to"
 
     users {
         uuid id PK
@@ -151,14 +155,55 @@ erDiagram
         timestamp createdAt
         timestamp expiresAt
     }
+    import_jobs {
+        uuid id PK
+        varchar fileKey
+        varchar showId
+        varchar sponsorId
+        varchar status
+        int totalRows
+        int processedRows
+    }
 ```
 
-### Chi tiết Schema:
 *   **Bảng `concerts`**: Lưu thông tin tĩnh của show diễn. Dữ liệu này ít khi thay đổi nên sẽ được cache rất lâu.
 *   **Bảng `zone_inventory`**: Quản lý sức chứa và số lượng vé trống của các khu vực chung (không có ghế ngồi cố định, ví dụ: VIP, Normal). Chứa cấu hình `ticketLimit` giới hạn mua.
 *   **Bảng `seat_inventory`**: Quản lý từng ghế ngồi vật lý độc lập (Dùng cho hạng vé SVIP). Có cơ chế Lock giữ ghế bằng `expiryTime` và `reservedBy`.
 *   **Bảng `invoices` & `tickets`**: Quản lý hóa đơn và vé thực tế xuất ra cho người dùng sau khi thanh toán.
 *   **Bảng `idempotency_keys`**: Lưu khóa chống trùng lặp để ngăn ngừa lỗi thanh toán đúp (Double-charge) khi người dùng spam nút thanh toán.
+*   **Bảng `import_jobs`**: Quản lý trạng thái tiến trình xử lý dữ liệu hàng loạt dưới background worker (ví dụ: Import VIP Guest từ file CSV).
+
+### 3.2. MongoDB (Document Database)
+Lưu trữ dữ liệu phi cấu trúc, linh hoạt về schema, phục vụ cho việc hiển thị, thông tin sự kiện đa phương tiện (CMS) mà không làm phình to DB giao dịch:
+
+```mermaid
+erDiagram
+    SHOW_INFO {
+        number showId PK "Identifier (maps to concerts.id)"
+        string name
+        string category
+        string address_type "OFFLINE / ONLINE"
+        string venue_name
+        string image_url
+        string cover_image_url
+        string organizer_name
+        string description
+        string seating_chart_url
+        array artist_ids
+        array attachment_urls
+        string privacy "PUBLIC / PRIVATE"
+        string bank_account_name
+        string bank_account_number
+        string vat_tax_code
+        string artistBio
+    }
+```
+*   **Collection `ShowInfo`**: Quản lý toàn bộ thông tin mô tả chi tiết, hình ảnh, thông tin ban tổ chức, thông tin ngân hàng thanh toán và các thiết lập hiển thị của sự kiện. Schema có thể mở rộng dễ dàng các trường mới mà không cần migration phức tạp.
+
+### 3.3. MinIO (S3-Compatible Object Storage)
+Hệ thống lưu trữ File (Object Storage) phục vụ cho các luồng xử lý dữ liệu lớn và file tĩnh:
+*   **ticketbox-csv-imports**: Bucket lưu trữ các file CSV định dạng danh sách khách mời VIP. File sau khi được upload an toàn sẽ kích hoạt `import_jobs` đọc stream trực tiếp từ MinIO về để Worker xử lý.
+*   **ticketbox-assets**: Bucket lưu trữ các tài liệu tĩnh của sự kiện như hình ảnh cover, logo ban tổ chức, sơ đồ ghế, tài liệu cung cấp (PDF/Word) cho hệ thống AI phân tích (Summarization).
 
 ---
 

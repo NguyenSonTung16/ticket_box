@@ -2,104 +2,89 @@
 
 TicketBox là một hệ thống mô phỏng nền tảng bán vé sự kiện âm nhạc, được thiết kế chuyên biệt để chịu tải cực hạn (Flash Sale) lên tới hàng chục nghìn người truy cập đồng thời mà không sập hệ thống hay sai lệch dữ liệu.
 
-Dự án áp dụng kiến trúc Hybrid Caching (Redis + Node Cache), Message Queue (RabbitMQ), và xử lý bất đồng bộ kết hợp Server-Sent Events (SSE) để truyền trạng thái sơ đồ ghế Real-time.
-
-## 🚀 Công nghệ sử dụng
-- **Backend:** NestJS, TypeORM
-- **Frontend:** Vanilla JS, HTML, CSS (Không cần build tool)
-- **Cơ sở dữ liệu:** PostgreSQL
-- **Caching & Real-time:** Redis (Cluster mode mô phỏng)
-- **Message Broker:** RabbitMQ
-- **Tìm kiếm:** Meilisearch
+## 🚀 Kiến trúc Polyglot Persistence & Cốt lõi
+Hệ thống kết hợp nhiều loại cơ sở dữ liệu và các công nghệ caching/messaging để đạt hiệu năng tối đa:
+- **PostgreSQL**: Lưu trữ dữ liệu giao dịch cốt lõi (User, Invoice, Ticket, Import Jobs) đảm bảo tính nhất quán (ACID).
+- **MongoDB**: Lưu trữ dữ liệu Document linh hoạt cho nội dung CMS (ShowInfo, Thiết lập sự kiện, Nội dung đa phương tiện).
+- **MinIO**: Hệ thống Object Storage tương thích S3 lưu trữ các tài nguyên tĩnh (Hình ảnh cover, Logo) và xử lý file CSV khách mời VIP dung lượng lớn.
+- **Redis (Cluster)**: Hỗ trợ Hybrid Caching 2 tầng (Local RAM + Redis) và Pub/Sub. Cơ chế khóa nguyên tử `HSETNX` giải quyết tranh chấp ghế (Zero Seat Clash).
+- **RabbitMQ**: Đóng vai trò Message Broker xử lý hàng đợi (Worker Queue), đảm bảo tính toàn vẹn khi nhả vé do quá hạn thanh toán và thực thi các tác vụ nền.
+- **Server-Sent Events (SSE)**: Đẩy trạng thái sơ đồ chỗ ngồi xuống Client theo thời gian thực (Real-time).
 
 ---
 
 ## 🛠 Yêu cầu hệ thống (Prerequisites)
-Trước khi cài đặt, đảm bảo máy tính của bạn đã cài đặt sẵn các công cụ sau:
+Trước khi cài đặt, bạn cần đảm bảo môi trường đã có sẵn:
 1. **Node.js** (Phiên bản >= 18.x)
-2. **Docker** & **Docker Compose** (Dùng để chạy hệ sinh thái cơ sở dữ liệu)
+2. **Docker** & **Docker Compose** (Bắt buộc để chạy cơ sở hạ tầng DB, Redis, v.v.)
 3. **Git**
 
 ---
 
-## ⚙️ Hướng dẫn Cài đặt & Chạy dự án (Local Development)
+## ⚙️ Hướng dẫn Cài đặt & Khởi chạy Nhanh (Quick Start)
 
-### Bước 1: Khởi động hệ sinh thái Cơ sở dữ liệu (Infrastructure)
-Hệ thống yêu cầu PostgreSQL, Redis, RabbitMQ và Meilisearch để hoạt động. Bạn không cần cài đặt thủ công từng món, chỉ cần dùng Docker Compose.
+Việc chạy hệ thống rất đơn giản nhờ các script đã được thiết lập sẵn trong `package.json`. Vui lòng thực hiện theo đúng thứ tự sau:
 
-Mở terminal tại thư mục gốc của dự án (`ticket-box/`) và chạy:
+### Bước 1: Khởi động Cơ sở hạ tầng (Databases, Caches, Brokers)
+Mở terminal tại thư mục gốc của dự án (`ticket_box/`) và chạy:
 ```bash
 docker-compose up -d
 ```
-*Ghi chú: Lệnh này sẽ kéo các images về và khởi chạy nền. RabbitMQ Management có thể truy cập tại `http://localhost:15672` (guest/guest).*
+*Ghi chú: Lệnh này sẽ tải image và khởi động PostgreSQL, MongoDB, MinIO, Redis, RabbitMQ và MeiliSearch dưới nền.*
 
-### Bước 2: Cài đặt và Chạy Backend (NestJS)
-1. Vẫn ở thư mục gốc (`ticket-box/`), tiến hành cài đặt thư viện:
+### Bước 2: Cài đặt Dependencies cho toàn bộ dự án
+Để cài đặt `node_modules` cho cả Backend và 2 Frontends (Client & Organizer), bạn chỉ cần chạy:
 ```bash
-npm install
+npm run install:all
 ```
-2. Khởi động Backend Server:
-```bash
-npm run start
-```
-*Backend sẽ tự động đồng bộ schema với PostgreSQL (TypeORM sync), tự động nạp Cache Warm-up từ DB lên Redis và chạy tại địa chỉ: `http://localhost:3000`.*
 
-### Bước 3: Cài đặt và Chạy Frontend
-1. Dự án này sử dụng Frontend thuần (Vanilla JS/HTML/CSS) nên cực kỳ nhẹ và không cần bước build phức tạp. Mở một cửa sổ terminal mới, di chuyển vào thư mục Frontend:
+### Bước 3: Khởi tạo Dữ liệu mẫu (Seed Data)
+Để có sẵn dữ liệu sự kiện và Organizer test, chạy lệnh sau để import dữ liệu mẫu vào PostgreSQL:
 ```bash
-cd frontend
+npm run seed:db
 ```
-2. Khởi động một static server đơn giản. Bạn có thể dùng `http-server` (nếu đã cài sẵn qua npm) hoặc Python:
+*Ngoài ra, hệ thống tự động nạp (sync) các thay đổi database thông qua TypeORM khi khởi động Backend.*
+
+### Bước 4: Khởi chạy TOÀN BỘ Hệ thống (Backend & Frontends)
+Bạn không cần phải mở nhiều terminal. Để chạy đồng thời 8 Microservices của Backend và 2 ứng dụng Frontend, sử dụng lệnh:
 ```bash
-npx http-server -p 8080
+npm run start:all
 ```
-*(Hoặc nếu có Python: `python -m http.server 8080`)*
-3. Mở trình duyệt và truy cập: `http://localhost:8080` để trải nghiệm hệ thống.
+Hệ thống sẽ chạy nền tự động.
 
 ---
 
-## 🏗 Kiến trúc Cốt lõi & Luồng Vận hành
-Nếu bạn muốn tìm hiểu sâu về cách hệ thống chống sập và xử lý tranh chấp vé (Zero Seat Clash), hãy đọc các tài liệu đặc tả đính kèm:
-1. **`blueprint/specs/caching.md`**: Chi tiết chiến lược Hybrid Caching 2 tầng và luồng xử lý bất đồng bộ.
-2. **`cache_solution.txt`**: Giải thích cặn kẽ 3 phương án Cache và lý do chọn phương án tối ưu.
-3. **SSE & Redis Pub/Sub**: Nằm trong `sse.service.ts` và `booking.controller.ts`, lo nhiệm vụ "bơm" trạng thái ghế xuống giao diện tức thì.
-4. **Worker Queue**: `notifications.service.ts` chịu trách nhiệm chạy các Background Worker xử lý Timeout nhả vé sau 10 phút, và đồng bộ dữ liệu vào PostgreSQL.
+## 🌍 Danh sách Địa chỉ Truy cập (Service URLs)
 
-## 👥 Chức năng chính
-- Hiển thị trang chủ và sơ đồ ghế bằng SSR / Caching.
-- Cho phép người dùng giữ chỗ trong 10 phút (Chống đụng độ ghế bằng cơ chế khóa nguyên tử `HSETNX` trên Redis).
-- Hết 10 phút không thanh toán: Worker RabbitMQ tự động thu hồi và nhả vé (Rollback) cập nhật real-time cho toàn hệ thống.
-- Luồng thanh toán kết hợp kiến trúc **Hybrid Synchronous-Asynchronous Caching**: Giữ chỗ thần tốc trên Redis, nhưng Chốt chặn thanh toán tuyệt đối an toàn bằng lệnh cập nhật Đồng bộ dưới Database (PostgreSQL) chống Oversell 100%.
+Sau khi hệ thống khởi chạy thành công, bạn có thể truy cập qua các địa chỉ sau:
+
+### Giao diện Người dùng (Frontends)
+- **TicketBox Khán Giả (Client):** `http://localhost:5173`
+- **TicketBox Ban Tổ Chức (Organizer Center):** `http://localhost:5174`
+
+### Các Công cụ Quản trị (Infrastructure Dashboards)
+- **MinIO Console (Quản lý File & S3):** `http://localhost:9001`
+  - *Đăng nhập:* `ticketbox_admin` / `ticketbox_secret_2026`
+- **RabbitMQ Management:** `http://localhost:15672`
+  - *Đăng nhập:* `guest` / `guest`
+
+### Backend Microservices (Cổng API nội bộ)
+- Auth Service: `http://localhost:3001`
+- Booking Service: `http://localhost:3002`
+- Info Service: `http://localhost:3003`
+- Payment Service: `http://localhost:3004`
+- Event Service: `http://localhost:3005`
+- Worker Service: `http://localhost:3006`
+- Checkin Service: `http://localhost:3007`
+- AI Service: `http://localhost:3008`
+- (Có thể có Nginx Proxy ở port `3000` tùy cấu hình)
 
 ---
 
-## 🌍 Cấu hình Ngrok để nhận Webhook (Thanh toán & Gửi Email)
-Vì hệ thống chạy ở Localhost, cổng thanh toán PayPal không thể gửi thông báo (Webhook) về khi thanh toán thành công, dẫn đến việc không thể gửi email vé cho khách. Bạn cần cấu hình Ngrok để tạo đường dẫn Public:
+## 💸 Cấu hình Ngrok để nhận Webhook Thanh toán & Gửi Email
 
-### Bước 1: Cài đặt và chạy Ngrok
-1. Tải Ngrok về máy từ [ngrok.com/download](https://ngrok.com/download) và giải nén.
-2. Đăng nhập vào Ngrok để lấy Authtoken, cấu hình terminal:
-   ```bash
-   ngrok config add-authtoken <YOUR_AUTHTOKEN>
-   ```
-3. Chạy Ngrok để public cổng của Backend (Ví dụ: 3333):
-   ```bash
-   ngrok http 3333
-   ```
-4. Copy đường dẫn Forwarding (ví dụ: `https://abcd-123.ngrok-free.app`).
-
-### Bước 2: Cấu hình Webhook trên PayPal Developer
-1. Đăng nhập vào [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/applications).
-2. Vào **Apps & Credentials** -> Mở App Sandbox của bạn.
-3. Cuộn xuống phần **Webhooks** và nhấn **Add Webhook** (hoặc Edit).
-4. Dán đường dẫn Ngrok vừa copy và thêm `/payment/webhook` vào cuối (VD: `https://abcd-123.ngrok-free.app/payment/webhook`).
-5. Ở Event types, chọn **Payment capture completed** (hoặc All events). Nhấn Save.
-
-### Bước 3: Cập nhật Webhook ID vào hệ thống
-1. Copy **Webhook ID** mới được cấp từ PayPal.
-2. Mở file `.env` ở thư mục gốc của dự án.
-3. Sửa dòng cấu hình Webhook ID:
-   ```env
-   PAYPAL_WEBHOOK_ID=<Webhook_ID_Mới>
-   ```
-4. Khởi động lại Backend để nhận cấu hình. Bây giờ, khi thanh toán thành công, hệ thống sẽ tự động cập nhật trạng thái vé và gửi Email!
+Vì hệ thống chạy ở Localhost, để PayPal có thể gọi Webhook khi thanh toán thành công và tự động gửi vé qua Email, bạn cần:
+1. Chạy ngrok cho port của dịch vụ Payment: `ngrok http 3004` (hoặc port proxy chung).
+2. Lấy URL (ví dụ: `https://abcd.ngrok-free.app`) và cấu hình Webhook trong [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/applications).
+3. Đặt Webhook ID PayPal trả về vào biến `PAYPAL_WEBHOOK_ID` trong file `.env` ở thư mục gốc.
+4. Khởi động lại hệ thống.
