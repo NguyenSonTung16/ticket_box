@@ -6,9 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // ── Guest / VIP Import — PHẢI đặt trước /api/ để ưu tiên match dài hơn
+      // 🚀 Guest / VIP Import — PHẢI đặt trước /api/ để ưu tiên match dài hơn
       '/api/admin': {
-        target: 'http://localhost:3333',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
       // ── Event & Organizer API

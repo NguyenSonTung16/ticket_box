@@ -106,11 +106,16 @@ export const FilesPage: React.FC = () => {
 
   useEffect(() => {
     fetchJobs();
+  }, []);
 
-    // Polling mỗi 3 giây để cập nhật trạng thái PROCESSING / PENDING
+  useEffect(() => {
+    const hasActiveJobs = jobs.some(j => j.status === 'PENDING' || j.status === 'PROCESSING');
+    if (!hasActiveJobs) return;
+
+    // Chỉ polling nếu có job đang xử lý
     const interval = setInterval(fetchJobs, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [jobs]);
 
   const handleUploadClick = () => fileInputRef.current?.click();
 
