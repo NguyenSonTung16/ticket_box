@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const seatRepo = app.get(getRepositoryToken(SeatInventory));
 
-  await seatRepo.query(`UPDATE seat_inventory SET "sponsorId" = 'default-sponsor' WHERE concert_id = 113`);
+  await seatRepo.query(`UPDATE seat_inventory SET "sponsorId" = '1' WHERE concert_id = 117`);
 
   console.log('Update sponsorId thành công!');
   await app.close();

@@ -31,19 +31,19 @@ const ProgressBar: React.FC<{ processed: number; total: number }> = ({ processed
 /** Status badge with colour per status */
 const StatusBadge: React.FC<{ status: ImportJob['status'] }> = ({ status }) => {
   const styles: Record<ImportJob['status'], string> = {
-    COMPLETED:             'bg-primary/10 text-primary border-primary/20',
+    COMPLETED: 'bg-primary/10 text-primary border-primary/20',
     COMPLETED_WITH_ERRORS: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    PROCESSING:            'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-    PENDING:               'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-    FAILED:                'bg-red-500/10 text-red-500 border-red-500/20',
+    PROCESSING: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    PENDING: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    FAILED: 'bg-red-500/10 text-red-500 border-red-500/20',
   };
 
   const labels: Record<ImportJob['status'], string> = {
-    COMPLETED:             'Hoàn thành',
+    COMPLETED: 'Hoàn thành',
     COMPLETED_WITH_ERRORS: 'Xong (có lỗi)',
-    PROCESSING:            'Đang xử lý',
-    PENDING:               'Đang chờ',
-    FAILED:                'Thất bại',
+    PROCESSING: 'Đang xử lý',
+    PENDING: 'Đang chờ',
+    FAILED: 'Thất bại',
   };
 
   return (
@@ -96,7 +96,7 @@ export const FilesPage: React.FC = () => {
   const [selectedShowId, setSelectedShowId] = useState<number | ''>('');
 
   // Hardcode tạm thời (trong thực tế lấy từ AuthContext / URL params)
-  const SPONSOR_ID = 1;
+  const SPONSOR_ID = 'default-sponsor';
 
   const fetchJobs = async () => {
     if (!selectedShowId) {
