@@ -78,13 +78,7 @@ export const HomePage: React.FC = () => {
           <nav className="hidden md:flex items-center gap-6">
             <a className="text-on-primary-container font-bold border-b-2 border-on-primary-container pb-1 font-label-md text-label-md" href="#">Home</a>
             
-            {/* Conditional Organizer panel */}
-            {user && user.role === 'ORGANIZER' && (
-              <button onClick={() => navigate('/organizer')} className="bg-white/10 text-white border border-white/20 px-4 py-2 rounded-full font-bold hover:bg-white hover:text-black transition-all flex items-center gap-1.5 shadow-md text-xs">
-                <span className="material-symbols-outlined text-[16px]">add_circle</span>
-                Tạo sự kiện
-              </button>
-            )}
+            {/* Conditional Organizer panel removed as requested */}
 
             {/* Conditional Checkin panel */}
             {user && (user.role === 'ADMIN' || user.role === 'CHECKIN_STAFF') && (

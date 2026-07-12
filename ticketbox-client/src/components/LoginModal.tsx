@@ -10,7 +10,7 @@ interface LoginModalProps {
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSuccess, message }) => {
   const { login, register } = useAuth();
-  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [mode, setMode] = useState<'login' | 'register' | 'organizer'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,13 +24,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
       setError('Vui lòng nhập đầy đủ thông tin');
       return;
     }
+
+    if (mode === 'organizer') {
+      if (email !== 'organizer@ticketbox.com' || password !== 'Password123!') {
+        setError('Tài khoản hoặc mật khẩu organizer không hợp lệ');
+        return;
+      }
+    }
     
     setLoading(true);
     setError('');
     
     try {
-      if (isLoginMode) {
+      if (mode === 'login' || mode === 'organizer') {
         await login(email, password);
+        if (mode === 'organizer') {
+          onClose();
+          window.location.href = '/organizer';
+          return;
+        }
       } else {
         await register(email, password);
       }
@@ -50,6 +62,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
     }
   };
 
+  const getTitle = () => {
+    if (mode === 'organizer') return 'Đăng Nhập Organizer';
+    return mode === 'login' ? 'Đăng Nhập' : 'Đăng Ký';
+  };
+
+  const getSubtitle = () => {
+    if (mode === 'organizer') return 'Đăng nhập vào hệ thống quản lý sự kiện';
+    return mode === 'login' ? (message || 'Đăng nhập vào tài khoản của bạn') : 'Tạo tài khoản mới để trải nghiệm ticketbox';
+  };
+
+  const getSubmitText = () => {
+    if (mode === 'organizer') return 'Đăng Nhập Organizer';
+    return mode === 'login' ? 'Đăng Nhập Ngay' : 'Tạo Tài Khoản';
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-gradient-to-b from-[#1a1c29] to-[#0f1016] rounded-2xl p-8 w-full max-w-md shadow-[0_0_40px_rgba(139,92,246,0.3)] border border-purple-500/20 relative">
@@ -64,10 +91,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
         
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-2">
-            {isLoginMode ? 'Đăng Nhập' : 'Đăng Ký'}
+            {getTitle()}
           </h2>
           <p className="text-gray-400 text-sm">
-            {isLoginMode ? (message || 'Đăng nhập vào tài khoản của bạn') : 'Tạo tài khoản mới để trải nghiệm ticketbox'}
+            {getSubtitle()}
           </p>
         </div>
 
@@ -111,29 +138,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
                 </svg>
                 Đang xử lý...
               </>
-            ) : (isLoginMode ? 'Đăng Nhập Ngay' : 'Tạo Tài Khoản')}
+            ) : getSubmitText()}
           </button>
         </form>
         
-        <div className="mt-6 text-center text-sm text-gray-400">
-          {isLoginMode ? (
+        <div className="mt-6 text-center text-sm text-gray-400 space-y-2">
+          {mode === 'login' && (
+            <>
+              <p>
+                Chưa có tài khoản?{' '}
+                <button onClick={() => setMode('register')} className="text-purple-400 font-bold hover:text-pink-400 transition-colors">
+                  Đăng ký ngay
+                </button>
+              </p>
+              <p>
+                Đăng nhập với tư cách{' '}
+                <button onClick={() => setMode('organizer')} className="text-purple-400 font-bold hover:text-pink-400 transition-colors">
+                  Organizer
+                </button>
+              </p>
+            </>
+          )}
+          {mode === 'register' && (
+            <>
+              <p>
+                Đã có tài khoản?{' '}
+                <button onClick={() => setMode('login')} className="text-purple-400 font-bold hover:text-pink-400 transition-colors">
+                  Đăng nhập
+                </button>
+              </p>
+              <p>
+                Đăng nhập với tư cách{' '}
+                <button onClick={() => setMode('organizer')} className="text-purple-400 font-bold hover:text-pink-400 transition-colors">
+                  Organizer
+                </button>
+              </p>
+            </>
+          )}
+          {mode === 'organizer' && (
             <p>
-              Chưa có tài khoản?{' '}
-              <button onClick={() => setIsLoginMode(false)} className="text-purple-400 font-bold hover:text-pink-400 transition-colors">
-                Đăng ký ngay
-              </button>
-            </p>
-          ) : (
-            <p>
-              Đã có tài khoản?{' '}
-              <button onClick={() => setIsLoginMode(true)} className="text-purple-400 font-bold hover:text-pink-400 transition-colors">
-                Đăng nhập
+              Quay lại{' '}
+              <button onClick={() => setMode('login')} className="text-purple-400 font-bold hover:text-pink-400 transition-colors">
+                Đăng nhập thông thường
               </button>
             </p>
           )}
         </div>
-        
-
       </div>
     </div>
   );
