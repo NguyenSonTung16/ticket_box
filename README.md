@@ -93,3 +93,41 @@ Vì hệ thống chạy ở Localhost, để PayPal có thể gọi Webhook khi 
 3. Đăng nhập vào [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/applications), chọn App của bạn, nhấn **Add Webhook** với URL vừa copy cộng thêm route API (ví dụ: `https://abcd.ngrok-free.app/api/v1/payment/webhook/paypal`). Nhớ tick chọn sự kiện `PAYMENT.CAPTURE.COMPLETED`.
 4. Sau khi lưu, copy mã **Webhook ID** do PayPal cung cấp và điền vào biến `PAYPAL_WEBHOOK_ID` trong file `.env` ở thư mục gốc.
 5. Khởi động lại hệ thống để nhận file cấu hình `.env` mới nhất.
+
+---
+
+## 🗄️ Cấu hình và Sử dụng MinIO (Object Storage)
+
+MinIO được tích hợp để lưu trữ file tĩnh (hình ảnh) và xử lý file CSV lớn. Toàn bộ quy trình cài đặt bucket và policy đã được **tự động hóa** qua Docker.
+
+### 1. Cài đặt và Khởi tạo tự động
+Khi chạy lệnh `docker-compose up -d`, service `minio-init` sẽ tự động thực thi các lệnh cài đặt:
+- Tạo sẵn 2 bucket: `ticketbox-images` (chứa ảnh sự kiện/banner) và `ticketbox-csv-imports` (chứa danh sách VIP).
+- Tự động gán quyền `anonymous download` cho bucket `ticketbox-images` để Client có thể hiển thị hình ảnh trực tiếp.
+
+### 2. Thiết lập Biến môi trường (.env)
+Để ứng dụng Backend có thể giao tiếp với MinIO (sinh Presigned URL) và Client có thể truy xuất ảnh, file `.env` của bạn cần đảm bảo các giá trị sau (đã có trong `.env.example`):
+```env
+# MinIO Config
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_PUBLIC_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=ticketbox_admin
+MINIO_SECRET_KEY=ticketbox_secret_2026
+MINIO_USE_SSL=false
+MINIO_BUCKET_IMAGES=ticketbox-images
+MINIO_BUCKET_CSV=ticketbox-csv-imports
+```
+*(Lưu ý: Credential mặc định cài đặt qua Docker là `ticketbox_admin` / `ticketbox_secret_2026`)*
+
+### 3. Quy trình Upload File trong Ứng dụng (Presigned URL)
+Ứng dụng sử dụng cơ chế **Presigned URL** để giảm tải cho Backend:
+1. **Frontend** gửi yêu cầu tới Backend: "Tôi muốn upload một file ảnh nặng 2MB".
+2. **Backend** xác thực quyền, sử dụng SDK để sinh một *Presigned PUT URL* (có giới hạn thời gian sống) và trả về Frontend.
+3. **Frontend** dùng URL đó upload file **trực tiếp** thẳng lên MinIO port `9000`.
+4. Sau khi thành công, ảnh có thể được truy cập trực tiếp qua Public URL (VD: `http://localhost:9000/ticketbox-images/banner.png`).
+
+### 4. Quản lý trực tiếp trên Web Console
+Bạn có thể tự quản lý file (xem, sửa, xoá thủ công) trên trình duyệt:
+- Truy cập vào Console: `http://localhost:9001`
+- Đăng nhập: `ticketbox_admin` / `ticketbox_secret_2026`
+- Truy cập mục **Object Browser** để xem và thao tác trên các bucket.
