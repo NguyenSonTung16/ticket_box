@@ -45,7 +45,7 @@ export class ImportJob {
   @Column({ type: 'varchar', length: 100 })
   sponsorId: string;
 
-  @Column({ type: 'varchar', length: 20, default: ImportJobStatus.PENDING })
+  @Column({ type: 'varchar', length: 50, default: ImportJobStatus.PENDING })
   status: ImportJobStatus;
 
   @Column({ type: 'int', default: 0 })

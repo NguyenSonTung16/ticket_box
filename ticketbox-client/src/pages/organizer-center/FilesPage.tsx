@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { importService, ImportJob } from '../../features/import/importService';
+import { eventService } from '../../features/events/eventService';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -91,13 +92,19 @@ export const FilesPage: React.FC = () => {
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [events, setEvents] = useState<any[]>([]);
+  const [selectedShowId, setSelectedShowId] = useState<number | ''>('');
+
   // Hardcode tạm thời (trong thực tế lấy từ AuthContext / URL params)
-  const SHOW_ID = 1;
   const SPONSOR_ID = 1;
 
   const fetchJobs = async () => {
+    if (!selectedShowId) {
+      setJobs([]);
+      return;
+    }
     try {
-      const data = await importService.listImports(SHOW_ID);
+      const data = await importService.listImports(selectedShowId as number);
       setJobs(data);
     } catch (err) {
       console.error('Failed to fetch jobs', err);
@@ -105,35 +112,51 @@ export const FilesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchJobs();
+    eventService.getOrganizerEvents().then(data => {
+      setEvents(data);
+      if (data && data.length > 0) {
+        setSelectedShowId(data[0].id);
+      }
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
+    fetchJobs();
+  }, [selectedShowId]);
+
+  useEffect(() => {
     const hasActiveJobs = jobs.some(j => j.status === 'PENDING' || j.status === 'PROCESSING');
-    if (!hasActiveJobs) return;
+    if (!hasActiveJobs || !selectedShowId) return;
 
     // Chỉ polling nếu có job đang xử lý
     const interval = setInterval(fetchJobs, 3000);
     return () => clearInterval(interval);
-  }, [jobs]);
+  }, [jobs, selectedShowId]);
 
-  const handleUploadClick = () => fileInputRef.current?.click();
+  const handleUploadClick = () => {
+    if (!selectedShowId) {
+      alert("Vui lòng chọn sự kiện trước khi upload file!");
+      return;
+    }
+    fileInputRef.current?.click();
+  };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !selectedShowId) return;
+    const currentShowId = selectedShowId as number;
 
     try {
       setLoading(true);
 
       // Step 1: Lấy Pre-signed URL từ backend
-      const { presignedUrl, objectKey } = await importService.getUploadUrl(SHOW_ID, SPONSOR_ID);
+      const { presignedUrl, objectKey } = await importService.getUploadUrl(currentShowId, SPONSOR_ID);
 
       // Step 2: Upload file thẳng lên MinIO (không qua backend server)
       await importService.uploadToMinIO(presignedUrl, file);
 
       // Step 3: Báo backend tạo import job (202 Accepted)
-      await importService.triggerImport(objectKey, SHOW_ID, SPONSOR_ID);
+      await importService.triggerImport(objectKey, currentShowId, SPONSOR_ID);
 
       // Refresh danh sách ngay lập tức
       await fetchJobs();
@@ -180,15 +203,34 @@ export const FilesPage: React.FC = () => {
         {/* Toolbar */}
         <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 md:p-6 mb-8">
           <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-            <div className="relative flex-1 max-w-md w-full">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
-                search
-              </span>
-              <input
-                className="w-full bg-surface-container-high border border-outline-variant rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:ring-primary focus:border-primary outline-none"
-                placeholder="Tìm kiếm file .csv..."
-                type="text"
-              />
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="relative min-w-[200px]">
+                <select
+                  value={selectedShowId}
+                  onChange={(e) => setSelectedShowId(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full bg-surface-container-high border border-outline-variant rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:ring-primary focus:border-primary outline-none appearance-none"
+                >
+                  <option value="" disabled>-- Chọn sự kiện --</option>
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">
+                  expand_more
+                </span>
+              </div>
+              <div className="relative flex-1 max-w-sm">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                  search
+                </span>
+                <input
+                  className="w-full bg-surface-container-high border border-outline-variant rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:ring-primary focus:border-primary outline-none"
+                  placeholder="Tìm kiếm file .csv..."
+                  type="text"
+                />
+              </div>
             </div>
             <div className="flex gap-3 sm:gap-4">
               <input

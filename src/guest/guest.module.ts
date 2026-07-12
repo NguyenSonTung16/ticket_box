@@ -7,10 +7,15 @@ import { GuestImportProcessor } from '../apps-worker/processors/guest-import.pro
 import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { Ticket } from '../booking/entities/ticket.entity';
 
+import { AuthModule } from '../auth/auth.module';
+
 // MinioService is available globally via @Global() MinioModule in app.module.ts
 // No need to import MinioModule here.
 @Module({
-  imports: [TypeOrmModule.forFeature([ImportJob, SeatInventory, Ticket])],
+  imports: [
+    TypeOrmModule.forFeature([ImportJob, SeatInventory, Ticket]),
+    AuthModule,
+  ],
   controllers: [GuestController],
   providers: [GuestService, GuestImportProcessor],
   exports: [GuestService],

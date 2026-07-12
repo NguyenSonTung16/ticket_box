@@ -69,7 +69,7 @@ if (serviceName === 'auth') {
 } else if (serviceName === 'ai') {
   serviceModules = [AiModule, AuthModule];
 } else if (serviceName === 'worker') {
-  serviceModules = [WorkerModule];
+  serviceModules = [WorkerModule, GuestModule];
 } else {
   // Monolithic fallback
   serviceModules = [
