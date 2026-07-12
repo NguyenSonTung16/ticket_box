@@ -38,9 +38,9 @@ Luồng được chia làm 2 chiến lược riêng biệt tùy thuộc vào ph�
 
 ## Kịch bản lỗi
 
-- **Hết hạn giữ vé (Hold Timeout Rollback):** Sau 10 phút nếu khán giả không thanh toán, RabbitMQ Worker sẽ xử lý Delayed Message:
-  - **Vé thường:** Trả vé bằng `HINCRBY kho_tổng +K` và hoàn Quota cá nhân (`DECRBY`). *Không chạm vào PostgreSQL vì ban đầu chưa trừ.*
-  - **SVIP:** Worker bắt buộc chạy 3 lệnh nguyên tử: 1) Đổi trạng thái field trên Redis về `available`. 2) Trừ Quota cá nhân (`DECRBY`). 3) `UPDATE seat_inventory SET status='AVAILABLE', reservedBy=NULL` trên PostgreSQL để nhả khóa. Cuối cùng phát Pub/Sub + SSE cập nhật giao diện.
+- **Hết hạn giữ vé (Hold Timeout Rollback & CRON Fallback):** Sau 10 phút nếu khán giả không thanh toán, hệ thống có 2 lớp bảo vệ để giải phóng ghế:
+  - **Lớp 1 (Real-time):** RabbitMQ Worker xử lý Delayed Message (10 phút) để trả vé bằng `HINCRBY` (vé thường) hoặc `HSETNX` nhả field (SVIP), đồng thời trừ Quota cá nhân và `UPDATE` PostgreSQL để nhả khóa. Sau đó phát Pub/Sub + SSE cập nhật giao diện.
+  - **Lớp 2 (CRON Fallback):** Để phòng ngừa sự cố mất message trên RabbitMQ khiến ghế bị kẹt vĩnh viễn (Orphaned Seats), một CRON Job chạy ngầm định kỳ mỗi phút sẽ quét toàn bộ Database. Bất kỳ ghế nào ở trạng thái `RESERVED` có `expiryTime` bé hơn giờ hiện tại sẽ bị ép nhả về `AVAILABLE` và đồng bộ ngược lên Redis.
 - **Lỗi Redis Cluster trung tâm mất kết nối:** Tính năng Fallback kéo dài TTL của Local Cache trên App Server để tiếp tục phục vụ luồng xem thông tin mà không làm sập Database. 
 - **Lệch pha dữ liệu / Redis PubSub delay:** Thời gian TTL của Local Tier-1 cực ngắn (1 giây) đảm bảo dữ liệu trên các cụm Node.js Replica tự động đồng bộ lại số liệu mới nhất trong vòng 1 giây, khắc phục tình trạng Stale Data.
 
