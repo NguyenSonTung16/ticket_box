@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
 import { TicketModal } from './components/TicketModal';
-import { eventService, TicketTypeData } from '../../features/events/eventService';
+import { eventService, ZoneData } from '../../features/events/eventService';
 
 export const CreateStep2: React.FC = () => {
   const navigate = useNavigate();
@@ -13,9 +13,9 @@ export const CreateStep2: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // State quản lý vé và thời gian
+  // State quản lý zones và thời gian
   const [startTime, setStartTime] = useState('');
-  const [ticketTypes, setTicketTypes] = useState<TicketTypeData[]>([]);
+  const [zones, setZones] = useState<ZoneData[]>([]);
 
   useEffect(() => {
     if (eventId) {
@@ -29,8 +29,8 @@ export const CreateStep2: React.FC = () => {
                                       .toISOString().slice(0, 16);
               setStartTime(localDateTime);
             }
-            if (draft.step_2.ticket_types && draft.step_2.ticket_types.length > 0) {
-              setTicketTypes(draft.step_2.ticket_types);
+            if (draft.step_2.zones && draft.step_2.zones.length > 0) {
+              setZones(draft.step_2.zones);
             }
           }
         } catch (err) {
@@ -41,16 +41,16 @@ export const CreateStep2: React.FC = () => {
     }
   }, [eventId]);
 
-  const totalTicketTypes = ticketTypes.length;
-  const totalTickets = ticketTypes.reduce((sum, type) => sum + type.total_quantity, 0);
+  const totalZones = zones.length;
+  const totalTickets = zones.reduce((sum, z) => sum + z.totalCapacity, 0);
 
-  const handleSaveTicket = (ticket: TicketTypeData) => {
-    setTicketTypes([...ticketTypes, ticket]);
+  const handleSaveZone = (zone: ZoneData) => {
+    setZones([...zones, zone]);
     setIsModalOpen(false);
   };
 
-  const handleRemoveTicket = (index: number) => {
-    setTicketTypes(ticketTypes.filter((_, i) => i !== index));
+  const handleRemoveZone = (index: number) => {
+    setZones(zones.filter((_, i) => i !== index));
   };
 
   const handleNext = async () => {
@@ -62,19 +62,18 @@ export const CreateStep2: React.FC = () => {
       setError('Vui lòng chọn thời gian bắt đầu sự kiện');
       return;
     }
-    if (ticketTypes.length === 0) {
-      setError('Vui lòng tạo ít nhất 1 loại vé');
+    if (zones.length === 0) {
+      setError('Vui lòng tạo ít nhất 1 hạng vé');
       return;
     }
 
     try {
       setLoading(true);
       setError('');
-      // Gửi string theo chuẩn ISO cho NestJS (hoặc parse ngày tùy thuộc backend)
       const isoTime = new Date(startTime).toISOString();
       await eventService.saveStep2(parseInt(eventId), {
         start_time: isoTime,
-        ticket_types: ticketTypes
+        zones,
       });
       navigate(`/organizer/create/step-3?eventId=${eventId}`);
     } catch (err: any) {
@@ -100,10 +99,10 @@ export const CreateStep2: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-headline-lg font-bold text-white mb-2">
-            Cấu hình loại vé
+            Cấu hình hạng vé
           </h1>
           <p className="text-on-surface-variant text-sm">
-            Tạo các hạng vé khác nhau để phù hợp với nhu cầu.
+            Tạo các hạng vé/khu vực khác nhau. Mỗi hạng vé sẽ tương ứng một zone trong hệ thống đặt chỗ.
           </p>
         </div>
         <button
@@ -111,13 +110,13 @@ export const CreateStep2: React.FC = () => {
           className="bg-primary text-on-primary px-5 md:px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-md hover:brightness-110 transition-all text-sm"
         >
           <span className="material-symbols-outlined">add</span>
-          Thêm loại vé mới
+          Thêm hạng vé mới
         </button>
       </div>
 
       {/* Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Ticket list */}
+        {/* Left: Zone list */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-surface-container p-4 md:p-6 rounded-xl border border-outline-variant/20 mb-6">
             <h3 className="font-bold text-white mb-4">Lịch trình</h3>
@@ -135,24 +134,22 @@ export const CreateStep2: React.FC = () => {
           </div>
           
           <h3 className="font-bold text-white mt-8 mb-4">Danh sách hạng vé</h3>
-          {ticketTypes.length === 0 && (
+          {zones.length === 0 && (
              <div className="text-center py-8 text-on-surface-variant bg-surface-container rounded-xl border border-dashed border-outline-variant/30">
-               Chưa có loại vé nào. Vui lòng thêm loại vé mới.
+               Chưa có hạng vé nào. Vui lòng thêm hạng vé mới.
              </div>
           )}
-          {ticketTypes.map((ticket, index) => (
+          {zones.map((zone, index) => (
             <div key={index} className="bg-surface-container p-4 md:p-6 rounded-xl border border-outline-variant/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4 md:gap-6">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
                   <span className="material-symbols-outlined">local_activity</span>
                 </div>
                 <div>
-                  <h4 className="font-bold text-white">{ticket.name}</h4>
+                  <h4 className="font-bold text-white">{zone.zone}</h4>
                   <p className="text-xs text-on-surface-variant mt-1">
-                    Số lượng: {ticket.total_quantity} •{' '}
-                    <span className="text-primary">
-                      {ticket.is_free ? 'Miễn phí' : 'Có phí'}
-                    </span>
+                    Số lượng: {zone.totalCapacity} •{' '}
+                    <span className="text-on-surface-variant">Giới hạn: {zone.ticketLimit} vé/đơn</span>
                   </p>
                 </div>
               </div>
@@ -160,11 +157,11 @@ export const CreateStep2: React.FC = () => {
                 <div className="hidden sm:block">
                   <p className="text-xs text-on-surface-variant mb-1">Giá vé</p>
                   <p className="font-bold text-white">
-                    {ticket.price.toLocaleString('vi-VN')}đ
+                    {zone.price === 0 ? 'Miễn phí' : `${zone.price.toLocaleString('vi-VN')}đ`}
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleRemoveTicket(index)} className="p-2 text-on-surface-variant hover:text-error-red transition-colors">
+                  <button onClick={() => handleRemoveZone(index)} className="p-2 text-on-surface-variant hover:text-error-red transition-colors">
                     <span className="material-symbols-outlined">delete</span>
                   </button>
                 </div>
@@ -183,12 +180,12 @@ export const CreateStep2: React.FC = () => {
               <div className="flex justify-between items-center py-2 border-b border-outline-variant/10">
                 <span className="text-on-surface-variant text-sm">Tổng số hạng vé</span>
                 <span className="font-bold text-white">
-                  {totalTicketTypes.toString().padStart(2, '0')}
+                  {totalZones.toString().padStart(2, '0')}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-on-surface-variant text-sm">Tổng số vé</span>
-                <span className="font-bold text-white">{totalTickets}</span>
+                <span className="font-bold text-white">{totalTickets.toLocaleString('vi-VN')}</span>
               </div>
             </div>
           </div>
@@ -198,7 +195,7 @@ export const CreateStep2: React.FC = () => {
       </div>
 
       {/* Modal */}
-      <TicketModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTicket} />
+      <TicketModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveZone} />
 
       {/* Footer */}
       <footer className="fixed bottom-0 left-0 lg:left-64 right-0 h-20 bg-surface-container border-t border-outline-variant/30 px-4 md:px-8 flex items-center justify-between z-40">

@@ -1,16 +1,15 @@
-const { MongoClient } = require('mongodb');
+const mongoose = require('mongoose');
 
 async function run() {
   const uri = "mongodb://ticketbox:password@localhost:27018/ticketbox_db?authSource=admin";
-  const client = new MongoClient(uri);
   try {
-    await client.connect();
-    const database = client.db('ticketbox_db');
-    const shows = database.collection('showinfos');
+    await mongoose.connect(uri);
+    const db = mongoose.connection.db;
+    const shows = db.collection('showinfos');
     const all = await shows.find({}).toArray();
     console.dir(all, {depth: null});
   } finally {
-    await client.close();
+    await mongoose.disconnect();
   }
 }
 run().catch(console.dir);

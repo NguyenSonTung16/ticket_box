@@ -1,6 +1,7 @@
-import { TicketTypeDto } from './ticket-type.dto';
+import { ZoneInventoryDto } from './zone-inventory.dto';
 
 export class SaveStep2Dto {
   start_time: string; // ISO datetime
-  ticket_types: TicketTypeDto[];
+  zones: ZoneInventoryDto[];
 }
+

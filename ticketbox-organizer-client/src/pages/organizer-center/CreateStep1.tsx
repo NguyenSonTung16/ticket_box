@@ -75,11 +75,12 @@ export const CreateStep1: React.FC = () => {
       if (coverImageFile) {
         const ext = coverImageFile.name.split('.').pop() || 'jpg';
         const { presignedUrl } = await eventService.getImageUploadUrl(event_id, 'cover_image_url', ext);
-        await fetch(presignedUrl, {
+        const uploadRes = await fetch(presignedUrl, {
           method: 'PUT',
           body: coverImageFile,
           headers: { 'Content-Type': coverImageFile.type },
         });
+        if (!uploadRes.ok) throw new Error(`Upload ảnh cover thất bại: ${uploadRes.statusText}`);
         finalCoverImageUrl = presignedUrl.split('?')[0];
       }
       
@@ -89,11 +90,12 @@ export const CreateStep1: React.FC = () => {
         const file = attachmentFiles[i];
         const ext = file.name.split('.').pop() || 'jpg';
         const { presignedUrl } = await eventService.getImageUploadUrl(event_id, `attachment_${Date.now()}_${i}`, ext);
-        await fetch(presignedUrl, {
+        const uploadRes = await fetch(presignedUrl, {
           method: 'PUT',
           body: file,
           headers: { 'Content-Type': file.type },
         });
+        if (!uploadRes.ok) throw new Error(`Upload ảnh đính kèm thất bại: ${uploadRes.statusText}`);
         newAttachmentUrls.push(presignedUrl.split('?')[0]);
       }
       

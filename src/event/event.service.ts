@@ -8,7 +8,7 @@ import {
   GoneException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, Not, In } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -19,7 +19,7 @@ import * as crypto from 'crypto';
 import { REDIS_CLIENT } from '../config/redis.config';
 import { EVENT_PUBLISHER, IEventPublisher } from './interfaces/event-publisher.interface';
 import { Concert, ConcertStatus } from '../info/entities/concert.entity';
-import { EventTicketType } from '../info/entities/event-ticket-type.entity';
+
 import { SeatInventory } from '../booking/entities/seat-inventory.entity';
 import { Invoice } from '../booking/entities/invoice.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
@@ -41,7 +41,7 @@ export class EventService {
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject(EVENT_PUBLISHER) private readonly eventPublisher: IEventPublisher,
     @InjectRepository(Concert) private readonly concertRepo: Repository<Concert>,
-    @InjectRepository(EventTicketType) private readonly ticketTypeRepo: Repository<EventTicketType>,
+
     @InjectRepository(SeatInventory) private readonly seatRepo: Repository<SeatInventory>,
     @InjectRepository(Invoice) private readonly invoiceRepo: Repository<Invoice>,
     @InjectRepository(ArtistBio) private artistBioRepo: Repository<ArtistBio>,
@@ -107,7 +107,7 @@ export class EventService {
       status: ConcertStatus.DRAFT,
       step_completed: step,
       next_step: step + 1,
-      ...(step === 2 ? { ticket_types_saved: (data as SaveStep2Dto).ticket_types?.length ?? 0 } : {}),
+      ...(step === 2 ? { zones_saved: (data as SaveStep2Dto).zones?.length ?? 0 } : {}),
       ...(step === 3 ? { event_url: `https://ticketbox.vn/${(data as SaveStep3Dto).slug}` } : {}),
     };
   }
@@ -117,54 +117,37 @@ export class EventService {
   }
 
   private async _saveStep2(eventId: number, data: SaveStep2Dto) {
+    // Guard: không cho phép chỉnh sửa zones của sự kiện đã ACTIVE
+    const concert = await this.concertRepo.findOne({ where: { id: eventId } });
+    if (concert?.status === ConcertStatus.ACTIVE) {
+      throw new ForbiddenException('Không thể chỉnh sửa hạng vé của sự kiện đã được công bố (ACTIVE).');
+    }
+
     await this.concertRepo.update(eventId, { performanceDate: new Date(data.start_time) });
-    
-    if (data.ticket_types?.length) {
+
+    if (data.zones?.length) {
       const zoneRepo = this.dataSource.getRepository(ZoneInventory);
-      
-      // Delete old tickets that are NOT in the payload (if they had an ID)
-      const providedIds = data.ticket_types.filter(t => t.id).map(t => t.id);
-      if (providedIds.length > 0) {
-        await this.ticketTypeRepo.delete({ showId: eventId, id: Not(In(providedIds)) });
-      } else {
-        await this.ticketTypeRepo.delete({ showId: eventId });
-      }
 
-      for (let idx = 0; idx < data.ticket_types.length; idx++) {
-        const tt = data.ticket_types[idx];
-        const payload = {
-          showId: eventId,
-          name: tt.name,
-          price: tt.is_free ? 0 : tt.price,
-          is_free: tt.is_free,
-          total_quantity: tt.total_quantity,
-          min_per_order: tt.min_per_order ?? 1,
-          max_per_order: tt.max_per_order ?? 10,
-          sale_start: tt.sale_start ? new Date(tt.sale_start) : null,
-          sale_end: tt.sale_end ? new Date(tt.sale_end) : null,
-          description: tt.description ?? null,
-          ticket_image_url: tt.ticket_image_url ?? null,
-          sort_order: idx,
-        };
+      // Xóa toàn bộ zones cũ rồi tạo lại — an toàn vì event chưa ACTIVE
+      await zoneRepo.delete({ concert_id: eventId });
 
-        if (tt.id) {
-          await this.ticketTypeRepo.update(tt.id, payload);
-        } else {
-          await this.ticketTypeRepo.save(this.ticketTypeRepo.create(payload));
-        }
-
-        // Update ZoneInventory for Booking Service
-        await zoneRepo.query(`
-          INSERT INTO zone_inventory (zone, concert_id, "totalCapacity", "availableSlots", price)
-          VALUES ($1, $2, $3, $4, $5)
-          ON CONFLICT (zone, concert_id) 
-          DO UPDATE SET "totalCapacity" = $3, price = $5, "availableSlots" = zone_inventory."availableSlots" + ($3 - zone_inventory."totalCapacity")
-        `, [tt.name, eventId, tt.total_quantity, tt.total_quantity, payload.price]);
+      for (const z of data.zones) {
+        await zoneRepo.save(
+          zoneRepo.create({
+            zone: z.zone,
+            concert_id: eventId,
+            totalCapacity: z.totalCapacity,
+            availableSlots: z.totalCapacity,
+            price: z.price,
+            ticketLimit: z.ticketLimit ?? 4,
+          }),
+        );
       }
     }
 
-    // Invalidate event details cache
+    // Invalidate event detail cache
     await this.redis.del(`event:${eventId}`);
+    await this.redis.del(`show_info:${eventId}`);
   }
 
   private async _saveStep3(eventId: number, data: SaveStep3Dto) {
@@ -193,7 +176,8 @@ export class EventService {
     if (cached) return { event_id: eventId, ...JSON.parse(cached) };
 
     const info = await this.showInfoModel.findOne({ showId: eventId }).lean();
-    const ticketTypes = await this.ticketTypeRepo.find({ where: { showId: eventId } });
+    const zoneRepo = this.dataSource.getRepository(ZoneInventory);
+    const zones = await zoneRepo.find({ where: { concert_id: eventId } });
 
     return {
       event_id: eventId,
@@ -209,7 +193,17 @@ export class EventService {
             artist_ids: info['artist_ids'] ?? [], attachment_urls: info['attachment_urls'] ?? [],
           }
         : null,
-      step_2: concert.performanceDate ? { start_time: concert.performanceDate, ticket_types: ticketTypes } : null,
+      step_2: concert.performanceDate
+        ? {
+            start_time: concert.performanceDate,
+            zones: zones.map(z => ({
+              zone: z.zone,
+              price: z.price,
+              totalCapacity: z.totalCapacity,
+              ticketLimit: z.ticketLimit,
+            })),
+          }
+        : null,
       step_3: info?.['privacy'] ? { slug: concert.slug, privacy: info['privacy'] ?? 'PUBLIC', confirmation_message: info['confirmation_message'] ?? null, seating_chart_url: info['seating_chart_url'] ?? null } : null,
       step_4: info?.['bank_account_name']
         ? {
@@ -287,16 +281,27 @@ export class EventService {
     let ticketsSoldMap = new Map<number, number>();
 
     if (showIds.length > 0) {
-      const ticketTypes = await this.ticketTypeRepo.find({ where: { showId: In(showIds) } });
-      ticketTypes.forEach(tt => {
-        ticketTotalsMap.set(tt.showId, (ticketTotalsMap.get(tt.showId) || 0) + tt.total_quantity);
+      // Lấy tổng số vé từ zone_inventory thay vì event_ticket_types
+      const zones = await this.dataSource.getRepository(ZoneInventory).find({
+        where: showIds.map(id => ({ concert_id: id })).reduce((acc, cur) => cur, {} as any),
       });
+      // Dùng raw query để lấy sum theo concert_id
+      if (showIds.length > 0) {
+        const zoneRows = await this.dataSource.query(
+          `SELECT concert_id, SUM("totalCapacity") as total FROM zone_inventory WHERE concert_id = ANY($1) GROUP BY concert_id`,
+          [showIds],
+        );
+        zoneRows.forEach((row: any) => {
+          ticketTotalsMap.set(Number(row.concert_id), Number(row.total));
+        });
+      }
 
-      const tickets = await this.dataSource.getRepository('Ticket').find({
-        where: { concert_id: In(showIds), status: 'valid' }
-      });
-      tickets.forEach((t: any) => {
-        ticketsSoldMap.set(t.concert_id, (ticketsSoldMap.get(t.concert_id) || 0) + 1);
+      const ticketRows = await this.dataSource.query(
+        `SELECT concert_id, COUNT(*)::int as cnt FROM tickets WHERE concert_id = ANY($1) AND status = 'valid' GROUP BY concert_id`,
+        [showIds],
+      );
+      ticketRows.forEach((t: any) => {
+        ticketsSoldMap.set(Number(t.concert_id), Number(t.cnt));
       });
     }
 
@@ -331,20 +336,20 @@ export class EventService {
         const concert = await this.concertRepo.findOne({ where: { id: eventId } });
         if (!concert) throw new NotFoundException('Event not found.');
 
-        const [info, ticketTypes] = await Promise.all([
+        const [info, zones] = await Promise.all([
           this.showInfoModel.findOne({ showId: eventId }).lean(),
-          this.ticketTypeRepo.find({ where: { showId: eventId }, order: { sort_order: 'ASC' } }),
+          this.dataSource.getRepository(ZoneInventory).find({ where: { concert_id: eventId } }),
         ]);
 
         const enriched = await Promise.all(
-          ticketTypes.map(async tt => {
-            const countKey = `seat_counts:${eventId}:${tt.name}`;
+          zones.map(async z => {
+            const countKey = `seat_counts:${eventId}:${z.zone}`;
             let counts = await this.redis.hgetall(countKey);
 
             if (!counts || Object.keys(counts).length === 0) {
               const rows = await this.dataSource.query(
                 `SELECT status, COUNT(*)::int AS cnt FROM seat_inventory WHERE concert_id = $1 AND zone = $2 GROUP BY status`,
-                [eventId, tt.name],
+                [eventId, z.zone],
               );
               counts = { available: '0', reserved: '0', sold: '0', locked: '0' };
               for (const row of rows) counts[row.status.toLowerCase()] = String(row.cnt);
@@ -353,21 +358,16 @@ export class EventService {
             }
 
             return {
-              id: tt.id,
-              name: tt.name,
-              price: tt.price,
-              is_free: tt.is_free,
-              total_quantity: tt.total_quantity,
+              zone: z.zone,
+              price: z.price,
+              is_free: z.price === 0,
+              totalCapacity: z.totalCapacity,
+              availableSlots: z.availableSlots,
+              ticketLimit: z.ticketLimit,
               available: Number(counts.available ?? 0),
               reserved: Number(counts.reserved ?? 0),
               sold: Number(counts.sold ?? 0),
               locked: Number(counts.locked ?? 0),
-              min_per_order: tt.min_per_order,
-              max_per_order: tt.max_per_order,
-              sale_start: tt.sale_start,
-              sale_end: tt.sale_end,
-              description: tt.description,
-              ticket_image_url: tt.ticket_image_url,
             };
           }),
         );
@@ -391,7 +391,7 @@ export class EventService {
           slug: concert.slug,
           status: concert.status,
           start_time: concert.performanceDate,
-          ticket_types: enriched,
+          zones: enriched,
           created_at: concert.created_at,
           artistBio: info?.['artistBio'] ?? null,
           artist_bio: info?.['artistBio'] ?? null,
@@ -559,6 +559,7 @@ export class EventService {
   private async _invalidateEventListCache() {
     const keys = await this.redis.keys('event_list:*');
     if (keys.length) await this.redis.del(...keys);
+    await this.redis.del('all_shows');
   }
 
   private async _invalidateConcertCache(eventId: number) {

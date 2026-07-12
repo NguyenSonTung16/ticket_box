@@ -9,7 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ShowInfo, ShowInfoDocument } from './schemas/show-info.schema';
 import { Concert } from './entities/concert.entity';
 import { ZoneInventory } from '../booking/entities/zone-inventory.entity';
-import { EventTicketType } from './entities/event-ticket-type.entity';
+
 import { ArtistBio } from '../ai/entities/artist-bio.entity';
 
 /**
@@ -33,14 +33,12 @@ export class InfoService {
     @InjectRepository(ZoneInventory) private readonly zoneRepo: Repository<ZoneInventory>,
     @InjectModel(ShowInfo.name) private readonly showInfoModel: Model<ShowInfoDocument>,
     @InjectRepository(ArtistBio) private readonly artistBioRepo: Repository<ArtistBio>,
-    @InjectRepository(EventTicketType) private readonly ticketTypeRepo: Repository<EventTicketType>,
+
   ) {}
 
   // Lấy danh sách tất cả các show (ACTIVE status)
   async getAllShows() {
     const cacheKey = 'all_shows';
-    let shows = this.showCache.get(cacheKey);
-    if (shows) return shows;
 
     let redisData: string | null = null;
     try {
@@ -51,7 +49,6 @@ export class InfoService {
 
     if (redisData) {
       const parsed = JSON.parse(redisData);
-      this.showCache.set(cacheKey, parsed);
       return parsed;
     }
 
@@ -68,7 +65,6 @@ export class InfoService {
 
         if (doubleCheck) {
           const parsed = JSON.parse(doubleCheck);
-          this.showCache.set(cacheKey, parsed);
           return parsed;
         }
 
@@ -96,7 +92,6 @@ export class InfoService {
         try {
           await this.redis.set(cacheKey, JSON.stringify(finalData), 'EX', 60);
         } catch (e) {}
-        this.showCache.set(cacheKey, finalData);
         return finalData;
       } finally {
         this.activePromises.delete(cacheKey);
@@ -127,11 +122,10 @@ export class InfoService {
         if (doubleCheck) return JSON.parse(doubleCheck);
 
         // 3. Phân tách DB: Truy vấn đồng thời PostgreSQL và MongoDB
-        const [postgresData, postgresZones, mongoData, ticketTypes] = await Promise.all([
+        const [postgresData, postgresZones, mongoData] = await Promise.all([
           this.showRepo.findOne({ where: { id: showId } }),
           this.zoneRepo.find({ where: { concert_id: showId } }),
           this.showInfoModel.findOne({ showId }).lean(),
-          this.ticketTypeRepo.find({ where: { showId }, order: { sort_order: 'ASC' } }),
         ]);
 
         const zones = postgresZones.map(pz => ({
@@ -139,6 +133,7 @@ export class InfoService {
           price: pz.price,
           totalCapacity: pz.totalCapacity,
           availableSlots: pz.availableSlots,
+          ticketLimit: pz.ticketLimit,
         }));
 
         const artistIds = mongoData?.['artist_ids'] || [];
@@ -189,13 +184,6 @@ export class InfoService {
           vat_address: mongoData?.['vat_address'],
           vat_tax_code: mongoData?.['vat_tax_code'],
           zones,
-          ticket_types: ticketTypes.map(tt => ({
-            id: tt.id,
-            name: tt.name,
-            price: tt.price,
-            is_free: tt.is_free,
-            total_quantity: tt.total_quantity,
-          })),
         };
 
         await this.redis.set(cacheKey, JSON.stringify(finalData), 'EX', 60);
