@@ -131,6 +131,68 @@ export class EmailService {
   }
 
   /**
+   * Gửi email thông báo hoàn tiền khi ghế đã bị người khác mua mất
+   */
+  async sendRefundEmail(toEmail: string, invoiceId: string, showName: string) {
+    try {
+      const htmlBody = `
+        <!DOCTYPE html>
+        <html>
+        <body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Inter', sans-serif;">
+          <div style="max-width:600px; margin:24px auto; background-color:#1c1c1e; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+            <!-- Header -->
+            <div style="background-color:#E91E63; padding:32px 24px; text-align:center;">
+              <h1 style="color:#ffffff; margin:0; font-size:28px;">TicketBox</h1>
+              <p style="color:#ffffff; margin:8px 0 0; font-size:16px; opacity:0.9;">Giao dịch được hoàn tiền</p>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding:40px 32px;">
+              <h2 style="color:#ffffff; margin:0 0 16px; font-size:24px;">Rất tiếc!</h2>
+              <p style="color:#e0e0e0; font-size:16px; line-height:1.6; margin:0 0 24px;">
+                Cảm ơn bạn đã quan tâm đến sự kiện <strong style="color:#00E676;">${showName}</strong>. 
+                Rất tiếc, trong lúc bạn đang thực hiện thanh toán, ghế của bạn đã được khách hàng khác hoàn tất thanh toán trước.
+              </p>
+              
+              <!-- Invoice Summary -->
+              <div style="background-color:#2c2c2e; border-radius:8px; padding:20px; border-left:4px solid #E91E63; margin-bottom:32px;">
+                <p style="color:#e0e0e0; margin:0 0 8px;"><strong>Mã hóa đơn:</strong> ${invoiceId}</p>
+                <p style="color:#e0e0e0; margin:0;"><strong>Trạng thái:</strong> Đang hoàn tiền tự động</p>
+              </div>
+              
+              <p style="color:#e0e0e0; font-size:16px; line-height:1.6; margin:0 0 24px;">
+                Hệ thống TicketBox đã tự động gửi yêu cầu hoàn trả 100% số tiền giao dịch về lại tài khoản PayPal của bạn. Bạn vui lòng kiểm tra lại số dư PayPal trong vài phút tới.
+              </p>
+              
+              <div style="text-align:center; margin-top:24px; padding-top:24px; border-top:1px solid #333;">
+                <p style="color:#999; font-size:12px; margin:0;">
+                  Email này được gửi tự động từ hệ thống TicketBox.<br>
+                  Vui lòng không trả lời email này.
+                </p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const mailOptions = {
+        from: process.env.SMTP_FROM || 'TicketBox <noreply@ticketbox.vn>',
+        to: toEmail,
+        subject: `🔄 Đã hoàn tiền — ${showName}`,
+        html: htmlBody,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`[Email] Đã gửi thông báo hoàn tiền tự động đến ${toEmail}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`[Email] Lỗi gửi email hoàn tiền đến ${toEmail}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Gửi email thông báo giữ vé tạm thời cho người dùng
    */
   async sendHoldNotificationEmail(

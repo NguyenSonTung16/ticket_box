@@ -374,12 +374,16 @@ export class WorkerService implements OnModuleInit {
           // Lấy tên show (fallback)
           const showName = `Show #${data.concert_id}`;
 
-          await this.emailService.sendTicketEmail(
-            user.email,
-            data.tickets,
-            data.invoiceId,
-            showName,
-          );
+          if (data.tickets.length === 0) {
+            await this.emailService.sendRefundEmail(user.email, data.invoiceId, showName);
+          } else {
+            await this.emailService.sendTicketEmail(
+              user.email,
+              data.tickets,
+              data.invoiceId,
+              showName,
+            );
+          }
 
           this.rabbitChannel.ack(msg);
         } catch (error) {

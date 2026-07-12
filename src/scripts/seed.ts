@@ -152,11 +152,11 @@ async function bootstrap() {
     // Adapt to new SeatInventory schema
     const seatCount = await seatInventoryRepo.count({ where: { concert_id: cData.id } });
     if (seatCount === 0) {
-      console.log(`[PG] Đang tạo 90 ghế SVIP cho Show ${cData.id}...`);
+      console.log(`[PG] Đang tạo 40 ghế SVIP cho Show ${cData.id}...`);
       const seats = [];
-      const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+      const rows = ['A', 'B'];
       for (const row of rows) {
-        for (let i = 1; i <= 10; i++) {
+        for (let i = 1; i <= 20; i++) {
           const sponsorId = (row === 'A') ? 'vinamilk' : null;
           seats.push({ seatNo: row + '-' + String(i), concert_id: cData.id, status: 'AVAILABLE', zone: 'SVIP', sponsorId });
         }
@@ -186,7 +186,7 @@ async function bootstrap() {
   // Tạo CSV mẫu cho VIP Guest Import
   const csvPath = 'vip_guests.csv';
   if (!fs.existsSync(csvPath)) {
-    fs.writeFileSync(csvPath, 'seatNo,name,email\nA1,Trấn Thành,tt@email.com\nA2,Sơn Tùng,mtp@email.com\n');
+    fs.writeFileSync(csvPath, 'seatNo,name,email\nA-1,Trấn Thành,tt@email.com\nA-2,Sơn Tùng,mtp@email.com\n');
   }
 
   // 3. Import VIP Guest từ CSV vào Redis SVIP Seats
