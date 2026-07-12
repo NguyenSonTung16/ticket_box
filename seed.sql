@@ -1,1 +1,0 @@
-INSERT INTO artist_bios ("artistName", "stageName", category, "shortBio", "mediumBio", "seoBio", status, "createdAt", "updatedAt") VALUES ('Son Tùng M-TP', 'Son Tùng M-TP', 'Singer', 'A popular Vietnamese singer', 'Medium bio', 'SEO bio', 'APPROVED', NOW(), NOW()), ('Ðen Vâu', 'Ðen Vâu', 'Rapper', 'Vietnamese rapper', 'Medium bio', 'SEO bio', 'APPROVED', NOW(), NOW());
