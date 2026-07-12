@@ -54,16 +54,16 @@ async function seedSeats() {
       const seatNum = seatParts[1];
 
       // Check if seat exists
-      const checkQuery = `SELECT "seatId" FROM seat_inventory WHERE "showId" = $1 AND row = $2 AND number = $3`;
-      const checkRes = await client.query(checkQuery, [showId, seatRow, seatNum]);
+      const checkQuery = `SELECT "seatId" FROM seat_inventory WHERE "concert_id" = $1 AND "seatNo" = $2`;
+      const checkRes = await client.query(checkQuery, [showId, seatNo]);
 
       if (checkRes.rows.length === 0) {
         // Insert new seat
         const insertQuery = `
-          INSERT INTO seat_inventory ("showId", "zone", "row", "number", "status", "sponsorId", "createdAt", "updatedAt")
-          VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+          INSERT INTO seat_inventory ("concert_id", "zone", "seatNo", "status", "sponsorId", "createdAt", "updatedAt")
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
         `;
-        await client.query(insertQuery, [showId, 'SVIP', seatRow, seatNum, 'AVAILABLE', sponsorId]);
+        await client.query(insertQuery, [showId, 'SVIP', seatNo, 'AVAILABLE', sponsorId]);
         insertedCount++;
       } else {
         // Update existing seat's sponsorId
