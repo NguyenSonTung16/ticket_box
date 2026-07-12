@@ -1,40 +1,49 @@
-# TicketBox Caching — Project Proposal
+# TicketBox — Project Proposal
 
-## 1. Bối cảnh & Vấn đề (Problem Statement)
-Các concert âm nhạc lớn tại Việt Nam thu hút hàng chục nghìn khán giả truy cập cùng lúc ngay tại thời điểm mở bán. Khi áp dụng các cơ chế truy vấn thông thường trực tiếp vào cơ sở dữ liệu (PostgreSQL), hệ thống gặp phải những khủng hoảng nghiêm trọng về hiệu năng:
-*   **Quá tải cơ sở dữ liệu (Database Bottleneck):** Trang danh sách và trang chi tiết concert có tần suất đọc cực kỳ cao (hàng nghìn request/giây). Việc truy vấn trực tiếp vào DB SQL dưới tải lớn làm cạn kiệt connection pool, dẫn đến sập toàn bộ dịch vụ.
-*   **Vấn đề Cache Stampede (Hiệu ứng bầy đàn):** Khi sử dụng cache thông thường với thời gian hết hạn (TTL), thời điểm cache hết hạn trùng với lúc hàng vạn user F5 sẽ khiến toàn bộ request đồng loạt đổ thẳng vào DB để đọc lại dữ liệu mới, gây nghẽn và sập DB ngay lập tức.
-*   **Dữ liệu ảo và trễ hạn (Stale Data):** Dữ liệu show diễn ít thay đổi, nhưng thông tin "số vé còn lại" biến động liên tục. Nếu cache số vé quá lâu, khách hàng sẽ thấy số lượng vé ảo (đã hết nhưng vẫn hiển thị còn), dẫn đến tỷ lệ lỗi cao khi bấm mua. Nếu đặt TTL quá ngắn, DB sẽ chịu tải rất lớn.
-*   **Trải nghiệm người dùng kém (F5 Fatigue):** Khán giả phải liên tục tải lại trang để biết số lượng vé thực tế còn lại bao nhiêu, gây ức chế và tăng thêm tải trọng không đáng có cho hệ thống.
+## Vấn đề
+Hiện nay, việc bán vé các sự kiện âm nhạc quy mô vừa và lớn bằng các kênh truyền thống (như Zalo OA, tạo Google Form, hay yêu cầu khách hàng chuyển khoản thủ công chụp ảnh màn hình gửi qua tin nhắn) bộc lộ hàng loạt hạn chế nghiêm trọng khi lượng khách hàng quan tâm tăng đột biến:
+*   **Hệ thống sập nguồn do quá tải:** Các website hoặc Form không được thiết kế kiến trúc chịu tải, lập tức cạn kiệt kết nối vào cơ sở dữ liệu khiến toàn bộ dịch vụ "trắng trang" khi hàng vạn người ùa vào cùng lúc.
+*   **Trừ tiền không ra vé:** Quá trình chốt đơn và đối soát thanh toán kém, dẫn đến lỗi bất đồng bộ mạng. Khách hàng đã bị trừ tiền trong tài khoản ngân hàng nhưng hệ thống bị nghẽn nên không phát hành vé, gây phẫn nộ và khủng hoảng truyền thông.
+*   **Hiện tượng Bot gom vé (Scalper):** Thiếu cơ chế kỹ thuật để cản trở, tạo điều kiện cho phe vé dùng Bot tự động vét sạch vé tốt trong tích tắc.
+*   **Hiển thị vé ảo:** Trạng thái vé bị trễ nải do cơ chế Cache không hợp lý, khiến khách F5 liên tục thấy còn vé nhưng bấm mua thì báo hết, gây ức chế tột độ.
 
-## 2. Mục tiêu thiết kế (Objectives)
-*   **Khả năng chịu tải cao:** Đảm bảo hệ thống phục vụ mượt mà **80.000 user concurrent** truy cập xem thông tin show và số vé trong 5 phút đầu mở bán mà không làm tăng tải trọng lên PostgreSQL quá mức an toàn.
-*   **Tối ưu tốc độ phản hồi (Latency):** Đạt thời gian phản hồi ở mức P95 < 200ms đối với các tác vụ đọc thông tin concert và trạng thái vé.
-*   **Đồng bộ thời gian thực (Real-time Accuracy):** Cập nhật biến động số lượng vé xuống trình duyệt khán giả gần như ngay lập tức (độ trễ < 1 giây) khi có đơn hàng thành công, loại bỏ hoàn toàn hiện tượng "vé ảo" mà không bắt người dùng phải bấm tải lại trang.
-*   **Tính sẵn sàng cao (High Availability):** Đảm bảo hệ thống vẫn hoạt động phục vụ duyệt thông tin ngay cả khi Redis Cluster trung tâm gặp sự cố gián đoạn kết nối ngắn hạn.
+## Mục tiêu
+Hệ thống cần đạt được các quy chuẩn khắt khe về kỹ thuật và vận hành:
+*   **Khả năng chịu tải cực cao:** Đảm bảo hệ thống đứng vững, phục vụ mượt mà **80.000 người truy cập đồng thời (CCU)** trong 5 phút đầu tiên mở bán mà không sập.
+*   **Đồng bộ thời gian thực (Real-time):** Phản ánh chính xác số vé còn lại ngay trên sơ đồ ghế với độ trễ < 1 giây, tự động nhảy số không cần khán giả phải bấm F5 trang.
+*   **Tự động hóa thanh toán tuyệt đối:** Chống trừ tiền hai lần, đảm bảo "1 vé 1 chủ" rõ ràng ngay trong môi trường cạnh tranh cao.
 
-## 3. Đối tượng & Nhu cầu tương tác với Cache
+## Người dùng và nhu cầu
 *   **Khán giả (Audience):** 
-    *   Xem danh sách các concert sắp diễn ra cực nhanh.
-    *   Xem sơ đồ khu vực vé (SVG) và số lượng vé còn lại nhảy số tự động (real-time) theo từng giây.
-    *   Thực hiện mua vé và nhận được sự phản ánh tức thì về số lượng vé giảm đi trên hệ thống.
-*   **Ban tổ chức (Organizer):**
-    *   Cấu hình thông tin concert và số lượng vé ban đầu.
-    *   Yêu cầu hệ thống phản ánh thay đổi ngay lập tức lên cache khi họ chỉnh sửa thông tin concert hoặc bổ sung vé mà không cần chờ hết TTL.
+    *   *Mục đích:* Lấy được thông tin sự kiện nhanh nhất, giữ vé và thanh toán thành công.
+    *   *Điều quan trọng nhất:* Sự công bằng (không bị Bot cướp vé) và tính an toàn (thanh toán đúng số tiền, nhận đúng mã QR). Trải nghiệm săn vé cần mượt mà, không giật lag.
+*   **Ban tổ chức (Organizer):** 
+    *   *Mục đích:* Quản lý thông tin show diễn, cập nhật thông tin nghệ sĩ, giá vé.
+    *   *Điều quan trọng nhất:* Import danh sách vé nội bộ/VIP cực nhanh bằng file CSV thay vì nhập tay. Có AI hỗ trợ tạo hồ sơ nghệ sĩ tự động từ các tài liệu PDF/Word hỗn tạp.
+*   **Nhân viên soát vé (Check-in Staff):** 
+    *   *Mục đích:* Quét mã QR tại cổng ra vào sân vận động.
+    *   *Điều quan trọng nhất:* Tốc độ thông quan siêu tốc (< 1 giây/người) để giải tỏa đám đông 50.000 người, thiết bị bắt buộc phải hoạt động được dù nhà mạng di động bị sập sóng ở khu vực sự kiện.
 
-## 4. Phạm vi giải pháp Caching (Scope)
-### Thuộc phạm vi thực hiện:
-*   Thiết kế kiến trúc Cache hai tầng (Two-Tier Caching): Tầng 1 (In-Memory Cache tại App Server) và Tầng 2 (Redis Cluster tập trung).
-*   Thiết kế cơ chế invalidate cache chủ động qua kênh truyền thông nội bộ (Redis Pub/Sub).
-*   Thiết kế cơ chế đẩy dữ liệu biến động số lượng vé thời gian thực xuống trình duyệt người dùng bằng Server-Sent Events (SSE).
-*   Đánh giá và so sánh các chiến lược Caching (Cache-aside, Write-through, Hybrid Caching).
+## Phạm vi
+### Những gì thuộc phạm vi đồ án này:
+*   Thiết kế kiến trúc Microservices phân tách nghiệp vụ (Auth, Booking, Info, Checkin, AI, Worker).
+*   Triển khai Hybrid Caching đa tầng kết hợp Server-Sent Events (SSE) để tối ưu Load Database và push dữ liệu real-time.
+*   Cơ chế xếp hàng Virtual Waiting Room & chống double-charge qua Redis.
+*   Kiến trúc hướng sự kiện (RabbitMQ) để xử lý Webhook thanh toán bù đắp khi lỗi mạng.
+*   Giải pháp thiết bị soát vé Offline-First (cơ sở dữ liệu cục bộ, đồng bộ chéo sau khi có mạng).
+*   Tích hợp quy trình tải file CSV lên MinIO để import vé theo lô.
+*   Tích hợp AI (Google Gemini) phân tích văn bản tự nhiên.
 
-### Không thuộc phạm vi thực hiện:
-*   Xử lý chi tiết cổng thanh toán (VNPAY/MoMo).
-*   Hệ thống kiểm soát soát vé offline tại cổng sự kiện.
-*   Thuật toán phân quyền chi tiết (RBAC) và xác thực người dùng.
+### Những gì KHÔNG thuộc phạm vi đồ án này:
+*   Tích hợp môi trường Payment Gateway thật (tiền thật), chỉ sử dụng môi trường Sandbox của PayPal/VNPay để mô phỏng webhook.
+*   Triển khai hạ tầng Production vật lý thực tế trên AWS/Kubernetes (toàn bộ đồ án chạy mô phỏng kiểm thử giới hạn thông qua Docker Compose ở local).
+*   Đảm bảo chống rò rỉ thông tin, kiểm thử thâm nhập (Penetration Testing) hay các tiêu chuẩn bảo mật dữ liệu doanh nghiệp chuyên sâu (như PCI-DSS cho thanh toán). Hệ thống chỉ tập trung giải quyết bài toán hiệu năng và kiến trúc luồng dữ liệu.
 
-## 5. Rủi ro & Ràng buộc kỹ thuật
-*   **Rủi ro bất nhất quán dữ liệu (Data Inconsistency):** Dưới tải cực cao, việc cache ở RAM của nhiều App Server khác nhau có thể dẫn đến lệch dữ liệu hiển thị giữa các user (độ lệch chấp nhận được trong ngưỡng < 1.5 giây).
-*   **Rủi ro cạn kiệt kết nối SSE (SSE Connection Overload):** Duy trì hàng vạn kết nối HTTP Streaming đồng thời đòi hỏi cấu hình tối ưu của reverse proxy (Nginx/Load Balancer) hỗ trợ HTTP/2.
-*   **Ràng buộc tài nguyên (Memory Constraints):** Local cache trên App Server phải được giới hạn dung lượng nghiêm ngặt để tránh lỗi tràn bộ nhớ (Out-Of-Memory) của tiến trình Node.js/Go.
+## Rủi ro và ràng buộc
+Quá trình thiết kế phải đối mặt và giải quyết các bài toán kỹ thuật hóc búa đã biết trước:
+*   **Tải đột biến (Surge Load):** Nguy cơ sập hệ thống (DDoS nội bộ). *Giải quyết:* Cấp token vào phòng chờ ảo (Waiting Room).
+*   **Tranh chấp vé (High Contention):** Hàng ngàn người tranh 1 ghế. *Giải quyết:* Khóa bi quan ở cấp độ bộ nhớ (Redis Pessimistic Locking).
+*   **Cổng thanh toán không ổn định:** Bị timeout hoặc gọi Webhook chậm/trùng lặp. *Giải quyết:* Khóa lũy đẳng (Idempotency) 3 lớp lưu trạng thái giỏ hàng.
+*   **Soát vé Offline:** Rủi ro sao chép lậu mã QR qua hai cổng không có mạng. *Giải quyết:* Đồng bộ bất đồng bộ và xử lý phạt nguội dữ liệu vé lậu thay vì khóa cứng quy trình.
+*   **Tích hợp một chiều CSV:** Rủi ro sai lệch format cột dữ liệu đầu vào. *Giải quyết:* Xây dựng hàng rào Validator tự động ngắt chuỗi tiến trình.
+*   **Phân quyền và chức năng tài khoản:** Ràng buộc hệ thống có nhiều loại vai trò chuyên biệt (Khán giả, Ban tổ chức, Nhân viên soát vé, Người duyệt AI). *Giải quyết:* Xây dựng ma trận phân quyền (RBAC) khắt khe trên từng Endpoint bằng JWT Guard, đảm bảo không có sự giao thoa quyền hạn (Ví dụ: Khán giả tuyệt đối không thể gọi API soát vé, Nhân viên soát vé không thể sửa thông tin sự kiện).

@@ -5,34 +5,44 @@ Tài liệu này đặc tả kiến trúc kỹ thuật của hệ thống Cachin
 ---
 
 ## 1. Kiến trúc tổng thể (Architectural Overview)
-Kiến trúc Caching của TicketBox được thiết kế theo mô hình **Cache Phân Tầng (Two-Tier Cache)** kết hợp với cơ chế **Đẩy dữ liệu chủ động (Server-Sent Events - SSE)** để đảm bảo khả năng chịu tải cực cao và tính nhất quán dữ liệu ở thời gian thực.
+Dưới đây là sơ đồ kiến trúc tổng thể của hệ thống TicketBox, thể hiện luồng giao tiếp giữa người dùng, Gateway (Nginx), các Microservices, Message Broker và các Databases:
 
 ```mermaid
-graph TD
-    Client[Browser Khán Giả] -->|1. GET /api/concerts/1| LB[Load Balancer]
-    LB --> App1[App Server Node 1]
-    LB --> App2[App Server Node 2]
-    
-    subgraph AppServer1 [App Server 1]
-        App1 -->|1.1 Check local| LocalCache1[("Tier 1: Local Memory Cache")]
-    end
-    
-    subgraph AppServer2 [App Server 2]
-        App2 -->|Check local| LocalCache2[("Tier 1: Local Memory Cache")]
-    end
+graph LR
+    User1[User] --> Mobile[Mobile]
+    User2[User] --> Web1[Web]
+    User3[User] --> Web2[Web]
 
-    LocalCache1 -->|1.2 Cache Miss| Redis[Tier 2: Redis Cluster]
-    Redis -->|1.3 Cache Miss| DB[("PostgreSQL Main DB")]
+    Mobile --> CheckingService[Checking service]
+    Web1 --> Nginx{Nginx}
+    Web2 --> Nginx
+
+    Nginx -->|Quản lý sự kiện| EventService[Event Service]
+    Nginx --> AuthService[Auth service]
+    Nginx --> InfoService[Info service]
+    Nginx -->|Đặt vé| BookingService[Booking service]
+
+    EventService --> AIExtract[AI-extraction service]
+    AIExtract --> LLM[LLM model]
     
-    Worker[Background Worker] -->|2. Có đơn hàng thành công| DB
-    Worker -->|3. Publish Invalidation| RedisPubSub[Redis Pub/Sub Channel]
-    RedisPubSub -.->|4. Broadcast update event| App1
-    RedisPubSub -.->|4. Broadcast update event| App2
+    AIExtract --> MongoDB[(MongoDB)]
+    EventService -->|CRUD Operation| MongoDB
+    EventService -->|CRUD Operation| PostgreSQL[(PostgreSQL)]
     
-    App1 -->|5. Evict & Update Local Cache| LocalCache1
-    App2 -->|5. Evict & Update Local Cache| LocalCache2
+    AuthService --> PostgreSQL
+    InfoService --> PostgreSQL
+    InfoService --> Redis[(Redis)]
+    CheckingService --> PostgreSQL
     
-    App1 -->|6. Push SSE| Client
+    BookingService -->|Query| Redis
+    BookingService --> PostgreSQL
+    BookingService --> RabbitMQ((RabbitMQ))
+
+    RabbitMQ --> PaymentService[PaymentService]
+    RabbitMQ --> EmailService[Email service]
+
+    PaymentService --> PostgreSQL
+    EmailService --> Web2
 ```
 
 ### Các thành phần tham gia:
@@ -54,30 +64,63 @@ Thể hiện mối liên hệ giữa các tác nhân và hệ thống TicketBox 
 graph LR
     User["Khán Giả (Audience)"] -->|Xem thông tin concert & Số vé còn lại realtime| TicketBox["Hệ Thống TicketBox (Caching System)"]
     Admin["Ban Tổ Chức (Organizer)"] -->|Tạo show / Cập nhật số vé| TicketBox
+    Staff["Nhân viên Soát vé (Check-in Staff)"] -->|Quét mã QR / Xác thực vé| TicketBox
+    
     TicketBox -->|Truy vấn dữ liệu gốc| DB["PostgreSQL Database"]
+    TicketBox -->|Lưu trữ log / Dữ liệu phi cấu trúc| MongoDB["MongoDB Database"]
 ```
 
 ### Level 2 — Container
 Phân rã các thành phần bên trong hệ thống TicketBox phục vụ cho kiến trúc Caching.
 
 ```mermaid
-graph TB
-    Browser["Trình duyệt Khán Giả (Next.js)"] -->|Duyệt API qua HTTP| LB["Load Balancer (Nút phân tải hỗ trợ HTTP/2)"]
-    Browser -->|"Kết nối HTTP Streaming (SSE)"| LB
+graph TD
+    %% Tầng Client
+    Browser["Khán giả (Trình duyệt)"]
     
-    LB -->|Proxy Requests| AppServer1["App Server Node 1 (Node.js)"]
-    LB -->|Proxy Requests| AppServer2["App Server Node 2 (Node.js)"]
+    %% Tầng Gateway
+    LB["Nginx (Load Balancer & API Gateway)"]
+    Browser --->|"1. Xem thông tin (GET /info/...)"| LB
+    Browser --->|"2. Kết nối SSE (/booking/sse)"| LB
     
-    subgraph AppServers [Các App Server Node]
-        AppServer1 -->|Đọc/Ghi nhanh Tầng 1| LocalRAM1["node-cache (In-Memory RAM)"]
-        AppServer2 -->|Đọc/Ghi nhanh Tầng 1| LocalRAM2["node-cache (In-Memory RAM)"]
+    %% Tầng Services
+    subgraph Microservices [Hệ thống Microservices]
+        InfoService["Info Service"]
+        BookingService["Booking Service"]
+        WorkerService["Worker Service"]
+        LocalRAM["Local RAM (node-cache)"]
     end
     
-    AppServer1 -->|Đọc Tầng 2 / Pub-Sub| Redis["Redis Cluster (Centralized Cache)"]
-    AppServer2 -->|Đọc Tầng 2 / Pub-Sub| Redis
+    LB --->|"Proxy /info/"| InfoService
+    LB --->|"Proxy /booking/sse/"| BookingService
     
-    AppServer1 -->|Đọc/Ghi dữ liệu gốc| Postgres["PostgreSQL Database (Dữ liệu gốc)"]
-    AppServer2 -->|Đọc/Ghi dữ liệu gốc| Postgres
+    InfoService --->|"3. Đọc/Ghi Cache"| LocalRAM
+    InfoService -.->|"9. Xóa Cache"| LocalRAM
+    
+    %% Tầng Storage
+    subgraph Storage [Database, Cache & Queue]
+        Redis["Redis Cluster"]
+        RMQ(("RabbitMQ"))
+        Postgres[("PostgreSQL")]
+    end
+    
+    %% Flow từ Services xuống Storage
+    InfoService --->|"4. Cache Miss"| Redis
+    InfoService --->|"5. Đọc DB"| Postgres
+    
+    BookingService --->|"Giảm Quota"| Redis
+    BookingService --->|"Đẩy sự kiện"| RMQ
+    
+    WorkerService --->|"Nhận tin nhắn xử lý"| RMQ
+    WorkerService --->|"6. Lưu Data vé"| Postgres
+    WorkerService --->|"7. Publish Event"| Redis
+    
+    %% Flow từ Storage (Redis Pub/Sub) ngược lên Services
+    Redis -.->|"8. Broadcast Pub/Sub"| InfoService
+    Redis -.->|"8. Broadcast Pub/Sub"| BookingService
+    
+    %% Trả kết quả Realtime về Client
+    BookingService -.->|"10. Push SSE (Realtime)"| Browser
 ```
 
 ---
@@ -90,17 +133,35 @@ Lưu trữ các dữ liệu cốt lõi yêu cầu tính nhất quán cao (ACID) 
 
 ```mermaid
 erDiagram
-    users ||--o{ invoices : "has"
-    users ||--o{ seat_inventory : "holds/books"
+    %% Core Entities
+    users ||--o{ invoices : "places"
+    users ||--o{ checkins : "checker"
+    users ||--o{ artist_documents : "uploadedBy"
+    users ||--o{ artist_bios : "reviewedBy"
+    
     concerts ||--o{ zone_inventory : "has zones"
     concerts ||--o{ seat_inventory : "has seats"
+    concerts ||--o{ event_ticket_types : "has types"
+    concerts ||--o{ artist_documents : "has docs"
+    concerts ||--o{ artist_bios : "has bios"
+    
+    %% Booking & Checkin
     invoices ||--|{ tickets : "contains"
-    import_jobs ||--o{ concerts : "belongs to"
+    tickets ||--o{ checkins : "is checked in"
+    gate_devices ||--o{ checkins : "scans at"
+    gate_devices ||--o{ offline_sync_logs : "has logs"
+    
+    %% Background Jobs & AI
+    import_jobs ||--o{ tickets : "generates"
+    artist_documents ||--o{ ai_jobs : "processed by"
+    ai_jobs ||--o{ artist_bios : "generates"
+    prompt_templates ||--o{ artist_bios : "uses"
 
+    %% Table Definitions
     users {
         uuid id PK
         varchar email
-        varchar passwordHash
+        varchar role
         timestamp createdAt
     }
     concerts {
@@ -116,20 +177,17 @@ erDiagram
         int totalCapacity
         int availableSlots
         int price
-        int ticketLimit
     }
     seat_inventory {
         varchar seatNo PK
         int concert_id PK
         varchar zone
-        varchar status "AVAILABLE, RESERVED, BOOKED"
+        varchar status
         uuid reservedBy FK
-        timestamp expiryTime
     }
     invoices {
         uuid id PK
         uuid userId FK
-        int concert_id FK
         decimal totalAmount
         varchar status
         timestamp createdAt
@@ -138,22 +196,32 @@ erDiagram
         uuid id PK
         uuid invoiceId FK
         int concert_id FK
-        varchar seatNo FK
-        varchar zone FK
-        decimal price
-        varchar qrCodeUrl
+        varchar seatNo
+        varchar zone
+        varchar status
+        uuid importJobId FK
+    }
+    checkins {
+        uuid id PK
+        uuid ticketId FK
+        uuid checkerId FK
+        uuid deviceId FK
+        timestamp scannedAt
+        boolean isOffline
+        varchar syncStatus
+    }
+    gate_devices {
+        uuid id PK
+        varchar deviceName
+        varchar location
+        varchar status
     }
     idempotency_keys {
         uuid id PK
         varchar key UK
         uuid userId FK
         varchar status
-        int concert_id FK
-        jsonb requestPayload
-        jsonb responsePayload
-        varchar paypalOrderId
         timestamp createdAt
-        timestamp expiresAt
     }
     import_jobs {
         uuid id PK
@@ -163,6 +231,61 @@ erDiagram
         varchar status
         int totalRows
         int processedRows
+    }
+    offline_sync_logs {
+        uuid id PK
+        uuid deviceId FK
+        varchar batchId
+        int totalRecords
+        int successRecords
+        int failedRecords
+        text syncError
+    }
+    ai_jobs {
+        uuid id PK
+        uuid documentId FK
+        varchar status
+        text errorDetails
+        int retryCount
+        timestamp createdAt
+    }
+    artist_bios {
+        uuid id PK
+        int concertId FK
+        uuid jobId FK
+        uuid promptTemplateId FK
+        uuid reviewedBy FK
+        varchar status
+        text biographyText
+        timestamp createdAt
+    }
+    artist_documents {
+        uuid id PK
+        int concertId FK
+        uuid uploadedBy FK
+        varchar fileName
+        varchar fileUrl
+        int fileSize
+        timestamp createdAt
+    }
+    event_ticket_types {
+        uuid id PK
+        int concertId FK
+        varchar name
+        int price
+        int totalQuantity
+        int availableQuantity
+    }
+    ticket_types {
+        bigint id PK
+        varchar name
+        numeric basePrice
+    }
+    prompt_templates {
+        uuid id PK
+        varchar name
+        text systemPrompt
+        text userPrompt
     }
 ```
 
@@ -207,95 +330,97 @@ Hệ thống lưu trữ File (Object Storage) phục vụ cho các luồng xử 
 
 ---
 
-## 4. Thiết kế Kỹ thuật Chi tiết: Hybrid Caching (Two-Tier)
-Hệ thống kết hợp 2 tầng cache để tối ưu hóa hiệu năng:
+## 4. Thiết kế Kiểm soát Truy cập (Access Control Design)
+Hệ thống sử dụng mô hình xác thực và phân quyền nhiều lớp, kết hợp giữa **Role-Based Access Control (RBAC)** và **Permission-based Access Control**, nhằm tối ưu hóa hiệu suất và bảo mật tại từng điểm chạm (Endpoint).
 
-### Tầng 1: Local In-Memory Cache (RAM cục bộ tại mỗi App Node)
-*   **Công nghệ:** Sử dụng thư viện `node-cache` (đối với Node.js) chạy trực tiếp trong RAM của tiến trình.
-*   **Chính sách TTL (Time-To-Live):**
-    *   Thông tin Concert tĩnh: **TTL = 5 phút** (300 giây).
-    *   Số lượng vé còn lại: **TTL = 1 giây**.
-*   **Ý nghĩa:** Khi 80.000 user cùng F5 hoặc kết nối liên tục, thay vì 80.000 request đập vào Redis, mỗi App Server chỉ gửi tối đa **1 request/giây** đến Redis để cập nhật lại số lượng vé. Nếu có 30 App Server, Redis Cluster chỉ phải chịu **30 req/s** - một tải trọng cực kỳ nhẹ nhàng.
+### 4.1. Mô hình Phân quyền và Các nhóm người dùng (Roles & Permissions)
+Người dùng trong hệ thống được định danh thành 3 Role (vai trò) cơ bản:
+*   **`USER` (Khán giả):** Không có quyền đặc biệt. Chỉ có thể thực hiện các luồng cơ bản như xem show, xếp hàng, chọn ghế và thanh toán (chỉ có quyền trên dữ liệu của chính mình).
+*   **`CHECKIN_STAFF` (Nhân viên soát vé):** Quản lý quá trình check-in tại cổng sự kiện.
+    *   Quyền sở hữu (Permissions): `CHECKIN_SCAN` (Quét mã vé), `CHECKIN_VIEW_HISTORY` (Xem lịch sử quét).
+*   **`ORGANIZER` (Ban Tổ chức):** Quản lý toàn bộ sự kiện.
+    *   Quyền sở hữu (Permissions): `AI_BIO_UPLOAD` (Upload tài liệu để AI xử lý), `CHECKIN_SCAN`, `CHECKIN_VIEW_HISTORY`, và toàn quyền thao tác với sự kiện của họ.
 
-### Tầng 2: Centralized Cache (Redis Cluster tập trung)
-*   **Công nghệ:** Redis Cluster đảm bảo phân tán dữ liệu và tính sẵn sàng cao.
-*   **Quy ước Key:**
-    *   Thông tin Concert: `concert:{concert_id}:info` (TTL = 1 giờ).
-    *   Số lượng vé khu vực tự do: `concert:{concert_id}:inventory` (Hash key lưu `{zone}: {availableSlots}`).
-    *   Trạng thái ghế ngồi SVIP: `concert:{concert_id}:seats` (Hash key lưu `{seatNo}: {userId}` để giữ chỗ bằng lệnh `HSETNX`). Không đặt TTL (vô hạn) vì Redis đóng vai trò là chốt chặn chống Double-booking trong thời gian thực.
+*(Lưu ý: Các Permission được ánh xạ linh hoạt (Dynamic Mapping) vào Role thông qua cấu hình mã nguồn để tránh việc phải liên tục query Database phân quyền, tối ưu hóa độ trễ API).*
 
-### Cơ chế Invalidation & Push thời gian thực (Redis Pub/Sub + SSE)
-Khi có giao dịch mua vé thành công, hệ thống không đợi 1 giây TTL của Local Cache hết hạn mà thực hiện đồng bộ chủ động:
+### 4.2. Cách kiểm tra quyền tại từng điểm truy cập (Guards)
+NestJS kết hợp Passport.js cung cấp các Guard (người gác cổng) để chặn và xác thực request tại tầng Middleware trước khi xử lý Logic:
 
-```
-[KHÁCH HÀNG BẤM THANH TOÁN (CHECKOUT)]
-       │
-       ▼
-1. Lưu giỏ hàng: Backend chèn 1 dòng `PENDING` kèm `requestPayload` vào bảng `idempotency_keys` trên PostgreSQL để khóa giao dịch chống đúp (Double-charge).
-       │
-       ▼
-2. Giữ vé tạm thời: Thực hiện trừ số vé trên RAM Redis Cluster bằng lệnh `HINCRBY` (cho Zone) hoặc `HSETNX` (cho Seat). Trả link PayPal cho khách đi thanh toán.
-       │
-       ▼
-[PAYPAL BÁO THANH TOÁN THÀNH CÔNG BẰNG WEBHOOK]
-       │
-       ▼
-3. Đẩy tin nhắn Webhook vào Message Queue (RabbitMQ) và trả phản hồi ngay cho PayPal.
-       │
-       ▼
-4. Background Worker (Chạy ngầm) bốc tin nhắn từ Queue ra xử lý:
-   ├── Đọc PostgreSQL: Kéo giỏ hàng từ bảng `idempotency_keys` ra.
-   └── Ghi PostgreSQL: Lưu dữ liệu gốc vào các bảng `invoices`, `tickets`. Cập nhật trạng thái ghế sang `BOOKED` tại `seat_inventory` và trừ `availableSlots` tại `zone_inventory`.
-       │
-       ▼
-5. Worker phát một message lên kênh Redis Pub/Sub: `{"concert_id": 1, "zone": "VIP", "availableSlots": 198}` hoặc `{"seatNo": "A-1", "status": "BOOKED"}`.
-       │
-       ▼
-6. Tất cả các App Server Node đăng ký kênh này lập tức nhận được message:
-   ├── Xóa trạng thái ghế/vé cũ trong RAM cục bộ (Local Cache Tầng 1).
-   └── Ghi đè trạng thái mới nhất vào Local Cache.
-       │
-       ▼
-7. Các App Server chủ động đẩy (push) sự thay đổi này xuống trình duyệt của khách hàng 
-   đang xem show qua đường ống SSE (Server-Sent Events) đang duy trì.
-       │
-       ▼
-8. Trình duyệt nhận sự kiện và cập nhật trực tiếp lên UI (Ví dụ: Ghế A-1 đột nhiên chuyển sang màu xám).
-```
+1.  **`JwtAuthGuard` (Định danh chung):**
+    *   Giải mã chuỗi JWT (JSON Web Token) trong header `Authorization: Bearer <token>`.
+    *   Áp dụng rộng rãi ở toàn bộ các API Private (VD: Giữ ghế, Thanh toán, Lấy vé đã mua).
+
+2.  **`PermissionsGuard` (Phân quyền sâu):**
+    *   Kiểm tra Request đã qua JWT xem Role hiện tại có chứa danh sách `Permissions` bắt buộc cho API đó không (VD: API `/checkin/scan` yêu cầu `@Permissions('CHECKIN_SCAN')`).
+
+3.  **`BookingPassGuard` (Giới hạn phiên đặt vé - Tầng Booking):**
+    *   Bảo vệ API đặt chỗ (Booking).
+    *   Kiểm tra sự tồn tại của **Giấy thông hành (Booking Pass)**: `booking_pass:{concertId}:{userId}` bên trong Redis.
+    *   Chỉ những User đã vượt qua Phòng chờ (Waiting Room) và đang trong thời hạn cho phép (VD: 5 phút) mới được phép gọi API giữ ghế. Giúp ngăn chặn tuyệt đối tình trạng bypass Hàng đợi (Spam Request trực tiếp vào hệ thống Booking).
+
+4.  **`RateLimitGuard` (Chống Spam/DDoS):**
+    *   Theo dõi và giới hạn số lượng Request/giây của từng IP hoặc User tại các điểm nóng dễ bị tấn công (như API Chọn ghế, API Thanh toán).
 
 ---
 
-## 5. Phân tích các Kịch bản Lỗi (Resilience Design)
+## 5. Thiết kế các cơ chế bảo vệ hệ thống (System Protection Mechanisms)
 
-### Kịch bản 1: Redis Cluster trung tâm bị mất kết nối (Redis Down)
-*   **Ảnh hưởng:** Không thể lấy dữ liệu từ Tầng 2, nguy cơ gây sập PostgreSQL do toàn bộ App Server quay về đọc DB gốc.
-*   **Giải pháp xử lý (Fallback):**
-    *   Khi phát hiện lỗi kết nối Redis, App Server tự động kích hoạt **Graceful Degradation**.
-    *   Tự động tăng TTL của Local Cache (Tầng 1) đối với số lượng vé từ **1 giây lên 10 giây**.
-    *   Trong 10 giây này, tất cả user kết nối tới App Node đó đều đọc dữ liệu cũ lưu trong RAM cục bộ. Hệ thống chấp nhận dữ liệu hiển thị bị trễ 10 giây nhưng **tuyệt đối không để DB bị quá tải**.
-    *   Ghi log cảnh báo mức CRITICAL để quản trị viên can thiệp hệ thống Redis.
+### 5.1. Kiểm soát tải đột biến (Surge Load Control)
+*   **Giải pháp & Thuật toán:** Sử dụng mô hình **Virtual Waiting Room (Phòng chờ ảo)** kết hợp **RateLimitGuard**.
+*   **Ngưỡng kích hoạt:** Khi số lượng request (CCU - Concurrent Users) truy cập mua vé tăng vọt, hoặc vượt quá ngưỡng quy định (VD: 100 req/phút/IP).
+*   **Hành vi khi vượt ngưỡng:**
+    *   Người dùng được điều hướng vào hàng đợi (Waiting Room).
+    *   Hệ thống cấp phát Token (Booking Pass) dần dần cho người dùng. Chỉ có Booking Pass hợp lệ mới đi qua được `BookingPassGuard` để gọi API Giữ ghế.
+    *   Ngăn chặn 99% lượng truy cập tràn trực tiếp vào Database, chống sập (DDoS) nội bộ hoàn toàn.
 
-### Kịch bản 2: Đường truyền mạng nội bộ bị lag khiến tin nhắn Pub/Sub bị mất
-*   **Ảnh hưởng:** Một hoặc một vài App Server không nhận được lệnh xóa Local Cache, dẫn đến hiển thị số vé bị lệch (Stale Data) quá 1 giây.
-*   **Giải pháp xử lý:** Nhờ cơ chế TTL cứng của Tầng 1 là **1 giây**, ngay cả khi không nhận được Pub/Sub message, Local Cache cục bộ của App Node đó cũng sẽ tự hết hạn sau tối đa 1 giây. Khi đó, request tiếp theo sẽ chủ động gọi lên Redis lấy số lượng mới nhất. Lệch dữ liệu tối đa chỉ giới hạn trong **1 giây**.
+### 5.2. Xử lý cổng thanh toán không ổn định (Unstable Payment Gateway)
+*   **Giải pháp:** Mọi giao dịch gọi sang Đối tác thanh toán (PayPal, VNPay) đều được xử lý bất đồng bộ bằng **Webhook** và kiến trúc hướng sự kiện (Event-driven qua RabbitMQ) thay vì chờ đợi đồng bộ.
+*   **Các trạng thái & Ngưỡng kích hoạt:**
+    *   Áp dụng mô hình **Circuit Breaker** (nếu có dấu hiệu chập chờn từ API thứ 3). 
+    *   Ngưỡng: Tỷ lệ lỗi (Timeout/502) vượt quá % thiết lập trong thời gian ngắn.
+*   **Hành vi khi lỗi:** Hệ thống chỉ tạm giữ ghế (giỏ hàng trạng thái `PENDING` trong `idempotency_keys`) và sinh lỗi trả về frontend. Nếu Webhook từ cổng thanh toán báo trễ, RabbitMQ Worker vẫn sẽ âm thầm nhận ở chế độ nền và khớp lệnh thanh toán thành công, không bắt người dùng treo máy chờ đợi màn hình loading.
 
-### Kịch bản 3: Kết nối SSE của Client bị ngắt đột ngột
-*   **Ảnh hưởng:** Khán giả không nhận được cập nhật nhảy số realtime nữa.
-*   **Giải pháp xử lý:** Phía Client cấu hình tự động reconnect với cơ chế **Exponential Backoff**. Khi kết nối lại thành công, client thực hiện gọi API `GET /api/concerts/1` một lần để đồng bộ lại trạng thái vé mới nhất.
+### 5.3. Chống trừ tiền hai lần (Double-charge Prevention)
+*   **Cơ chế:** Áp dụng **Idempotency Key (Khóa lũy đẳng)** với thiết kế 3 lớp kiểm tra khắt khe.
+*   **Nơi lưu trữ & TTL:**
+    *   **Lớp 1 (Fast-check):** Cache `idem:{key}` tại **Redis** với TTL = 24 giờ (86400s). Từ chối request trùng lặp cực nhanh không tốn I/O DB.
+    *   **Lớp 2 (ACID Guarantee):** Bảng `idempotency_keys` trên **PostgreSQL** với Constraint `UNIQUE(key)`. Chống Race-condition (nếu 2 request vượt qua Redis cùng 1 mili-giây, lệnh `INSERT` DB sẽ văng lỗi `23505 Unique Violation`).
+*   **Luồng xử lý:** Khi Webhook thanh toán bắn 2 lần hoặc User bấm F5 liên tục gọi API `Capture`, hệ thống tìm thấy Key đã dùng -> Log cảnh báo `Duplicate capture request` -> Trả luôn kết quả thành công cũ (Cached Response Payload) chứ tuyệt đối không thực hiện trừ tiền lại.
 
----
+### 5.4. Caching (Tối ưu truy xuất & Chống quá tải DB)
+Hệ thống kết hợp **Hybrid Cache (Two-Tier)**:
+*   **Đối tượng cần Cache & TTL:**
+    *   **Thông tin Concert tĩnh:** Cache tại Local RAM (Tầng 1). TTL = 5 phút (300s).
+    *   **Số lượng vé/ghế (Dữ liệu cực nóng):** Local RAM (TTL = 1 giây) & Redis tập trung (Vô hạn, tới khi hết show).
+*   **Chiến lược:** Sử dụng **Cache-Aside** cho việc đọc, và **Write-Through** khi đặt vé (giữ ghế luôn trừ trực tiếp lên Redis bằng lệnh `HINCRBY` / `HSETNX`).
+*   **Cách Invalidate (Pub/Sub):** Khi vé được thanh toán xong ở Worker, Worker đẩy Invalidation Message qua Redis Pub/Sub. Các App Server bắt được tín hiệu sẽ lập tức xóa Local Cache cũ và đẩy trạng thái ghế mới xuống Browser qua đường ống **SSE (Server-Sent Events)** thời gian thực (không phải chờ hết 1s TTL).
 
-## 6. Các Quyết định Kiến trúc Quan trọng (ADR)
 
-### ADR-01: Lựa chọn Server-Sent Events (SSE) thay vì WebSockets để cập nhật realtime
-*   **Quyết định:** Sử dụng SSE (HTTP Streaming) thay thế cho WebSockets để đẩy số lượng vé còn lại xuống Browser.
+## 6. Các Quyết định Kỹ thuật Quan trọng (ADR)
+
+### ADR-01: Lựa chọn Server-Sent Events (SSE) vs WebSockets
+*   **Quyết định:** Sử dụng SSE.
+*   **Lý do:** Yêu cầu nghiệp vụ của hệ thống Booking là luồng **Một chiều (Server push to Client)** để báo ghế bị mua. SSE chạy trên HTTP tiêu chuẩn, nhẹ hơn, dễ đi qua Nginx Load Balancer, hỗ trợ auto-reconnect, chịu tải hàng chục ngàn kết nối tốt hơn WebSockets (vốn dành cho luồng Hai chiều - Bi-directional).
+*   **Đánh đổi:** Khách hàng không thể gửi dữ liệu ngược lại Server qua cùng 1 đường ống (phải dùng HTTP Request riêng). Bị giới hạn số lượng kết nối tối đa trên mỗi trình duyệt nếu dùng HTTP/1.1 (phải ép cấu hình hạ tầng chạy HTTP/2 để khắc phục).
+
+### ADR-02: Lựa chọn SQL (PostgreSQL) vs NoSQL (MongoDB)
+*   **Quyết định:** Kết hợp cả hai (Polyglot Persistence).
 *   **Lý do:** 
-    *   Yêu cầu nghiệp vụ ở đây là **một chiều (unidirectional)**: chỉ cần Server đẩy số lượng vé biến động xuống cho client xem. Client không cần gửi dữ liệu ngược lại.
-    *   SSE chạy trên giao thức HTTP tiêu chuẩn, tự động hỗ trợ cơ chế Reconnect, dễ dàng cấu hình qua Nginx Load Balancer hơn WebSockets.
-    *   Độ phức tạp lập trình và tài nguyên kết nối của SSE nhẹ hơn WebSockets rất nhiều dưới tải lớn.
+    *   Hệ thống Đặt vé & Thanh toán yêu cầu tính toàn vẹn dữ liệu cực kỳ khắt khe (ACID, Transaction, Foreign Keys) để không mất tiền/vé -> Bắt buộc dùng SQL (PostgreSQL).
+    *   Thông tin sự kiện, Bio nghệ sĩ, nội dung AI sinh ra lại rất phi cấu trúc, dễ biến động -> Dùng NoSQL (MongoDB) làm Document Store linh hoạt.
+*   **Đánh đổi:** Hệ thống phức tạp hơn, bảo trì và Backup đắt đỏ hơn vì phải vận hành 2 database engine riêng biệt.
 
-### ADR-02: Lựa chọn mô hình Cache Phân Tầng (Two-Tier) thay vì Cache-Aside Redis đơn thuần
-*   **Quyết định:** Bắt buộc áp dụng Local Cache (RAM của App Server) làm Tầng 1 đứng trước Redis.
-*   **Lý do:** 
-    *   Nếu chỉ dùng Redis tập trung, khi 80.000 user cùng truy cập trong 1 phút, Redis Cluster vẫn phải nhận 80.000 request/giây từ các App Server. Con số này có thể làm nghẽn băng thông mạng nội bộ của cụm Server.
-    *   Việc chặn request ngay tại RAM của mỗi App Node giúp giải phóng hoàn toàn băng thông mạng nội bộ và giảm tải cho Redis xuống gần như bằng 0 (chỉ còn vài chục request/giây).
+### ADR-03: Lựa chọn JWT vs Session cho Authentication
+*   **Quyết định:** Sử dụng JWT (JSON Web Token) Stateless.
+*   **Lý do:** Thiết kế Microservices cần scale-out dễ dàng. Nếu dùng Session, ta phải tra cứu Redis mỗi khi user request. Dùng JWT, bản thân mỗi App Server tự Verify Token mà không tốn chi phí Network Call, giúp Throughput hệ thống cực kỳ cao.
+*   **Đánh đổi:** Không thể thu hồi quyền ngay lập tức nếu lộ Token (cần giải quyết bằng Access Token sống ngắn + Refresh Token).
+
+### ADR-04: Lựa chọn RabbitMQ vs Kafka cho Message Broker
+*   **Quyết định:** Sử dụng RabbitMQ.
+*   **Lý do:** RabbitMQ cung cấp cơ chế định tuyến (Routing) linh hoạt thông qua Exchanges và tích hợp sẵn Dead Letter Queue (DLQ), đặc biệt phù hợp với các tác vụ yêu cầu cơ chế xử lý lỗi và Retry phức tạp (như xử lý Webhook thanh toán, gửi Email). Hơn nữa, mức thông lượng (Throughput) dự kiến của hệ thống (dưới 10.000 messages/giây) hoàn toàn nằm trong giới hạn tối ưu của RabbitMQ, giúp giảm thiểu độ phức tạp trong việc triển khai và tiết kiệm chi phí quản trị (Operational Overhead) so với kiến trúc của Kafka.
+*   **Đánh đổi:** Không hỗ trợ mô hình lưu trữ dạng chuỗi sự kiện bền vững (Log-based / Event Sourcing) và thiếu vắng khả năng tái xử lý (Replay) dữ liệu lịch sử ở quy mô lớn như Kafka.
+
+### ADR-05: Optimistic vs Pessimistic Locking cho Giữ Ghế
+*   **Quyết định:** Sử dụng Pessimistic Locking kết hợp Redis chốt chặn từ bên ngoài.
+*   **Lý do:** Với show HOT (tỷ lệ chọi 1/100), nếu dùng Optimistic Locking (dựa vào version row DB), 99 user sẽ bị văng lỗi ở giây cuối cùng sau khi cất công điền form, trải nghiệm vô cùng tệ. Ta dùng lệnh `HSETNX` của Redis (chỉ 1 người chèn key thành công) để khóa cứng ghế ngay ở bộ nhớ đệm (Pessimistic fail-fast), 99 người đến sau lập tức nhận thông báo ghế đã có người giữ.
+*   **Đánh đổi:** Cần xử lý cẩn thận TTL của lệnh khóa và fallback nhả khóa (Release Lock) nếu thanh toán rớt để ghế được nhả ra lại.
