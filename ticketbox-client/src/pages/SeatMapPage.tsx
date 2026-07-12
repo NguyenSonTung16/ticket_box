@@ -72,6 +72,13 @@ export const SeatMapPage: React.FC = () => {
       }
       setInventory(initialInventory);
       setTicketCounts(initialCounts);
+
+      // Fetch realtime inventory from Redis/BookingService to override stale DB data
+      axiosClient.get(`/booking/show/${concert_id}/inventory`).then((invRes) => {
+        if (invRes.data) {
+          setInventory(prev => ({ ...prev, ...invRes.data }));
+        }
+      }).catch(err => console.error('Failed to fetch live inventory:', err));
     }).catch(() => setIsBookingDown(true));
 
     // Lấy trạng thái ghế SVIP ban đầu
