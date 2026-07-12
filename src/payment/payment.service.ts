@@ -267,6 +267,7 @@ export class PaymentService implements OnModuleInit {
       const tickets: any[] = [];
 
       // Chốt ghế SVIP → BOOKED
+      let refundAmount = 0;
       for (const seatNo of svipSeats) {
         const dbUpdate = await queryRunner.manager.update(
           SeatInventory,
@@ -274,16 +275,23 @@ export class PaymentService implements OnModuleInit {
           { status: 'BOOKED' },
         );
 
-        if (dbUpdate.affected === 0) {
+        let seatAcquired = dbUpdate.affected !== 0;
+
+        if (!seatAcquired) {
           // Có thể ghế đã bị rollback worker nhả — thử acquire lại nếu ghế vẫn AVAILABLE
           const fallbackUpdate = await queryRunner.manager.update(
             SeatInventory,
             { seatNo, concert_id, status: 'AVAILABLE' },
             { status: 'BOOKED', reservedBy: userId },
           );
-          if (fallbackUpdate.affected === 0) {
+          
+          seatAcquired = fallbackUpdate.affected !== 0;
+
+          if (!seatAcquired) {
             this.logger.error(`[Capture] Ghế ${seatNo} đã bị người khác đặt. PayPal đã capture, cần xử lý hoàn tiền.`);
-            // Trong production: trigger refund flow. Trong demo: log warning
+            const zoneInfo = await queryRunner.manager.findOne(ZoneInventory, { where: { zone: 'SVIP', concert_id } });
+            refundAmount += (zoneInfo?.price || 2650000);
+            continue; // Không in vé để chống Double Booking
           }
         }
 
@@ -354,6 +362,25 @@ export class PaymentService implements OnModuleInit {
         }));
       }
 
+      // 5.5 Thực hiện hoàn tiền qua PayPal nếu có vé hụt (Automated Refund)
+      let refundId = null;
+      if (refundAmount > 0) {
+        try {
+          const captureId = captureResult.purchase_units?.[0]?.payments?.captures?.[0]?.id || captureResult.id;
+          if (captureId) {
+            const amountUSD = (refundAmount / this.VND_TO_USD_RATE).toFixed(2);
+            this.logger.log(`[Refund] Đang gọi PayPal hoàn tiền tự động ${amountUSD} USD cho Capture ${captureId}`);
+            const refundResult = await this.paypalClient.refundCapture(captureId, amountUSD);
+            refundId = refundResult.id || 'mock_refund_id';
+            this.logger.log(`[Refund] Hoàn tiền thành công. Refund ID: ${refundId}`);
+          } else {
+            this.logger.warn(`[Refund] Không tìm thấy captureId trong response, bỏ qua hoàn tiền tự động.`);
+          }
+        } catch (err) {
+          this.logger.error(`[Refund] Lỗi khi hoàn tiền tự động: ${err.message}`);
+        }
+      }
+
       // 6. Đẩy vào RabbitMQ để Worker tạo Invoice + gửi email bất đồng bộ
       const confirmedPayload = {
         userId,
@@ -361,6 +388,8 @@ export class PaymentService implements OnModuleInit {
         paypalOrderId,
         idempotencyKey,
         totalAmount: totalAmountVND,
+        refundAmount,
+        refundId,
         tickets,
       };
       this.rabbitChannel.sendToQueue(

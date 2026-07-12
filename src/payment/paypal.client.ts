@@ -116,6 +116,31 @@ export class PaypalClient {
   }
 
   /**
+   * Refund a captured payment
+   */
+  async refundCapture(captureId: string, amountUSD?: string): Promise<any> {
+    const token = await this.getAccessToken();
+    const body = amountUSD ? JSON.stringify({ amount: { value: amountUSD, currency_code: 'USD' } }) : '{}';
+
+    const response = await fetch(`${this.baseUrl}/v2/payments/captures/${captureId}/refund`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`PayPal refundCapture failed: ${response.status} ${errorText}`);
+      throw new Error(`PayPal refundCapture failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  /**
    * Xác minh chữ ký Webhook từ PayPal
    */
   async verifyWebhookSignature(headers: Record<string, string>, body: string): Promise<boolean> {
