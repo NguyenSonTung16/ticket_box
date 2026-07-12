@@ -1,11 +1,11 @@
-# Đặc tả: Tạo Sự Kiện và Tích Hợp AI Artist Bio
+# Đặc tả: Tạo Sự Kiện và Tích Hợp AI Tạo Thông Tin Chi Tiết
 
 ## Mô tả
 
-Tính năng gồm **hai luồng độc lập** phối hợp với nhau để tạo ra một sự kiện hoàn chỉnh tích hợp tiểu sử nghệ sĩ được sinh bởi AI. Việc bóc tách này đảm bảo API tạo sự kiện không bao giờ bị nghẽn (block) bởi thời gian chờ AI phân tích tài liệu.
+Tính năng gồm **hai luồng độc lập** phối hợp với nhau để tạo ra một sự kiện hoàn chỉnh tích hợp thông tin chi tiết sự kiện (event description, SEO keywords...) được sinh bởi AI. Việc bóc tách này đảm bảo API tạo sự kiện không bao giờ bị nghẽn (block) bởi thời gian chờ AI phân tích tài liệu.
 
 - **Luồng 1 (Tạo sự kiện):** Ban tổ chức tạo sự kiện qua giao diện wizard 4 bước.
-- **Luồng 2 (AI Artist Bio):** Quá trình đọc PDF, gọi AI, và lưu kết quả được thực hiện ngầm bởi Background Worker. Frontend sử dụng kỹ thuật Polling kết hợp Skeleton Loader.
+- **Luồng 2 (AI Phân Tích Thông Tin):** Quá trình đọc PDF (tài liệu sự kiện, proposal), gọi AI sinh nội dung chi tiết, và lưu kết quả được thực hiện ngầm bởi Background Worker. Frontend sử dụng kỹ thuật Polling kết hợp Skeleton Loader để tự động điền vào form khi hoàn tất.
 
 ---
 
@@ -42,7 +42,7 @@ sequenceDiagram
     API-->>Org: 200 OK {status: ACTIVE, event_url}
 ```
 
-### Luồng 2: Upload PDF & AI Bio (Bất Đồng Bộ)
+### Luồng 2: Upload Tài Liệu & AI Sinh Thông Tin Chi Tiết (Bất Đồng Bộ)
 
 *Lưu ý: Luồng dưới đây đã được đơn giản hóa để mô tả tổng quan sự phối hợp giữa Frontend, API và Worker.*
 
@@ -57,18 +57,18 @@ sequenceDiagram
     participant Worker as AiWorker
 
     Note over Org, DB: 1. API Server xử lý Upload (Đồng bộ - Trả về ngay)
-    Org->>Front: Chọn file PDF & Bấm Upload
-    Front->>API: POST /api/artist/upload (JWT + file)
+    Org->>Front: Chọn file PDF (Proposal/Kịch bản) & Bấm Upload
+    Front->>API: POST /api/ai/upload-document (JWT + file)
     API->>MinIO: Lưu file PDF
-    API->>DB: INSERT AiJob {status: PENDING}
+    API->>DB: INSERT AiJob {status: PENDING, type: 'EVENT_DETAILS'}
     API-->>Front: 201 Created {jobId}
 
     Note over Front, Worker: 2. Xử lý ngầm (Worker) & Cập nhật UI (Frontend)
     par Phân tích tài liệu (Worker)
         Worker->>Worker: Tải PDF & Đọc text
         Worker->>DB: UPDATE AiJob {status: SUMMARIZING}
-        Worker->>Worker: Gọi Gemini AI API
-        Worker->>DB: INSERT ArtistBio {status: PENDING_REVIEW}
+        Worker->>Worker: Gọi Gemini AI API sinh mô tả
+        Worker->>DB: INSERT GeneratedContent {status: PENDING_REVIEW}
         Worker->>DB: UPDATE AiJob {status: COMPLETED}
     and Cập nhật UI (Frontend Polling)
         loop Mỗi 3-5 giây
@@ -76,9 +76,9 @@ sequenceDiagram
             API-->>Front: {status}
             
             alt status == PENDING | EXTRACTING | SUMMARIZING
-                Front->>Front: Hiển thị Skeleton Loader
+                Front->>Front: Hiển thị Skeleton Loader ở ô "Mô tả sự kiện"
             else status == COMPLETED
-                Front->>Front: Hiển thị thông tin Bio đầy đủ & Dừng Polling
+                Front->>Front: Tự động điền nội dung & Dừng Polling
             else status == FAILED
                 Front->>Front: Hiển thị Error & Dừng Polling
             end
@@ -119,7 +119,7 @@ stateDiagram-v2
 | # | Tình huống | Hành vi Worker / Hệ thống | Kết quả |
 | --- | --- | --- | --- |
 | E-1 | PDF extract ra text < 50 ký tự | Throw error → `handleJobError` | `AiJob.status = FAILED`, đẩy vào Dead Letter Queue (DLQ) |
-| E-2 | Gemini API lỗi / trả JSON sai | Auto-fallback sang **Mock AI Response** | Bio vẫn được tạo từ dữ liệu Mock; ghi log cảnh báo |
+| E-2 | Gemini API lỗi / trả JSON sai | Auto-fallback sang **Mock AI Response** | Nội dung chi tiết vẫn được tạo từ dữ liệu Mock; ghi log cảnh báo |
 | E-3 | Retry lần 1–2 (bất kỳ lỗi nào) | ACK message cũ, publish lại sau Exponential Backoff (4s, 8s) | `AiJob.retryCount` tăng; `status = PENDING` |
 | E-4 | Retry lần 3 (max reached) | Không retry thêm, đẩy vào DLQ | `AiJob.status = FAILED`, ngừng xử lý |
 | E-5 | Slug trùng khi tạo event Step 3 | API check trùng lặp và trả `409 Conflict` | Frontend báo lỗi, yêu cầu chọn slug khác |
@@ -130,13 +130,13 @@ stateDiagram-v2
 
 * **Cấu hình Queue:** Queue `pdf-uploaded` cấu hình `prefetch = 1` để Worker xử lý tuần tự, chống quá tải bộ nhớ.
 * **Retry Policy:** Retry tối đa 3 lần với thời gian chờ tăng dần (Exponential backoff: 4s, 8s).
-* **Phân quyền:** Cần có quyền `AI_BIO_UPLOAD` trong token JWT.
+* **Phân quyền:** Cần có quyền `AI_DOCUMENT_UPLOAD` trong token JWT.
 
 ---
 
 ## Tiêu chí chấp nhận
 
-* **AC-1:** Upload API `POST /api/artist/upload` phản hồi `HTTP 201` dưới 500ms ngay cả với file 20MB.
+* **AC-1:** Upload API `POST /api/ai/upload-document` phản hồi `HTTP 201` dưới 500ms ngay cả với file 20MB.
 * **AC-2:** Tạo sự kiện 4 bước hoàn chỉnh mà không cần upload PDF (bỏ qua luồng AI) thì Sự kiện vẫn phải được tạo và `ACTIVE` thành công.
-* **AC-3:** Frontend hiển thị Skeleton Loader khi job đang xử lý (Status `PENDING`, `EXTRACTING`, `SUMMARIZING`).
-* **AC-4:** Khi Gemini API lỗi, thông tin nghệ sĩ vẫn được sinh ra dựa trên Mock Data thay vì báo lỗi toàn bộ hệ thống.
+* **AC-3:** Frontend hiển thị Skeleton Loader ở ô văn bản khi job đang xử lý (Status `PENDING`, `EXTRACTING`, `SUMMARIZING`).
+* **AC-4:** Khi Gemini API lỗi, thông tin chi tiết sự kiện vẫn được sinh ra dựa trên Mock Data thay vì báo lỗi toàn bộ hệ thống.
