@@ -163,6 +163,23 @@ services:
     networks:
       - ticketbox-network
 
+  minio-init:
+    image: minio/mc
+    container_name: ticketbox-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER:-ticketbox_admin} $${MINIO_ROOT_PASSWORD:-ticketbox_secret_2026};
+      /usr/bin/mc mb myminio/ticketbox-images --ignore-existing;
+      /usr/bin/mc anonymous set download myminio/ticketbox-images;
+      /usr/bin/mc mb myminio/ticketbox-csv-imports --ignore-existing;
+      exit 0;
+      "
+    networks:
+      - ticketbox-network
+
 networks:
   ticketbox-network:
     driver: bridge
