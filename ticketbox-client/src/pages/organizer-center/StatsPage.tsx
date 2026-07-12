@@ -4,7 +4,7 @@ import { eventService } from '../../features/events/eventService';
 
 export const StatsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [stats, setStats] = useState<{ totalRevenue: number; totalPaidInvoices: number } | null>(null);
+  const [stats, setStats] = useState<{ totalRevenue: number; totalPaidInvoices: number; ticketsSold: number } | null>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [seatingChartUrl, setSeatingChartUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,15 +60,21 @@ export const StatsPage: React.FC = () => {
         </div>
 
         {/* Tổng quan */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-surface-container rounded-2xl p-6 border border-outline-variant">
             <h3 className="text-on-surface-variant font-medium mb-2">Tổng doanh thu</h3>
             <p className="text-4xl font-bold text-primary">
-              {stats?.totalRevenue.toLocaleString('vi-VN')} ₫
+              {stats?.totalRevenue.toLocaleString('vi-VN')} đ
             </p>
           </div>
           <div className="bg-surface-container rounded-2xl p-6 border border-outline-variant">
-            <h3 className="text-on-surface-variant font-medium mb-2">Số giao dịch thành công</h3>
+            <h3 className="text-on-surface-variant font-medium mb-2">Số vé đã bán</h3>
+            <p className="text-4xl font-bold text-secondary">
+              {stats?.ticketsSold.toLocaleString('vi-VN')}
+            </p>
+          </div>
+          <div className="bg-surface-container rounded-2xl p-6 border border-outline-variant">
+            <h3 className="text-on-surface-variant font-medium mb-2">Giao dịch thành công</h3>
             <p className="text-4xl font-bold text-white">
               {stats?.totalPaidInvoices.toLocaleString('vi-VN')}
             </p>

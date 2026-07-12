@@ -8,7 +8,7 @@ import {
   GoneException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, Not } from 'typeorm';
+import { Repository, DataSource, Not, In } from 'typeorm';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -254,6 +254,23 @@ export class EventService {
     const infos = showIds.length ? await this.showInfoModel.find({ showId: { $in: showIds } }).lean() : [];
     const infoMap = new Map(infos.map(i => [i['showId'], i]));
 
+    let ticketTotalsMap = new Map<number, number>();
+    let ticketsSoldMap = new Map<number, number>();
+
+    if (showIds.length > 0) {
+      const ticketTypes = await this.ticketTypeRepo.find({ where: { showId: In(showIds) } });
+      ticketTypes.forEach(tt => {
+        ticketTotalsMap.set(tt.showId, (ticketTotalsMap.get(tt.showId) || 0) + tt.total_quantity);
+      });
+
+      const tickets = await this.dataSource.getRepository('Ticket').find({
+        where: { concert_id: In(showIds), status: 'valid' }
+      });
+      tickets.forEach((t: any) => {
+        ticketsSoldMap.set(t.concert_id, (ticketsSoldMap.get(t.concert_id) || 0) + 1);
+      });
+    }
+
     const data = concerts.map(c => {
       const info = infoMap.get(c.id) || {};
       return {
@@ -263,8 +280,8 @@ export class EventService {
         venue_name: info['venue_name'] || 'Chưa thiết lập',
         image_url: info['cover_image_url'] || 'https://images.unsplash.com/photo-1540039155733-d7696d487346?q=80&w=600&auto=format&fit=crop',
         status: c.status === ConcertStatus.ACTIVE ? 'selling' : c.status === ConcertStatus.CANCELLED ? 'CANCELLED' : 'draft',
-        tickets_sold: 0,
-        total_tickets: 0,
+        tickets_sold: ticketsSoldMap.get(c.id) || 0,
+        total_tickets: ticketTotalsMap.get(c.id) || 0,
       };
     });
 
@@ -431,10 +448,17 @@ export class EventService {
       .andWhere('invoice.status = :status', { status: 'PAID' })
       .getRawOne();
 
+    const soldData = await this.dataSource.query(
+      `SELECT COUNT(id) as count FROM tickets WHERE status = 'valid' AND concert_id = $1`,
+      [eventId]
+    );
+    const ticketsSold = parseInt(soldData[0]?.count || '0', 10);
+
     return {
       eventId,
       totalRevenue: parseFloat(sum || '0'),
       totalPaidInvoices: parseInt(count || '0', 10),
+      ticketsSold,
     };
   }
 

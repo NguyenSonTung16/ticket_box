@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
 import { TicketModal } from './components/TicketModal';
@@ -16,6 +16,30 @@ export const CreateStep2: React.FC = () => {
   // State quản lý vé và thời gian
   const [startTime, setStartTime] = useState('');
   const [ticketTypes, setTicketTypes] = useState<TicketTypeData[]>([]);
+
+  useEffect(() => {
+    if (eventId) {
+      const loadDraft = async () => {
+        try {
+          const draft = await eventService.getDraft(Number(eventId));
+          if (draft.step_2) {
+            if (draft.step_2.start_time) {
+              const date = new Date(draft.step_2.start_time);
+              const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+                                      .toISOString().slice(0, 16);
+              setStartTime(localDateTime);
+            }
+            if (draft.step_2.ticket_types && draft.step_2.ticket_types.length > 0) {
+              setTicketTypes(draft.step_2.ticket_types);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load draft:", err);
+        }
+      };
+      loadDraft();
+    }
+  }, [eventId]);
 
   const totalTicketTypes = ticketTypes.length;
   const totalTickets = ticketTypes.reduce((sum, type) => sum + type.total_quantity, 0);

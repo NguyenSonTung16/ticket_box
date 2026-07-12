@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Stepper } from './components/Stepper';
 import { eventService } from '../../features/events/eventService';
@@ -26,6 +26,34 @@ export const CreateStep3: React.FC = () => {
   const [vatFullName, setVatFullName] = useState('');
   const [vatAddress, setVatAddress] = useState('');
   const [vatTaxCode, setVatTaxCode] = useState('');
+
+  useEffect(() => {
+    if (eventId) {
+      const loadDraft = async () => {
+        try {
+          const draft = await eventService.getDraft(Number(eventId));
+          if (draft.step_3) {
+            setSlug(draft.step_3.slug || '');
+            setPrivacy(draft.step_3.privacy || 'PUBLIC');
+            setSeatingChartUrl(draft.step_3.seating_chart_url || '');
+          }
+          if (draft.step_4) {
+            setBankAccountName(draft.step_4.bank_account_name || '');
+            setBankAccountNumber(draft.step_4.bank_account_number || '');
+            setBankName(draft.step_4.bank_name || '');
+            setBankBranch(draft.step_4.bank_branch || '');
+            setVatBusinessType(draft.step_4.vat_business_type || 'INDIVIDUAL');
+            setVatFullName(draft.step_4.vat_full_name || '');
+            setVatAddress(draft.step_4.vat_address || '');
+            setVatTaxCode(draft.step_4.vat_tax_code || '');
+          }
+        } catch (err) {
+          console.error("Failed to load draft:", err);
+        }
+      };
+      loadDraft();
+    }
+  }, [eventId]);
 
   const handleNext = async () => {
     if (!eventId) {
