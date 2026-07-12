@@ -26,7 +26,7 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 3333;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`\n===============================================================`);
   console.log(`🚀 API Server: http://localhost:${port} | Container: ${os.hostname()}`);
   console.log(`===============================================================\n`);

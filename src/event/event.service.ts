@@ -68,7 +68,7 @@ export class EventService {
   async saveStep(eventId: number, step: number, data: any, organizerId: string) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
     if (!concert) throw new NotFoundException('Event not found.');
-    if (concert.organizer_id !== organizerId)
+    if (concert.organizer_id.toLowerCase() !== organizerId.toLowerCase())
       throw new ForbiddenException('You are not the owner of this event.');
 
     if (step === 1) await this._saveStep1(eventId, data as SaveStep1Dto);
@@ -185,7 +185,7 @@ export class EventService {
   async getDraft(eventId: number, organizerId: string) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
     if (!concert) throw new NotFoundException('Event not found.');
-    if (concert.organizer_id !== organizerId)
+    if (concert.organizer_id.toLowerCase() !== organizerId.toLowerCase())
       throw new ForbiddenException('You are not the owner of this event.');
 
     const draftKey = `draft:${eventId}`;
@@ -452,7 +452,7 @@ export class EventService {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
     if (!concert) throw new NotFoundException('Event not found.');
 
-    if (organizerId && concert.organizer_id !== organizerId) {
+    if (organizerId && concert.organizer_id.toLowerCase() !== organizerId.toLowerCase()) {
       throw new ForbiddenException('You do not have permission to cancel this event.');
     }
 
@@ -465,7 +465,7 @@ export class EventService {
 
   async getEventStats(eventId: number, organizerId: string) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
-    if (!concert || concert.organizer_id !== organizerId) {
+    if (!concert || concert.organizer_id.toLowerCase() !== organizerId.toLowerCase()) {
       throw new ForbiddenException('No permission to access stats for this event.');
     }
 
@@ -493,7 +493,7 @@ export class EventService {
 
   async getEventPayments(eventId: number, organizerId: string, page = 1, limit = 20) {
     const concert = await this.concertRepo.findOne({ where: { id: eventId } });
-    if (!concert || concert.organizer_id !== organizerId) {
+    if (!concert || concert.organizer_id.toLowerCase() !== organizerId.toLowerCase()) {
       throw new ForbiddenException('No permission to access payments for this event.');
     }
 

@@ -13,8 +13,9 @@ export const useTicketEvents = (userId: string, onEvent?: (payload: SSEventPaylo
 
   useEffect(() => {
     // Kết nối tới SSE endpoint
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333';
-    const eventSource = new EventSource(`${apiBaseUrl.replace(/\/$/, '')}/booking/sse/${userId}`);
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
+    const ssePath = apiBaseUrl ? `${apiBaseUrl.replace(/\/$/, '')}/booking/sse/${userId}` : `/booking/sse/${userId}`;
+    const eventSource = new EventSource(ssePath);
 
     eventSource.onmessage = (event) => {
       const parsedData: SSEventPayload = JSON.parse(event.data);

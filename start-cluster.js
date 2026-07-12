@@ -8,7 +8,9 @@ const services = [
   { name: 'booking-3', port: 3022, color: '\x1b[35m' },  // Magenta
   { name: 'info', port: 3003, color: '\x1b[34m' },       // Blue
   { name: 'payment', port: 3004, color: '\x1b[31m' },    // Red
-  { name: 'worker', port: 3005, color: '\x1b[90m' },     // Gray
+  { name: 'event', port: 3005, color: '\x1b[35m' },      // Magenta
+  { name: 'worker', port: 3006, color: '\x1b[90m' },     // Gray
+  { name: 'ai', port: 3008, color: '\x1b[37m' },         // White
 ];
 
 console.log('\x1b[1m\x1b[32m====================================================================');
