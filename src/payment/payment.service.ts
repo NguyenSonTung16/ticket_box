@@ -352,6 +352,10 @@ export class PaymentService implements OnModuleInit {
         }
       }
       pipeline.set(`idem:${idempotencyKey}`, 'COMPLETED', 'EX', 86400);
+      
+      // XÓA CACHE ĐỂ FIX LỖI STALE DATA KHI RELOAD TRANG
+      pipeline.del(`show_info:${concert_id}`); 
+
       await pipeline.exec();
 
       // 5. SSE broadcast ghế đã thanh toán

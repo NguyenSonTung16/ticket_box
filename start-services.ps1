@@ -10,15 +10,11 @@ Write-Host "Waiting 15 seconds for RabbitMQ to boot..."
 Start-Sleep -Seconds 15
 
 Write-Host "Starting all Node.js Microservices in background..."
-Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:auth" -WindowStyle Hidden
-Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:info" -WindowStyle Hidden
-Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:payment" -WindowStyle Hidden
-Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:worker" -WindowStyle Hidden
-Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start:booking" -WindowStyle Hidden
+Start-Process -FilePath "node" -ArgumentList "start-backend.js" -WindowStyle Normal
 
 Write-Host "Starting Frontend in background..."
 Set-Location -Path "ticketbox-client"
-Start-Process -FilePath "npm.cmd" -ArgumentList "run", "dev" -WindowStyle Hidden
+Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npm run dev > frontend.log 2>&1" -WindowStyle Hidden
 Set-Location -Path ".."
 
 Write-Host "All services started! Ready for K6 UI test."

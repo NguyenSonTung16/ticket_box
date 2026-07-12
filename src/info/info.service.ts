@@ -122,10 +122,12 @@ export class InfoService {
         const doubleCheck = await this.redis.get(cacheKey);
         if (doubleCheck) return JSON.parse(doubleCheck);
 
-        // 3. Phân tách DB: Truy vấn đồng thời PostgreSQL và MongoDB
         const [postgresData, postgresZones, mongoData] = await Promise.all([
           this.showRepo.findOne({ where: { id: showId } }),
-          this.zoneRepo.find({ where: { concert_id: showId } }),
+          this.zoneRepo.find({ 
+            where: { concert_id: showId },
+            order: { price: 'ASC' } // Đảm bảo thứ tự vé luôn cố định từ rẻ đến đắt
+          }),
           this.showInfoModel.findOne({ showId }).lean(),
         ]);
 

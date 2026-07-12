@@ -9,4 +9,5 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   database: process.env.DB_NAME || 'ticketbox_db',
   entities: [__dirname + '/../**/*.entity.{js,ts}'],
   synchronize: true, // Use true only for dev. Syncs entity changes to DB.
+  logging: false, // Bật log SQL native
 };
