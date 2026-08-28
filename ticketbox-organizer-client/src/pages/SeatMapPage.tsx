@@ -10,20 +10,20 @@ export const SeatMapPage: React.FC = () => {
   const { user } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
-  
+
   const { timeLeft, formattedTime } = useBookingTimer(300); // 5 phút
 
   const navigate = useNavigate();
-  
+
   const searchParams = new URLSearchParams(window.location.search);
   const concert_id = Number(searchParams.get('id')) || 1;
 
   const [eventData, setEventData] = useState<any>(null);
   const [isBookingDown, setIsBookingDown] = useState(false);
-  
+
   const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
   const [bookedSeats, setBookedSeats] = useState<Set<string>>(new Set());
-  
+
   const [ticketCounts, setTicketCounts] = useState<Record<string, number>>({});
   const [inventory, setInventory] = useState<Record<string, number>>({});
 
@@ -173,14 +173,14 @@ export const SeatMapPage: React.FC = () => {
       alert("Vui lòng chọn ít nhất 1 vé!");
       return;
     }
-    
+
     try {
       await axiosClient.post('/booking/hold', {
         concert_id,
         seats: Array.from(selectedSeats),
         ticketCounts
       });
-      
+
       sessionStorage.removeItem('idempotency_key');
 
       const statePayload = {
@@ -193,7 +193,7 @@ export const SeatMapPage: React.FC = () => {
       };
 
       sessionStorage.setItem('cart_state', JSON.stringify(statePayload));
-      
+
       navigate('/checkout.html', {
         state: statePayload
       });
@@ -219,8 +219,8 @@ export const SeatMapPage: React.FC = () => {
           const seatNum = i + 1;
           const seatId = `${rowLabel}-${seatNum}`;
           return (
-            <div 
-              key={seatId} 
+            <div
+              key={seatId}
               className={`w-[36px] h-[42px] rounded-md flex items-center justify-center text-white text-[10px] font-bold cursor-pointer transition-transform duration-100 shadow-sm select-none ${bookedSeats.has(seatId) ? 'bg-[#5c5c5c] cursor-not-allowed opacity-50' : 'bg-[#e53935] hover:scale-110'} ${selectedSeats.has(seatId) ? '!bg-[#26bc8a]' : ''}`}
               onClick={() => {
                 if (!bookedSeats.has(seatId)) toggleSeat(seatId);
@@ -236,8 +236,8 @@ export const SeatMapPage: React.FC = () => {
           const seatNum = i + 9;
           const seatId = `${rowLabel}-${seatNum}`;
           return (
-            <div 
-              key={seatId} 
+            <div
+              key={seatId}
               className={`w-[36px] h-[42px] rounded-md flex items-center justify-center text-white text-[10px] font-bold cursor-pointer transition-transform duration-100 shadow-sm select-none ${bookedSeats.has(seatId) ? 'bg-[#5c5c5c] cursor-not-allowed opacity-50' : 'bg-[#e53935] hover:scale-110'} ${selectedSeats.has(seatId) ? '!bg-[#26bc8a]' : ''}`}
               onClick={() => {
                 if (!bookedSeats.has(seatId)) toggleSeat(seatId);
@@ -253,8 +253,8 @@ export const SeatMapPage: React.FC = () => {
           const seatNum = i + 17;
           const seatId = `${rowLabel}-${seatNum}`;
           return (
-            <div 
-              key={seatId} 
+            <div
+              key={seatId}
               className={`w-[36px] h-[42px] rounded-md flex items-center justify-center text-white text-[10px] font-bold cursor-pointer transition-transform duration-100 shadow-sm select-none ${bookedSeats.has(seatId) ? 'bg-[#5c5c5c] cursor-not-allowed opacity-50' : 'bg-[#e53935] hover:scale-110'} ${selectedSeats.has(seatId) ? '!bg-[#26bc8a]' : ''}`}
               onClick={() => {
                 if (!bookedSeats.has(seatId)) toggleSeat(seatId);
@@ -274,7 +274,7 @@ export const SeatMapPage: React.FC = () => {
       <header className="sticky top-0 z-40 bg-surface-container-low border-b border-outline-variant flex flex-col gap-base px-margin-desktop py-4 w-full shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => window.location.href = `/event.html?id=${concert_id}`}
               className="p-2 hover:bg-surface-container-high transition-all rounded-full flex items-center justify-center"
             >
@@ -290,7 +290,7 @@ export const SeatMapPage: React.FC = () => {
           </div>
         </div>
       </header>
-      
+
       <main className="flex h-[calc(100vh-80px)] overflow-hidden flex-row relative">
         {isBookingDown && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -305,7 +305,7 @@ export const SeatMapPage: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {hasSVIP ? (
           <section className="flex-1 overflow-auto seat-map-scroll flex flex-col items-center p-12 bg-black h-full relative" style={{ scrollbarWidth: 'thin' }}>
 
@@ -356,13 +356,13 @@ export const SeatMapPage: React.FC = () => {
               <span className="text-sm">{eventData?.location}</span>
             </div>
           </div>
-          
+
           <div className="h-[1px] bg-outline-variant/30"></div>
 
           <div className="flex flex-col gap-3">
             <span className="font-label-md text-xs uppercase tracking-wider text-on-surface-variant">Giá vé</span>
             {hasSVIP && <span className="text-[10px] italic text-on-surface-variant/80 block mt-1">*Chỉ khu SVIP mới chọn ghế</span>}
-            
+
             {eventData?.zones?.map((zone: any) => {
               if (zone.zone === 'SVIP') {
                 return (
@@ -375,10 +375,10 @@ export const SeatMapPage: React.FC = () => {
                   </div>
                 );
               }
-              
+
               const currentCount = ticketCounts[zone.zone] || 0;
               const remaining = inventory[zone.zone] || 0;
-              
+
               return (
                 <div key={zone.zone} className="flex flex-col gap-4 bg-surface-container-low p-4 rounded-lg border border-outline-variant">
                   <div className="flex flex-col">
@@ -392,18 +392,18 @@ export const SeatMapPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <button 
+                    <button
                       onClick={() => {
                         if (isBookingDown) {
                           alert("Hệ thống đặt vé hiện đang bảo trì hoặc mất kết nối. Xin vui lòng thử lại sau.");
                           return;
                         }
-                        if (!user) { 
+                        if (!user) {
                           setLoginMessage('Vui lòng đăng nhập để tiếp tục chọn ghế');
-                          setIsLoginModalOpen(true); 
-                          return; 
+                          setIsLoginModalOpen(true);
+                          return;
                         }
-                        setTicketCounts(prev => ({...prev, [zone.zone]: Math.max(0, currentCount - 1)}));
+                        setTicketCounts(prev => ({ ...prev, [zone.zone]: Math.max(0, currentCount - 1) }));
                       }}
                       className="w-8 h-8 rounded-lg bg-surface-container-high border border-outline-variant flex items-center justify-center text-on-surface hover:bg-surface-bright transition-colors">
                       <span className="material-symbols-outlined text-sm">remove</span>
@@ -411,18 +411,18 @@ export const SeatMapPage: React.FC = () => {
                     <div className="w-12 h-8 flex items-center justify-center bg-white rounded-lg">
                       <span className="text-black font-bold">{currentCount}</span>
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         if (isBookingDown) {
                           alert("Hệ thống đặt vé hiện đang bảo trì hoặc mất kết nối. Xin vui lòng thử lại sau.");
                           return;
                         }
-                        if (!user) { 
+                        if (!user) {
                           setLoginMessage('Vui lòng đăng nhập để tiếp tục chọn ghế');
-                          setIsLoginModalOpen(true); 
-                          return; 
+                          setIsLoginModalOpen(true);
+                          return;
                         }
-                        setTicketCounts(prev => ({...prev, [zone.zone]: Math.min(remaining, currentCount + 1)}));
+                        setTicketCounts(prev => ({ ...prev, [zone.zone]: Math.min(remaining, currentCount + 1) }));
                       }}
                       className="w-8 h-8 rounded-lg bg-primary border border-primary flex items-center justify-center text-on-primary hover:brightness-110 transition-colors">
                       <span className="material-symbols-outlined text-sm font-bold">add</span>
@@ -446,13 +446,13 @@ export const SeatMapPage: React.FC = () => {
                 <span className="text-sm font-semibold text-primary">{Array.from(selectedSeats).join(', ')}</span>
               </div>
             )}
-            
+
             <div className="flex justify-between items-end">
               <span className="font-label-md text-on-surface-variant">TẠM TÍNH</span>
               <span className="text-2xl font-bold text-primary">{totalPrice.toLocaleString('vi-VN')} đ</span>
             </div>
-            
-            <button 
+
+            <button
               onClick={handleCheckout}
               className="w-full py-4 bg-primary text-on-primary font-headline-md rounded-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_4px_20px_rgba(84,221,169,0.3)]"
             >
@@ -463,9 +463,9 @@ export const SeatMapPage: React.FC = () => {
         </aside>
       </main>
 
-      <LoginModal 
-        isOpen={isLoginModalOpen} 
-        onClose={() => setIsLoginModalOpen(false)} 
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
         message={loginMessage}
       />
     </div>

@@ -4,13 +4,13 @@ import { useNavigate } from 'react-router-dom';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TimelineItem { year: string; title: string; description: string; }
-interface AwardItem    { name: string; organization: string; year: string; }
-interface WorkItem     { title: string; year: string; }
+interface AwardItem { name: string; organization: string; year: string; }
+interface WorkItem { title: string; year: string; }
 
-const CATEGORY_OPTIONS  = ['Singer', 'Band', 'DJ', 'Rapper', 'Musician', 'Speaker', 'Comedian', 'Other'];
-const GENRE_OPTIONS     = ['Pop', 'Rock', 'EDM', 'Hip-hop', 'Jazz', 'Indie', 'R&B', 'Ballad', 'Dance', 'Soul', 'Classical', 'Folk'];
-const LANGUAGE_OPTIONS  = ['Tiếng Việt', 'English', '한국어', '日本語', 'Français', 'Español'];
-const INSTRUMENT_OPTIONS= ['Guitar', 'Piano', 'Drums', 'Bass', 'Violin', 'Flute', 'Saxophone', 'Trumpet'];
+const CATEGORY_OPTIONS = ['Singer', 'Band', 'DJ', 'Rapper', 'Musician', 'Speaker', 'Comedian', 'Other'];
+const GENRE_OPTIONS = ['Pop', 'Rock', 'EDM', 'Hip-hop', 'Jazz', 'Indie', 'R&B', 'Ballad', 'Dance', 'Soul', 'Classical', 'Folk'];
+const LANGUAGE_OPTIONS = ['Tiếng Việt', 'English', '한국어', '日本語', 'Français', 'Español'];
+const INSTRUMENT_OPTIONS = ['Guitar', 'Piano', 'Drums', 'Bass', 'Violin', 'Flute', 'Saxophone', 'Trumpet'];
 
 // ─── Section Card Wrapper ─────────────────────────────────────────────────────
 
@@ -82,17 +82,19 @@ const RichTextEditor: React.FC<{ value: string; onChange: (v: string) => void; p
   const exec = (cmd: string, val?: string) => { document.execCommand(cmd, false, val); ref.current?.focus(); };
 
   const toolbarBtns = [
-    { icon: 'format_bold',          cmd: 'bold',          title: 'Bold' },
-    { icon: 'format_italic',        cmd: 'italic',        title: 'Italic' },
-    { icon: 'format_underlined',    cmd: 'underline',     title: 'Underline' },
-    { icon: 'format_h1',            cmd: 'formatBlock',   val: 'h3', title: 'Heading' },
+    { icon: 'format_bold', cmd: 'bold', title: 'Bold' },
+    { icon: 'format_italic', cmd: 'italic', title: 'Italic' },
+    { icon: 'format_underlined', cmd: 'underline', title: 'Underline' },
+    { icon: 'format_h1', cmd: 'formatBlock', val: 'h3', title: 'Heading' },
     { icon: 'format_list_bulleted', cmd: 'insertUnorderedList', title: 'Bullet List' },
-    { icon: 'format_list_numbered', cmd: 'insertOrderedList',   title: 'Numbered List' },
-    { icon: 'format_quote',         cmd: 'formatBlock',   val: 'blockquote', title: 'Quote' },
-    { icon: 'link',                 cmd: 'createLink',    title: 'Link',
-      action: () => { const url = prompt('URL:'); if (url) exec('createLink', url); } },
-    { icon: 'undo',                 cmd: 'undo',          title: 'Undo' },
-    { icon: 'redo',                 cmd: 'redo',          title: 'Redo' },
+    { icon: 'format_list_numbered', cmd: 'insertOrderedList', title: 'Numbered List' },
+    { icon: 'format_quote', cmd: 'formatBlock', val: 'blockquote', title: 'Quote' },
+    {
+      icon: 'link', cmd: 'createLink', title: 'Link',
+      action: () => { const url = prompt('URL:'); if (url) exec('createLink', url); }
+    },
+    { icon: 'undo', cmd: 'undo', title: 'Undo' },
+    { icon: 'redo', cmd: 'redo', title: 'Redo' },
   ];
 
   return (
@@ -140,11 +142,10 @@ const MultiChips: React.FC<{
           key={opt}
           type="button"
           onClick={() => toggle(opt)}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-            selected.includes(opt)
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${selected.includes(opt)
               ? 'bg-primary text-on-primary border-primary'
               : 'bg-surface-container-high border-outline-variant text-on-surface-variant hover:border-primary/50 hover:text-white'
-          }`}
+            }`}
         >
           {opt}
         </button>
@@ -157,15 +158,15 @@ const MultiChips: React.FC<{
 
 const SocialRow: React.FC<{ icon: string; label: string; value: string; onChange: (v: string) => void; placeholder: string }> =
   ({ icon, label, value, onChange, placeholder }) => (
-  <div className="flex items-center gap-3">
-    <div className="w-9 h-9 bg-surface-container-high border border-outline-variant rounded-xl flex items-center justify-center flex-shrink-0">
-      <span className="material-symbols-outlined text-[18px] text-on-surface-variant">{icon}</span>
+    <div className="flex items-center gap-3">
+      <div className="w-9 h-9 bg-surface-container-high border border-outline-variant rounded-xl flex items-center justify-center flex-shrink-0">
+        <span className="material-symbols-outlined text-[18px] text-on-surface-variant">{icon}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <TextInput value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+      </div>
     </div>
-    <div className="flex-1 min-w-0">
-      <TextInput value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
-    </div>
-  </div>
-);
+  );
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -174,26 +175,26 @@ export const ArtistBioManualPage: React.FC = () => {
   const [saved, setSaved] = useState(false);
 
   // ── Basic Info ──────────────────────────────────────────────────────────────
-  const [artistName,  setArtistName]  = useState('');
-  const [stageName,   setStageName]   = useState('');
-  const [category,    setCategory]    = useState('Singer');
-  const [birthday,    setBirthday]    = useState('');
+  const [artistName, setArtistName] = useState('');
+  const [stageName, setStageName] = useState('');
+  const [category, setCategory] = useState('Singer');
+  const [birthday, setBirthday] = useState('');
   const [nationality, setNationality] = useState('Vietnam');
-  const [city,        setCity]        = useState('');
+  const [city, setCity] = useState('');
   const [yearsActive, setYearsActive] = useState('');
   const [recordLabel, setRecordLabel] = useState('');
-  const [avatarUrl,   setAvatarUrl]   = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const avatarRef = useRef<HTMLInputElement>(null);
 
   // ── Biography ───────────────────────────────────────────────────────────────
-  const [shortBio, setShortBio]   = useState('');
-  const [fullBio,  setFullBio]    = useState('');
+  const [shortBio, setShortBio] = useState('');
+  const [fullBio, setFullBio] = useState('');
 
   // ── Performance ─────────────────────────────────────────────────────────────
-  const [genres,       setGenres]       = useState<string[]>([]);
-  const [perfStyle,    setPerfStyle]    = useState('');
-  const [languages,    setLanguages]    = useState<string[]>([]);
-  const [instruments,  setInstruments]  = useState<string[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
+  const [perfStyle, setPerfStyle] = useState('');
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [instruments, setInstruments] = useState<string[]>([]);
 
   // ── Career Highlights ───────────────────────────────────────────────────────
   const [timeline, setTimeline] = useState<TimelineItem[]>([
@@ -206,22 +207,22 @@ export const ArtistBioManualPage: React.FC = () => {
   ]);
 
   // ── Notable Works ───────────────────────────────────────────────────────────
-  const [albums,  setAlbums]  = useState<WorkItem[]>([{ title: '', year: '' }]);
+  const [albums, setAlbums] = useState<WorkItem[]>([{ title: '', year: '' }]);
   const [singles, setSingles] = useState<WorkItem[]>([{ title: '', year: '' }]);
-  const [eps,     setEps]     = useState<WorkItem[]>([]);
-  const [tours,   setTours]   = useState<WorkItem[]>([]);
+  const [eps, setEps] = useState<WorkItem[]>([]);
+  const [tours, setTours] = useState<WorkItem[]>([]);
   const [openWorks, setOpenWorks] = useState<Record<string, boolean>>({ albums: true, singles: true });
 
   // ── Social Links ─────────────────────────────────────────────────────────────
-  const [website,    setWebsite]    = useState('');
-  const [facebook,   setFacebook]   = useState('');
-  const [instagram,  setInstagram]  = useState('');
-  const [tiktok,     setTiktok]     = useState('');
-  const [youtube,    setYoutube]    = useState('');
-  const [spotify,    setSpotify]    = useState('');
+  const [website, setWebsite] = useState('');
+  const [facebook, setFacebook] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [tiktok, setTiktok] = useState('');
+  const [youtube, setYoutube] = useState('');
+  const [spotify, setSpotify] = useState('');
   const [appleMusic, setAppleMusic] = useState('');
-  const [email,      setEmail]      = useState('');
-  const [phone,      setPhone]      = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
   // ── Gallery ──────────────────────────────────────────────────────────────────
   const [gallery, setGallery] = useState<File[]>([]);
@@ -232,9 +233,9 @@ export const ArtistBioManualPage: React.FC = () => {
   const docRef = useRef<HTMLInputElement>(null);
 
   // ── SEO ──────────────────────────────────────────────────────────────────────
-  const [metaTitle, setMetaTitle]   = useState('');
-  const [metaDesc,  setMetaDesc]    = useState('');
-  const [keywords,  setKeywords]    = useState('');
+  const [metaTitle, setMetaTitle] = useState('');
+  const [metaDesc, setMetaDesc] = useState('');
+  const [keywords, setKeywords] = useState('');
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const addItem = <T,>(setter: React.Dispatch<React.SetStateAction<T[]>>, blank: T) =>
@@ -439,10 +440,10 @@ export const ArtistBioManualPage: React.FC = () => {
         <Section icon="library_music" title="Tác phẩm nổi bật" subtitle="Album, single, EP, tour và hợp tác">
           <div className="flex flex-col gap-3 pt-2">
             {([
-              { key: 'albums',  label: 'Albums',   state: albums,  setter: setAlbums,  icon: 'album' },
-              { key: 'singles', label: 'Singles',  state: singles, setter: setSingles, icon: 'music_note' },
-              { key: 'eps',     label: 'EP',       state: eps,     setter: setEps,     icon: 'queue_music' },
-              { key: 'tours',   label: 'Tours',    state: tours,   setter: setTours,   icon: 'tour' },
+              { key: 'albums', label: 'Albums', state: albums, setter: setAlbums, icon: 'album' },
+              { key: 'singles', label: 'Singles', state: singles, setter: setSingles, icon: 'music_note' },
+              { key: 'eps', label: 'EP', state: eps, setter: setEps, icon: 'queue_music' },
+              { key: 'tours', label: 'Tours', state: tours, setter: setTours, icon: 'tour' },
             ] as const).map(({ key, label, state, setter, icon: ic }) => {
               const isOpen = !!openWorks[key];
               return (
@@ -481,15 +482,15 @@ export const ArtistBioManualPage: React.FC = () => {
         {/* ── Section 7: Social Links ── */}
         <Section icon="link" title="Mạng xã hội & Liên hệ" subtitle="Website, mạng xã hội và thông tin liên hệ">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-            <SocialRow icon="language"     label="Website"     value={website}    onChange={setWebsite}    placeholder="https://artist-website.com" />
-            <SocialRow icon="groups"       label="Facebook"    value={facebook}   onChange={setFacebook}   placeholder="https://facebook.com/..." />
-            <SocialRow icon="photo_camera" label="Instagram"   value={instagram}  onChange={setInstagram}  placeholder="https://instagram.com/..." />
-            <SocialRow icon="smartphone"   label="TikTok"      value={tiktok}     onChange={setTiktok}     placeholder="https://tiktok.com/@..." />
-            <SocialRow icon="play_circle"  label="YouTube"     value={youtube}    onChange={setYoutube}    placeholder="https://youtube.com/..." />
-            <SocialRow icon="equalizer"    label="Spotify"     value={spotify}    onChange={setSpotify}    placeholder="https://open.spotify.com/..." />
-            <SocialRow icon="music_note"   label="Apple Music" value={appleMusic} onChange={setAppleMusic} placeholder="https://music.apple.com/..." />
-            <SocialRow icon="mail"         label="Email"       value={email}      onChange={setEmail}      placeholder="contact@artist.com" />
-            <SocialRow icon="phone"        label="Điện thoại"  value={phone}      onChange={setPhone}      placeholder="+84 90 xxx xxxx" />
+            <SocialRow icon="language" label="Website" value={website} onChange={setWebsite} placeholder="https://artist-website.com" />
+            <SocialRow icon="groups" label="Facebook" value={facebook} onChange={setFacebook} placeholder="https://facebook.com/..." />
+            <SocialRow icon="photo_camera" label="Instagram" value={instagram} onChange={setInstagram} placeholder="https://instagram.com/..." />
+            <SocialRow icon="smartphone" label="TikTok" value={tiktok} onChange={setTiktok} placeholder="https://tiktok.com/@..." />
+            <SocialRow icon="play_circle" label="YouTube" value={youtube} onChange={setYoutube} placeholder="https://youtube.com/..." />
+            <SocialRow icon="equalizer" label="Spotify" value={spotify} onChange={setSpotify} placeholder="https://open.spotify.com/..." />
+            <SocialRow icon="music_note" label="Apple Music" value={appleMusic} onChange={setAppleMusic} placeholder="https://music.apple.com/..." />
+            <SocialRow icon="mail" label="Email" value={email} onChange={setEmail} placeholder="contact@artist.com" />
+            <SocialRow icon="phone" label="Điện thoại" value={phone} onChange={setPhone} placeholder="+84 90 xxx xxxx" />
           </div>
         </Section>
 

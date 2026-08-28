@@ -105,7 +105,7 @@ export const BioApprovalPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0d0d0f] text-white p-6 font-sans">
-      
+
       {/* Header bar */}
       <header className="flex justify-between items-center pb-6 border-b border-white/10 mb-8">
         <div className="flex items-center gap-4">
@@ -131,17 +131,17 @@ export const BioApprovalPage: React.FC = () => {
           <form onSubmit={handleFetchBio} className="flex items-end gap-4">
             <div className="flex-1">
               <label className="text-xs text-white/60 block mb-1">Nhập Mã Concert, Job ID, hoặc Bio ID</label>
-              <input 
-                type="text" 
-                value={searchId} 
+              <input
+                type="text"
+                value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
                 placeholder="Ví dụ: 1..."
                 className="bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 w-full text-sm text-white focus:outline-none focus:border-primary"
                 required
               />
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isLoading}
               className="bg-primary hover:brightness-110 text-white font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md"
             >
@@ -177,16 +177,15 @@ export const BioApprovalPage: React.FC = () => {
         {/* Main Review Card */}
         {bio && !isLoading && (
           <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6">
-            
+
             {/* Bio Metadata Header */}
             <div className="flex justify-between items-center pb-4 border-b border-white/5">
               <div>
                 <h3 className="text-lg font-bold">Concert ID: {bio.concertId}</h3>
                 <p className="text-xs text-white/40 mt-0.5">Khởi tạo: {bio.createdAt ? new Date(bio.createdAt).toLocaleString() : 'N/A'}</p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                bio.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${bio.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                }`}>
                 {bio.status === 'APPROVED' ? 'Đã Xuất Bản (APPROVED)' : 'Chờ Phê Duyệt (PENDING REVIEW)'}
               </span>
             </div>
@@ -195,8 +194,8 @@ export const BioApprovalPage: React.FC = () => {
             <div className="flex flex-col gap-4">
               <div>
                 <label className="text-xs text-white/60 block mb-1">Short Bio (Ngắn - Dùng cho preview)</label>
-                <textarea 
-                  value={shortBioEdit} 
+                <textarea
+                  value={shortBioEdit}
                   onChange={(e) => setShortBioEdit(e.target.value)}
                   rows={2}
                   className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
@@ -205,8 +204,8 @@ export const BioApprovalPage: React.FC = () => {
 
               <div>
                 <label className="text-xs text-white/60 block mb-1">Medium Bio (Bản Vừa - Sẽ hiển thị chính thức trên trang mua vé)</label>
-                <textarea 
-                  value={mediumBioEdit} 
+                <textarea
+                  value={mediumBioEdit}
                   onChange={(e) => setMediumBioEdit(e.target.value)}
                   rows={6}
                   className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
@@ -215,8 +214,8 @@ export const BioApprovalPage: React.FC = () => {
 
               <div>
                 <label className="text-xs text-white/60 block mb-1">SEO Bio (Tối ưu hóa công cụ tìm kiếm)</label>
-                <textarea 
-                  value={seoBioEdit} 
+                <textarea
+                  value={seoBioEdit}
                   onChange={(e) => setSeoBioEdit(e.target.value)}
                   rows={3}
                   className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
@@ -226,15 +225,15 @@ export const BioApprovalPage: React.FC = () => {
 
             {/* Action buttons */}
             <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-              <button 
-                onClick={() => navigate('/')} 
+              <button
+                onClick={() => navigate('/')}
                 className="bg-white/10 hover:bg-white/15 px-6 py-2.5 rounded-xl font-bold transition-all text-sm"
               >
                 Hủy bỏ
               </button>
-              
-              <button 
-                onClick={handleApproveBio} 
+
+              <button
+                onClick={handleApproveBio}
                 disabled={isApproving}
                 className="bg-primary hover:brightness-110 disabled:opacity-50 text-white font-bold py-2.5 px-8 rounded-xl flex items-center gap-2 transition-all shadow-md text-sm"
               >

@@ -14,13 +14,13 @@ interface Award {
 }
 // ─── Manual Form Types ────────────────────────────────────────────────────────
 interface TimelineItem { year: string; title: string; description: string; }
-interface AwardItem    { name: string; organization: string; year: string; }
-interface WorkItem     { title: string; year: string; }
+interface AwardItem { name: string; organization: string; year: string; }
+interface WorkItem { title: string; year: string; }
 
-const CATEGORY_OPTIONS  = ['Singer', 'Band', 'DJ', 'Rapper', 'Musician', 'Speaker', 'Comedian', 'Other'];
-const GENRE_OPTIONS     = ['Pop', 'Rock', 'EDM', 'Hip-hop', 'Jazz', 'Indie', 'R&B', 'Ballad', 'Dance', 'Soul', 'Classical', 'Folk'];
-const LANGUAGE_OPTIONS  = ['Tiếng Việt', 'English', '한국어', '日本語', 'Français', 'Español'];
-const INSTRUMENT_OPTIONS= ['Guitar', 'Piano', 'Drums', 'Bass', 'Violin', 'Flute', 'Saxophone', 'Trumpet'];
+const CATEGORY_OPTIONS = ['Singer', 'Band', 'DJ', 'Rapper', 'Musician', 'Speaker', 'Comedian', 'Other'];
+const GENRE_OPTIONS = ['Pop', 'Rock', 'EDM', 'Hip-hop', 'Jazz', 'Indie', 'R&B', 'Ballad', 'Dance', 'Soul', 'Classical', 'Folk'];
+const LANGUAGE_OPTIONS = ['Tiếng Việt', 'English', '한국어', '日本語', 'Français', 'Español'];
+const INSTRUMENT_OPTIONS = ['Guitar', 'Piano', 'Drums', 'Bass', 'Violin', 'Flute', 'Saxophone', 'Trumpet'];
 
 // ─── Manual Form Components ───────────────────────────────────────────────────
 const Section: React.FC<{
@@ -87,17 +87,19 @@ const RichTextEditor: React.FC<{ value: string; onChange: (v: string) => void; p
   const exec = (cmd: string, val?: string) => { document.execCommand(cmd, false, val); ref.current?.focus(); };
 
   const toolbarBtns = [
-    { icon: 'format_bold',          cmd: 'bold',          title: 'Bold' },
-    { icon: 'format_italic',        cmd: 'italic',        title: 'Italic' },
-    { icon: 'format_underlined',    cmd: 'underline',     title: 'Underline' },
-    { icon: 'format_h1',            cmd: 'formatBlock',   val: 'h3', title: 'Heading' },
+    { icon: 'format_bold', cmd: 'bold', title: 'Bold' },
+    { icon: 'format_italic', cmd: 'italic', title: 'Italic' },
+    { icon: 'format_underlined', cmd: 'underline', title: 'Underline' },
+    { icon: 'format_h1', cmd: 'formatBlock', val: 'h3', title: 'Heading' },
     { icon: 'format_list_bulleted', cmd: 'insertUnorderedList', title: 'Bullet List' },
-    { icon: 'format_list_numbered', cmd: 'insertOrderedList',   title: 'Numbered List' },
-    { icon: 'format_quote',         cmd: 'formatBlock',   val: 'blockquote', title: 'Quote' },
-    { icon: 'link',                 cmd: 'createLink',    title: 'Link',
-      action: () => { const url = prompt('URL:'); if (url) exec('createLink', url); } },
-    { icon: 'undo',                 cmd: 'undo',          title: 'Undo' },
-    { icon: 'redo',                 cmd: 'redo',          title: 'Redo' },
+    { icon: 'format_list_numbered', cmd: 'insertOrderedList', title: 'Numbered List' },
+    { icon: 'format_quote', cmd: 'formatBlock', val: 'blockquote', title: 'Quote' },
+    {
+      icon: 'link', cmd: 'createLink', title: 'Link',
+      action: () => { const url = prompt('URL:'); if (url) exec('createLink', url); }
+    },
+    { icon: 'undo', cmd: 'undo', title: 'Undo' },
+    { icon: 'redo', cmd: 'redo', title: 'Redo' },
   ];
 
   return (
@@ -141,11 +143,10 @@ const MultiChips: React.FC<{
           key={opt}
           type="button"
           onClick={() => toggle(opt)}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-            selected.includes(opt)
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${selected.includes(opt)
               ? 'bg-primary text-on-primary border-primary'
               : 'bg-surface-container-high border-outline-variant text-on-surface-variant hover:border-primary/50 hover:text-white'
-          }`}
+            }`}
         >
           {opt}
         </button>
@@ -156,15 +157,15 @@ const MultiChips: React.FC<{
 
 const SocialRow: React.FC<{ icon: string; label: string; value: string; onChange: (v: string) => void; placeholder: string }> =
   ({ icon, label: _label, value, onChange, placeholder }) => (
-  <div className="flex items-center gap-3">
-    <div className="w-9 h-9 bg-surface-container-high border border-outline-variant rounded-xl flex items-center justify-center flex-shrink-0">
-      <span className="material-symbols-outlined text-[18px] text-on-surface-variant">{icon}</span>
+    <div className="flex items-center gap-3">
+      <div className="w-9 h-9 bg-surface-container-high border border-outline-variant rounded-xl flex items-center justify-center flex-shrink-0">
+        <span className="material-symbols-outlined text-[18px] text-on-surface-variant">{icon}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <TextInput value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+      </div>
     </div>
-    <div className="flex-1 min-w-0">
-      <TextInput value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
-    </div>
-  </div>
-);
+  );
 
 
 export const ArtistBiographyPage: React.FC = () => {
@@ -203,7 +204,7 @@ export const ArtistBiographyPage: React.FC = () => {
             setCountry(bioRes.data.country || concertRes.data.province || 'Vietnam');
             setCity(concertRes.data.venue_name || '');
             setWebsite(concertRes.data.slug || '');
-            
+
             // Populate manual form states as well
             setManualArtistName(bioRes.data.artistName || concertRes.data.name || '');
             setManualStageName(bioRes.data.stageName || concertRes.data.name || '');
@@ -433,11 +434,11 @@ export const ArtistBiographyPage: React.FC = () => {
 
       // Map backend job status → loading step index
       const STATUS_STEP: Record<string, number> = {
-        PENDING:     1,
-        EXTRACTING:  2,
-        PARSING:     2,
+        PENDING: 1,
+        EXTRACTING: 2,
+        PARSING: 2,
         SUMMARIZING: 3,
-        COMPLETED:   5,
+        COMPLETED: 5,
       };
 
       // Poll job status every 3 seconds, up to 90 attempts = 4.5 minutes
@@ -621,11 +622,11 @@ export const ArtistBiographyPage: React.FC = () => {
       alert('Vui lòng nhập tên nghệ sĩ');
       return;
     }
-    
+
     setIsSaving(true);
     try {
       const targetId = bioId || searchParams.get('id') || searchParams.get('concertId');
-      
+
       const payload = {
         artistName: manualArtistName,
         stageName: manualStageName,
@@ -660,7 +661,7 @@ export const ArtistBiographyPage: React.FC = () => {
 
   return (
     <div className="flex-grow lg:ml-64 px-4 md:px-6 lg:px-10 pb-36 pt-24 md:pt-28 lg:pt-32 bg-[#0d0d0f] text-white font-sans min-h-screen">
-      
+
       {/* Success Banner for Manual Tab */}
       {activeTab === 'manual' && saved && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-xl font-bold text-sm animate-[fadeIn_0.3s_ease]">
@@ -689,7 +690,7 @@ export const ArtistBiographyPage: React.FC = () => {
                 <p className="text-xs text-red-400/80">{errorMessage}</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={handleExtractWithAI}
               className="bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-red-400 transition-colors"
             >
@@ -704,8 +705,8 @@ export const ArtistBiographyPage: React.FC = () => {
             Tiểu sử Nghệ sĩ (Artist Biography)
           </h1>
           <p className="text-text-medium-emphasis text-sm">
-            {activeTab === 'ai' 
-              ? 'Tải tài liệu giới thiệu thô (PDF/DOC/DOCX) để AI tự động trích xuất thông tin chi tiết và hỗ trợ xuất bản.' 
+            {activeTab === 'ai'
+              ? 'Tải tài liệu giới thiệu thô (PDF/DOC/DOCX) để AI tự động trích xuất thông tin chi tiết và hỗ trợ xuất bản.'
               : 'Tự nhập tay tất cả các thông tin chi tiết của nghệ sĩ thông qua biểu mẫu chuyên nghiệp.'}
           </p>
         </div>
@@ -715,11 +716,10 @@ export const ArtistBiographyPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('ai')}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px] ${
-              activeTab === 'ai'
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px] ${activeTab === 'ai'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-white/50 hover:text-white/80'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
             Trích xuất bằng AI (Nhập file)
@@ -727,11 +727,10 @@ export const ArtistBiographyPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('manual')}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px] ${
-              activeTab === 'manual'
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px] ${activeTab === 'manual'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-white/50 hover:text-white/80'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-[18px]">edit_note</span>
             Nhập thủ công
@@ -741,7 +740,7 @@ export const ArtistBiographyPage: React.FC = () => {
         {activeTab === 'ai' ? (
           /* TWO-COLUMN RESPONSIVE LAYOUT (AI TAB) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
+
             {/* LEFT PANEL (40%) */}
             <div className="lg:col-span-5 flex flex-col gap-6">
 
@@ -753,17 +752,16 @@ export const ArtistBiographyPage: React.FC = () => {
                 </h3>
 
                 {!file ? (
-                  <div 
+                  <div
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                      isDragging ? 'border-primary bg-primary/5' : 'border-white/10 hover:border-primary/50 hover:bg-white/[0.01]'
-                    }`}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging ? 'border-primary bg-primary/5' : 'border-white/10 hover:border-primary/50 hover:bg-white/[0.01]'
+                      }`}
                   >
-                    <input 
-                      type="file" 
+                    <input
+                      type="file"
                       ref={fileInputRef}
                       onChange={handleFileChange}
                       accept=".pdf,.doc,.docx"
@@ -786,7 +784,7 @@ export const ArtistBiographyPage: React.FC = () => {
                         <p className="text-xs text-white/40">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={removeFile}
                       className="text-white/40 hover:text-red-400 transition-colors p-1"
                     >
@@ -797,7 +795,7 @@ export const ArtistBiographyPage: React.FC = () => {
 
                 {/* Extract Trigger Button */}
                 {file && statusState !== 'loading' && (
-                  <button 
+                  <button
                     onClick={handleExtractWithAI}
                     className="w-full bg-primary hover:brightness-110 text-on-primary font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all mt-4 shadow-lg shadow-primary/20"
                   >
@@ -813,13 +811,13 @@ export const ArtistBiographyPage: React.FC = () => {
                   <span className="material-symbols-outlined text-primary text-[18px]">account_box</span>
                   Thông tin nghệ sĩ (Artist Information)
                 </h3>
-                
+
                 <div className="flex flex-col gap-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-white/50 block mb-1">Tên nghệ sĩ *</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={artistName}
                         onChange={(e) => setArtistName(e.target.value)}
                         placeholder="Ví dụ: Phan Mạnh Quỳnh"
@@ -828,8 +826,8 @@ export const ArtistBiographyPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="text-xs text-white/50 block mb-1">Nghệ danh (Stage Name)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={stageName}
                         onChange={(e) => setStageName(e.target.value)}
                         placeholder="Ví dụ: PMQ"
@@ -841,7 +839,7 @@ export const ArtistBiographyPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-white/50 block mb-1">Phân loại (Category)</label>
-                      <select 
+                      <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
@@ -858,8 +856,8 @@ export const ArtistBiographyPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="text-xs text-white/50 block mb-1">Ngày sinh (Birth Date)</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         value={birthday}
                         onChange={(e) => setBirthday(e.target.value)}
                         className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
@@ -870,8 +868,8 @@ export const ArtistBiographyPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-white/50 block mb-1">Quốc gia (Country)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
                         placeholder="Vietnam"
@@ -880,8 +878,8 @@ export const ArtistBiographyPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="text-xs text-white/50 block mb-1">Thành phố (City)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="Ho Chi Minh City"
@@ -892,8 +890,8 @@ export const ArtistBiographyPage: React.FC = () => {
 
                   <div>
                     <label className="text-xs text-white/50 block mb-1">Trang web chính thức (Website)</label>
-                    <input 
-                      type="url" 
+                    <input
+                      type="url"
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
                       placeholder="https://artist-website.com"
@@ -904,8 +902,8 @@ export const ArtistBiographyPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-white/50 block mb-1">Email liên hệ</label>
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="contact@artist.com"
@@ -914,8 +912,8 @@ export const ArtistBiographyPage: React.FC = () => {
                     </div>
                     <div>
                       <label className="text-xs text-white/50 block mb-1">Số điện thoại</label>
-                      <input 
-                        type="tel" 
+                      <input
+                        type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="090..."
@@ -929,8 +927,8 @@ export const ArtistBiographyPage: React.FC = () => {
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-1">
                         <span className="text-xs text-white/40 w-16">Facebook</span>
-                        <input 
-                          type="url" 
+                        <input
+                          type="url"
                           value={facebook}
                           onChange={(e) => setFacebook(e.target.value)}
                           placeholder="https://facebook.com/..."
@@ -939,8 +937,8 @@ export const ArtistBiographyPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-1">
                         <span className="text-xs text-white/40 w-16">Instagram</span>
-                        <input 
-                          type="url" 
+                        <input
+                          type="url"
                           value={instagram}
                           onChange={(e) => setInstagram(e.target.value)}
                           placeholder="https://instagram.com/..."
@@ -949,8 +947,8 @@ export const ArtistBiographyPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-1">
                         <span className="text-xs text-white/40 w-16">TikTok</span>
-                        <input 
-                          type="url" 
+                        <input
+                          type="url"
                           value={tiktok}
                           onChange={(e) => setTiktok(e.target.value)}
                           placeholder="https://tiktok.com/@..."
@@ -959,8 +957,8 @@ export const ArtistBiographyPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-1">
                         <span className="text-xs text-white/40 w-16">Spotify</span>
-                        <input 
-                          type="url" 
+                        <input
+                          type="url"
                           value={spotify}
                           onChange={(e) => setSpotify(e.target.value)}
                           placeholder="https://open.spotify.com/..."
@@ -996,7 +994,7 @@ export const ArtistBiographyPage: React.FC = () => {
                 <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-12 shadow-2xl flex flex-col items-center justify-center min-h-[450px] text-center">
                   <div className="w-14 h-14 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div>
                   <h3 className="text-lg font-bold text-white mb-4">Trình phân tích AI đang chạy</h3>
-                  
+
                   {/* Progress Checklist */}
                   <div className="flex flex-col gap-2.5 text-left w-full max-w-xs bg-black/30 p-5 rounded-xl border border-white/5">
                     {loadingStepsText.map((step, idx) => (
@@ -1023,7 +1021,7 @@ export const ArtistBiographyPage: React.FC = () => {
 
                   {/* AI Summary Panel (Collapsible) */}
                   <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 shadow-xl">
-                    <div 
+                    <div
                       onClick={() => setIsStatsCollapsed(!isStatsCollapsed)}
                       className="flex justify-between items-center cursor-pointer"
                     >
@@ -1060,7 +1058,7 @@ export const ArtistBiographyPage: React.FC = () => {
 
                   {/* AI Biography Preview Card */}
                   <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-6 shadow-2xl flex flex-col gap-6">
-                    
+
                     <div className="flex justify-between items-center pb-3 border-b border-white/5">
                       <h2 className="text-md font-bold text-white/95 flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">analytics</span>
@@ -1071,7 +1069,7 @@ export const ArtistBiographyPage: React.FC = () => {
                     {/* 1. Short Introduction */}
                     <div>
                       <label className="text-xs text-white/50 block mb-1.5 font-semibold">1. Giới thiệu ngắn (Short Bio)</label>
-                      <textarea 
+                      <textarea
                         value={shortBio}
                         onChange={(e) => setShortBio(e.target.value)}
                         rows={3}
@@ -1082,7 +1080,7 @@ export const ArtistBiographyPage: React.FC = () => {
                     {/* 2. Full Biography */}
                     <div>
                       <label className="text-xs text-white/50 block mb-1.5 font-semibold">2. Tiểu sử đầy đủ (Full Biography)</label>
-                      
+
                       {/* Rich text editor dummy toolbar */}
                       <div className="bg-surface-container-high border border-outline-variant rounded-t-xl px-3 py-2 flex gap-1 items-center border-b-0 overflow-x-auto">
                         <button type="button" className="p-1.5 hover:bg-white/10 rounded text-white/60 hover:text-white" title="Bold"><span className="material-symbols-outlined text-[18px]">format_bold</span></button>
@@ -1097,8 +1095,8 @@ export const ArtistBiographyPage: React.FC = () => {
                         <button type="button" className="p-1.5 hover:bg-white/10 rounded text-white/60 hover:text-white" title="Undo"><span className="material-symbols-outlined text-[18px]">undo</span></button>
                         <button type="button" className="p-1.5 hover:bg-white/10 rounded text-white/60 hover:text-white" title="Redo"><span className="material-symbols-outlined text-[18px]">redo</span></button>
                       </div>
-                      
-                      <textarea 
+
+                      <textarea
                         value={mediumBio}
                         onChange={(e) => setMediumBio(e.target.value)}
                         rows={8}
@@ -1110,8 +1108,8 @@ export const ArtistBiographyPage: React.FC = () => {
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <label className="text-xs text-white/50 font-semibold">3. Dấu mốc sự nghiệp (Career Highlights)</label>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={handleAddMilestone}
                           className="text-primary hover:underline text-xs font-semibold flex items-center gap-1"
                         >
@@ -1121,22 +1119,22 @@ export const ArtistBiographyPage: React.FC = () => {
                       <div className="flex flex-col gap-3">
                         {timeline.map((item, idx) => (
                           <div key={idx} className="flex gap-3 bg-black/25 p-3 rounded-xl border border-white/5 items-start">
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               value={item.year}
                               onChange={(e) => handleUpdateMilestone(idx, 'year', e.target.value)}
                               placeholder="Năm"
                               className="bg-black/40 border border-white/10 rounded-lg px-2 py-1 w-20 text-center text-xs text-white focus:outline-none focus:border-primary"
                             />
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               value={item.detail}
                               onChange={(e) => handleUpdateMilestone(idx, 'detail', e.target.value)}
                               placeholder="Mô tả thành tựu..."
                               className="bg-black/40 border border-white/10 rounded-lg px-3 py-1 w-full text-xs text-white focus:outline-none focus:border-primary"
                             />
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => handleRemoveMilestone(idx)}
                               className="text-white/40 hover:text-red-400 p-1 transition-colors"
                             >
@@ -1151,8 +1149,8 @@ export const ArtistBiographyPage: React.FC = () => {
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <label className="text-xs text-white/50 font-semibold">4. Giải thưởng đạt được (Awards)</label>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={handleAddAward}
                           className="text-primary hover:underline text-xs font-semibold flex items-center gap-1"
                         >
@@ -1163,8 +1161,8 @@ export const ArtistBiographyPage: React.FC = () => {
                         {awards.map((item, idx) => (
                           <div key={idx} className="grid grid-cols-12 gap-2 bg-black/25 p-3 rounded-xl border border-white/5 items-center">
                             <div className="col-span-5">
-                              <input 
-                                type="text" 
+                              <input
+                                type="text"
                                 value={item.name}
                                 onChange={(e) => handleUpdateAward(idx, 'name', e.target.value)}
                                 placeholder="Tên giải thưởng"
@@ -1172,8 +1170,8 @@ export const ArtistBiographyPage: React.FC = () => {
                               />
                             </div>
                             <div className="col-span-2">
-                              <input 
-                                type="text" 
+                              <input
+                                type="text"
                                 value={item.year}
                                 onChange={(e) => handleUpdateAward(idx, 'year', e.target.value)}
                                 placeholder="Năm"
@@ -1181,8 +1179,8 @@ export const ArtistBiographyPage: React.FC = () => {
                               />
                             </div>
                             <div className="col-span-4">
-                              <input 
-                                type="text" 
+                              <input
+                                type="text"
                                 value={item.organization}
                                 onChange={(e) => handleUpdateAward(idx, 'organization', e.target.value)}
                                 placeholder="Tổ chức trao"
@@ -1190,8 +1188,8 @@ export const ArtistBiographyPage: React.FC = () => {
                               />
                             </div>
                             <div className="col-span-1 text-right">
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 onClick={() => handleRemoveAward(idx)}
                                 className="text-white/40 hover:text-red-400 p-1 transition-colors"
                               >
@@ -1206,8 +1204,8 @@ export const ArtistBiographyPage: React.FC = () => {
                     {/* 5. Notable Works */}
                     <div>
                       <label className="text-xs text-white/50 block mb-1.5 font-semibold">5. Album & Tác phẩm tiêu biểu (Notable Works)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={albums}
                         onChange={(e) => setAlbums(e.target.value)}
                         placeholder="Album, Single, Tour lưu diễn nổi tiếng..."
@@ -1220,15 +1218,14 @@ export const ArtistBiographyPage: React.FC = () => {
                       <label className="text-xs text-white/50 block mb-2 font-semibold">6. Thể loại nhạc chính (Genres)</label>
                       <div className="flex flex-wrap gap-2">
                         {availableGenres.map((genre) => (
-                          <button 
+                          <button
                             key={genre}
                             type="button"
                             onClick={() => handleGenreToggle(genre)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                              selectedGenres.includes(genre)
+                            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${selectedGenres.includes(genre)
                                 ? 'bg-primary/20 text-primary border-primary'
                                 : 'bg-black/40 text-white/50 border-white/10 hover:border-white/20'
-                            }`}
+                              }`}
                           >
                             {genre}
                           </button>
@@ -1239,7 +1236,7 @@ export const ArtistBiographyPage: React.FC = () => {
                     {/* SEO Bio */}
                     <div>
                       <label className="text-xs text-white/50 block mb-1.5 font-semibold">SEO Meta Description</label>
-                      <textarea 
+                      <textarea
                         value={seoBio}
                         onChange={(e) => setSeoBio(e.target.value)}
                         rows={2}
@@ -1402,10 +1399,10 @@ export const ArtistBiographyPage: React.FC = () => {
             <Section icon="library_music" title="Tác phẩm nổi bật" subtitle="Album, single, EP, tour và hợp tác">
               <div className="flex flex-col gap-3 pt-2">
                 {([
-                  { key: 'albums',  label: 'Albums',   state: manualAlbums,  setter: setManualAlbums,  icon: 'album' },
-                  { key: 'singles', label: 'Singles',  state: manualSingles, setter: setManualSingles, icon: 'music_note' },
-                  { key: 'eps',     label: 'EP',       state: manualEps,     setter: setManualEps,     icon: 'queue_music' },
-                  { key: 'tours',   label: 'Tours',    state: manualTours,   setter: setManualTours,   icon: 'tour' },
+                  { key: 'albums', label: 'Albums', state: manualAlbums, setter: setManualAlbums, icon: 'album' },
+                  { key: 'singles', label: 'Singles', state: manualSingles, setter: setManualSingles, icon: 'music_note' },
+                  { key: 'eps', label: 'EP', state: manualEps, setter: setManualEps, icon: 'queue_music' },
+                  { key: 'tours', label: 'Tours', state: manualTours, setter: setManualTours, icon: 'tour' },
                 ] as const).map(({ key, label, state, setter, icon: ic }) => {
                   const isOpen = !!openWorks[key];
                   return (
@@ -1444,15 +1441,15 @@ export const ArtistBiographyPage: React.FC = () => {
             {/* ── Section 7: Social Links ── */}
             <Section icon="link" title="Mạng xã hội & Liên hệ" subtitle="Website, mạng xã hội và thông tin liên hệ">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                <SocialRow icon="language"     label="Website"     value={manualWebsite}    onChange={setManualWebsite}    placeholder="https://artist-website.com" />
-                <SocialRow icon="groups"       label="Facebook"    value={manualFacebook}   onChange={setManualFacebook}   placeholder="https://facebook.com/..." />
-                <SocialRow icon="photo_camera" label="Instagram"   value={manualInstagram}  onChange={setManualInstagram}  placeholder="https://instagram.com/..." />
-                <SocialRow icon="smartphone"   label="TikTok"      value={manualTiktok}     onChange={setManualTiktok}     placeholder="https://tiktok.com/@..." />
-                <SocialRow icon="play_circle"  label="YouTube"     value={manualYoutube}    onChange={setManualYoutube}    placeholder="https://youtube.com/..." />
-                <SocialRow icon="equalizer"    label="Spotify"     value={manualSpotify}    onChange={setManualSpotify}    placeholder="https://open.spotify.com/..." />
-                <SocialRow icon="music_note"   label="Apple Music" value={manualAppleMusic} onChange={setManualAppleMusic} placeholder="https://music.apple.com/..." />
-                <SocialRow icon="mail"         label="Email"       value={manualEmail}      onChange={setManualEmail}      placeholder="contact@artist.com" />
-                <SocialRow icon="phone"        label="Điện thoại"  value={manualPhone}      onChange={setManualPhone}      placeholder="+84 90 xxx xxxx" />
+                <SocialRow icon="language" label="Website" value={manualWebsite} onChange={setManualWebsite} placeholder="https://artist-website.com" />
+                <SocialRow icon="groups" label="Facebook" value={manualFacebook} onChange={setManualFacebook} placeholder="https://facebook.com/..." />
+                <SocialRow icon="photo_camera" label="Instagram" value={manualInstagram} onChange={setManualInstagram} placeholder="https://instagram.com/..." />
+                <SocialRow icon="smartphone" label="TikTok" value={manualTiktok} onChange={setManualTiktok} placeholder="https://tiktok.com/@..." />
+                <SocialRow icon="play_circle" label="YouTube" value={manualYoutube} onChange={setManualYoutube} placeholder="https://youtube.com/..." />
+                <SocialRow icon="equalizer" label="Spotify" value={manualSpotify} onChange={setManualSpotify} placeholder="https://open.spotify.com/..." />
+                <SocialRow icon="music_note" label="Apple Music" value={manualAppleMusic} onChange={setManualAppleMusic} placeholder="https://music.apple.com/..." />
+                <SocialRow icon="mail" label="Email" value={manualEmail} onChange={setManualEmail} placeholder="contact@artist.com" />
+                <SocialRow icon="phone" label="Điện thoại" value={manualPhone} onChange={setManualPhone} placeholder="+84 90 xxx xxxx" />
               </div>
             </Section>
 
@@ -1539,21 +1536,21 @@ export const ArtistBiographyPage: React.FC = () => {
       {activeTab === 'ai' ? (
         statusState === 'success' && (
           <div className="fixed bottom-0 left-0 lg:left-64 right-0 bg-surface-container-lowest/90 backdrop-blur-md border-t border-outline-variant px-6 py-4 flex justify-between items-center z-40">
-            <button 
+            <button
               onClick={() => navigate('/organizer')}
               className="px-6 py-2.5 rounded-xl border border-white/10 text-white hover:bg-white/5 text-sm transition-all"
             >
               Hủy bỏ
             </button>
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => handleSaveBiography(true)}
                 disabled={isSaving}
                 className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold transition-all"
               >
                 Lưu bản nháp
               </button>
-              <button 
+              <button
                 onClick={() => handleSaveBiography(false)}
                 disabled={isSaving}
                 className="bg-primary text-on-primary px-8 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:brightness-110 transition-all flex items-center gap-1.5"

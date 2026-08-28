@@ -43,3 +43,5 @@ export const useBookingTimer = (initialSeconds: number = 180) => {
 
   return { timeLeft, m, s, formattedTime };
 };
+return { timeLeft, m, s, formattedTime };
+};

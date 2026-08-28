@@ -26,7 +26,7 @@ if (container) {
             <Route path="/checkout.html" element={<CheckoutPage />} />
             <Route path="/payment.html" element={<PaymentPage />} />
             <Route path="/payment-success.html" element={<PaymentSuccessPage />} />
-            
+
 
 
           </Routes>

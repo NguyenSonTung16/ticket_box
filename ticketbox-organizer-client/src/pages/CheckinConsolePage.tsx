@@ -16,7 +16,7 @@ interface LocalScan {
 export const CheckinConsolePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+
   // Settings
   const [deviceCode, setDeviceCode] = useState('gate-A-scanner-01');
   const [concertId, setConcertId] = useState('1');
@@ -94,7 +94,7 @@ export const CheckinConsolePage: React.FC = () => {
       if (exists) {
         setScanResult({
           status: 'WARNING',
-          message: `[OFFLINE] Vé ${payload.ticketId.slice(0,8)} đã được quét ngoại tuyến trước đó!`
+          message: `[OFFLINE] Vé ${payload.ticketId.slice(0, 8)} đã được quét ngoại tuyến trước đó!`
         });
         setIsScanning(false);
         return;
@@ -112,7 +112,7 @@ export const CheckinConsolePage: React.FC = () => {
         message: '[OFFLINE] Quét thành công! Đã lưu bản ghi quét ngoại tuyến.'
       });
       setIsScanning(false);
-      
+
       // Auto clear simulation inputs
       setTicketIdInput('');
       setSeatInfoInput('');
@@ -123,7 +123,7 @@ export const CheckinConsolePage: React.FC = () => {
         const res = await axiosClient.post('/checkin/verify', payload, {
           headers: { 'x-device-code': deviceCode }
         });
-        
+
         setScanResult({
           status: 'SUCCESS',
           message: `[ONLINE] Check-in thành công: Vé ${payload.ticketId.slice(0, 8)} (${seatInfoInput})`
@@ -139,7 +139,7 @@ export const CheckinConsolePage: React.FC = () => {
       } catch (err: any) {
         const errMsg = err.response?.data?.message || 'Có lỗi xảy ra khi soát vé.';
         const errStatus = err.response?.status;
-        
+
         setScanResult({
           status: errStatus === 409 ? 'CONFLICT' : 'ERROR',
           message: `[ONLINE LỖI]: ${errMsg}`
@@ -171,16 +171,16 @@ export const CheckinConsolePage: React.FC = () => {
     try {
       const res = await axiosClient.post('/checkin/sync', payload);
       const { successCount, conflicts } = res.data;
-      
+
       alert(`Đồng bộ hoàn tất!\n- Thành công: ${successCount}/${offlineScans.length}\n- Xung đột/Lỗi: ${conflicts.length}`);
-      
+
       // Clear offline state
       setOfflineScans([]);
       setScanResult({
         status: 'SUCCESS',
         message: `Đồng bộ thành công ${successCount} vé ngoại tuyến.`
       });
-      
+
       fetchHistory();
     } catch (err: any) {
       alert(`Lỗi đồng bộ: ${err.response?.data?.message || 'Không thể kết nối đến server.'}`);
@@ -229,10 +229,10 @@ export const CheckinConsolePage: React.FC = () => {
 
       {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto">
-        
+
         {/* Left column: Setup & Simulator */}
         <div className="lg:col-span-5 flex flex-col gap-6">
-          
+
           {/* Quick Config Card */}
           <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
             <h2 className="text-md font-bold mb-4 flex items-center gap-2 text-white/90">
@@ -242,31 +242,31 @@ export const CheckinConsolePage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-white/60 block mb-1">Mã máy quét (Device Code)</label>
-                <input 
-                  type="text" 
-                  value={deviceCode} 
+                <input
+                  type="text"
+                  value={deviceCode}
                   onChange={(e) => setDeviceCode(e.target.value)}
                   className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
                 />
               </div>
               <div>
                 <label className="text-xs text-white/60 block mb-1">Mã Concert (Concert ID)</label>
-                <input 
-                  type="text" 
-                  value={concertId} 
+                <input
+                  type="text"
+                  value={concertId}
                   onChange={(e) => setConcertId(e.target.value)}
                   className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
                 />
               </div>
             </div>
-            
+
             {/* Offline toggle */}
             <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold">Chế độ soát vé Offline</h3>
                 <p className="text-xs text-white/50">Lưu trữ quét cục bộ khi mất mạng và đồng bộ sau</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsOffline(!isOffline)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isOffline ? 'bg-primary' : 'bg-white/20'}`}
               >
@@ -282,8 +282,8 @@ export const CheckinConsolePage: React.FC = () => {
                 <span className="material-symbols-outlined text-primary text-[18px]">confirmation_number</span>
                 Danh sách vé thật (Concert ID: {concertId})
               </h2>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={fetchMockTickets}
                 className="text-xs bg-white/10 text-white/80 px-2.5 py-1 rounded-full hover:bg-white/20 transition-all"
               >
@@ -293,8 +293,8 @@ export const CheckinConsolePage: React.FC = () => {
             <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-2">
               {mockTickets.length > 0 ? (
                 mockTickets.map((t, idx) => (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     onClick={() => {
                       setTicketIdInput(t.ticketId);
                       setSeatInfoInput(t.seatInfo);
@@ -307,10 +307,9 @@ export const CheckinConsolePage: React.FC = () => {
                       <div className="font-mono text-white/95">{t.ticketId.slice(0, 18)}...</div>
                       <div className="text-white/40 mt-0.5">Ghế: {t.seatInfo} | Concert: {t.concertId}</div>
                     </div>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      t.status === 'valid' ? 'bg-emerald-500/10 text-emerald-400' :
-                      t.status === 'checked_in' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${t.status === 'valid' ? 'bg-emerald-500/10 text-emerald-400' :
+                        t.status === 'checked_in' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
+                      }`}>
                       {t.status.toUpperCase()}
                     </span>
                   </div>
@@ -339,9 +338,9 @@ export const CheckinConsolePage: React.FC = () => {
             <form onSubmit={handleScanSubmit} className="flex flex-col gap-4">
               <div>
                 <label className="text-xs text-white/60 block mb-1">Mã vé (Ticket ID / UUID)</label>
-                <input 
-                  type="text" 
-                  value={ticketIdInput} 
+                <input
+                  type="text"
+                  value={ticketIdInput}
                   onChange={(e) => setTicketIdInput(e.target.value)}
                   placeholder="Nhập UUID vé..."
                   className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
@@ -352,9 +351,9 @@ export const CheckinConsolePage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-white/60 block mb-1">Số ghế (Seat No)</label>
-                  <input 
-                    type="text" 
-                    value={seatInfoInput} 
+                  <input
+                    type="text"
+                    value={seatInfoInput}
                     onChange={(e) => setSeatInfoInput(e.target.value)}
                     placeholder="SVIP-A-12"
                     className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
@@ -363,9 +362,9 @@ export const CheckinConsolePage: React.FC = () => {
                 </div>
                 <div>
                   <label className="text-xs text-white/60 block mb-1">Thời gian phát hành (Epoch)</label>
-                  <input 
-                    type="number" 
-                    value={issuedAtInput} 
+                  <input
+                    type="number"
+                    value={issuedAtInput}
                     onChange={(e) => setIssuedAtInput(e.target.value)}
                     className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 w-full text-sm text-white focus:outline-none focus:border-primary"
                     required
@@ -375,8 +374,8 @@ export const CheckinConsolePage: React.FC = () => {
 
               <div>
                 <label className="text-xs text-white/60 block mb-1">Chữ ký số (Ed25519 Signature)</label>
-                <textarea 
-                  value={signatureInput} 
+                <textarea
+                  value={signatureInput}
                   onChange={(e) => setSignatureInput(e.target.value)}
                   placeholder="Nhập chuỗi signature dạng base64url..."
                   rows={2}
@@ -385,8 +384,8 @@ export const CheckinConsolePage: React.FC = () => {
                 />
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isScanning}
                 className="bg-primary hover:brightness-110 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all mt-2"
               >
@@ -400,25 +399,24 @@ export const CheckinConsolePage: React.FC = () => {
 
         {/* Right column: Results & Logs */}
         <div className="lg:col-span-7 flex flex-col gap-6">
-          
+
           {/* Result Display Screen */}
           <div className="bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl min-h-[140px] flex flex-col justify-center relative overflow-hidden">
             {scanResult ? (
               <div className="flex gap-4 items-start z-10">
-                <span className={`material-symbols-outlined text-[48px] ${
-                  scanResult.status === 'SUCCESS' ? 'text-emerald-400' :
-                  scanResult.status === 'CONFLICT' ? 'text-amber-400' :
-                  scanResult.status === 'WARNING' ? 'text-blue-400' : 'text-red-400'
-                }`}>
+                <span className={`material-symbols-outlined text-[48px] ${scanResult.status === 'SUCCESS' ? 'text-emerald-400' :
+                    scanResult.status === 'CONFLICT' ? 'text-amber-400' :
+                      scanResult.status === 'WARNING' ? 'text-blue-400' : 'text-red-400'
+                  }`}>
                   {scanResult.status === 'SUCCESS' ? 'check_circle' :
-                   scanResult.status === 'CONFLICT' ? 'warning' :
-                   scanResult.status === 'WARNING' ? 'info' : 'cancel'}
+                    scanResult.status === 'CONFLICT' ? 'warning' :
+                      scanResult.status === 'WARNING' ? 'info' : 'cancel'}
                 </span>
                 <div>
                   <h3 className="text-lg font-bold">
                     {scanResult.status === 'SUCCESS' ? 'XÁC THỰC THÀNH CÔNG' :
-                     scanResult.status === 'CONFLICT' ? 'VÉ ĐÃ DÙNG / XUNG ĐỘT' :
-                     scanResult.status === 'WARNING' ? 'CẢNH BÁO QUÉT' : 'XÁC THỰC THẤT BẠI'}
+                      scanResult.status === 'CONFLICT' ? 'VÉ ĐÃ DÙNG / XUNG ĐỘT' :
+                        scanResult.status === 'WARNING' ? 'CẢNH BÁO QUÉT' : 'XÁC THỰC THẤT BẠI'}
                   </h3>
                   <p className="text-sm text-white/80 mt-1">{scanResult.message}</p>
                 </div>
@@ -429,7 +427,7 @@ export const CheckinConsolePage: React.FC = () => {
                 <p className="text-sm font-semibold">Chưa có lượt quét nào. Hãy nhấn nút để kiểm tra vé.</p>
               </div>
             )}
-            
+
             {/* Background glow effects depending on state */}
             {scanResult && scanResult.status === 'SUCCESS' && <div className="absolute inset-0 bg-emerald-500/5 filter blur-3xl pointer-events-none"></div>}
             {scanResult && scanResult.status === 'ERROR' && <div className="absolute inset-0 bg-red-500/5 filter blur-3xl pointer-events-none"></div>}

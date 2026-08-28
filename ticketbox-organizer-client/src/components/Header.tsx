@@ -8,13 +8,13 @@ import debounce from 'lodash.debounce';
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   const studioRef = useRef<HTMLDivElement>(null);
 
   // Debounced search logic
@@ -93,7 +93,7 @@ export const Header: React.FC = () => {
                 className="w-full bg-transparent border-none p-0 text-sm text-on-primary-container placeholder-on-primary-container/60 focus:outline-none focus:ring-0"
               />
               {searchQuery && (
-                <button 
+                <button
                   onClick={() => { setSearchQuery(''); setSearchResults([]); }}
                   className="material-symbols-outlined text-on-primary-container/60 hover:text-on-primary-container text-[16px] ml-1"
                 >
@@ -106,8 +106,8 @@ export const Header: React.FC = () => {
             {searchResults.length > 0 && (
               <div className="absolute top-12 left-0 w-full bg-primary-container border border-on-primary-container/10 rounded-xl shadow-2xl overflow-hidden z-50 flex flex-col divide-y divide-on-primary-container/10">
                 {searchResults.map((show, idx) => (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     onClick={() => {
                       setSearchResults([]);
                       setSearchQuery('');
@@ -135,7 +135,7 @@ export const Header: React.FC = () => {
         {/* NAVIGATION ITEMS (Desktop) */}
         <div className="hidden md:flex items-center gap-6">
           {/* Vé Của Tôi */}
-          <button 
+          <button
             onClick={handleMyTickets}
             className="flex items-center gap-1.5 text-on-primary-container/85 hover:text-on-primary-container font-medium text-sm transition-colors"
           >
@@ -146,7 +146,7 @@ export const Header: React.FC = () => {
           {/* Star Studio Dropdown Button (Only for specific roles) */}
           {hasStudioAccess && (
             <div className="relative" ref={studioRef}>
-              <button 
+              <button
                 onClick={() => setIsStudioOpen(!isStudioOpen)}
                 className="flex items-center gap-1.5 bg-on-primary-container/10 hover:bg-on-primary-container/20 border border-on-primary-container/20 text-on-primary-container px-4 py-1.5 rounded-full font-bold text-xs transition-all flex-row"
               >
@@ -161,10 +161,10 @@ export const Header: React.FC = () => {
                   <div className="px-4 py-2 text-[10px] font-bold text-on-primary-container/70 uppercase tracking-widest">
                     Công cụ Studio
                   </div>
-                  
+
                   {/* Soát vé Option */}
                   {(user?.role === 'CHECKIN_STAFF' || user?.role === 'ORGANIZER') && (
-                    <button 
+                    <button
                       onClick={() => { setIsStudioOpen(false); navigate('/checkin'); }}
                       className="w-full text-left px-4 py-2.5 text-sm text-on-primary-container hover:bg-on-primary-container/5 transition-colors flex items-center gap-2"
                     >
@@ -175,7 +175,7 @@ export const Header: React.FC = () => {
 
                   {/* Organizer Center Option */}
                   {user?.role === 'ORGANIZER' && (
-                    <button 
+                    <button
                       onClick={() => { setIsStudioOpen(false); navigate('/organizer'); }}
                       className="w-full text-left px-4 py-2.5 text-sm text-on-primary-container hover:bg-on-primary-container/5 transition-colors flex items-center gap-2"
                     >
@@ -186,7 +186,7 @@ export const Header: React.FC = () => {
 
                   {/* Bio Approval Option */}
                   {user?.role === 'ORGANIZER' && (
-                    <button 
+                    <button
                       onClick={() => { setIsStudioOpen(false); navigate('/organizer/bio-approval'); }}
                       className="w-full text-left px-4 py-2.5 text-sm text-on-primary-container hover:bg-on-primary-container/5 transition-colors flex items-center gap-2"
                     >
@@ -217,7 +217,7 @@ export const Header: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <button 
+              <button
                 onClick={() => setIsLoginModalOpen(true)}
                 className="bg-white hover:bg-white/95 text-on-primary-container px-5 py-1.5 rounded-full font-bold text-sm transition-all duration-200 shadow-sm"
               >
@@ -234,7 +234,7 @@ export const Header: React.FC = () => {
               {user.role}
             </span>
           ) : null}
-          <button 
+          <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="text-on-primary-container hover:text-white transition-colors flex items-center justify-center p-1"
           >
@@ -261,8 +261,8 @@ export const Header: React.FC = () => {
             {searchResults.length > 0 && (
               <div className="absolute top-12 left-0 w-full bg-primary-container border border-on-primary-container/10 rounded-xl shadow-2xl overflow-hidden z-50 flex flex-col divide-y divide-on-primary-container/5">
                 {searchResults.map((show, idx) => (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     onClick={() => {
                       setSearchResults([]);
                       setSearchQuery('');
@@ -284,7 +284,7 @@ export const Header: React.FC = () => {
           {/* MOBILE NAV ITEMS */}
           <div className="flex flex-col gap-4">
 
-            <button 
+            <button
               onClick={() => { setIsMobileMenuOpen(false); handleMyTickets(); }}
               className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-2 text-base transition-colors"
             >
@@ -297,7 +297,7 @@ export const Header: React.FC = () => {
               <div className="flex flex-col gap-2.5 pt-2 border-t border-on-primary-container/10">
                 <span className="text-xs font-bold text-on-primary-container/70 uppercase tracking-wider px-1">Star Studio</span>
                 {(user?.role === 'CHECKIN_STAFF' || user?.role === 'ORGANIZER') && (
-                  <button 
+                  <button
                     onClick={() => { setIsMobileMenuOpen(false); navigate('/checkin'); }}
                     className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-1.5 pl-3 text-sm transition-colors"
                   >
@@ -306,7 +306,7 @@ export const Header: React.FC = () => {
                   </button>
                 )}
                 {user?.role === 'ORGANIZER' && (
-                  <button 
+                  <button
                     onClick={() => { setIsMobileMenuOpen(false); navigate('/organizer'); }}
                     className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-1.5 pl-3 text-sm transition-colors"
                   >
@@ -315,7 +315,7 @@ export const Header: React.FC = () => {
                   </button>
                 )}
                 {user?.role === 'ORGANIZER' && (
-                  <button 
+                  <button
                     onClick={() => { setIsMobileMenuOpen(false); navigate('/organizer/bio-approval'); }}
                     className="flex items-center gap-3 text-on-primary-container/80 hover:text-on-primary-container py-1.5 pl-3 text-sm transition-colors"
                   >
@@ -340,7 +340,7 @@ export const Header: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <button 
+              <button
                 onClick={() => { setIsMobileMenuOpen(false); setIsLoginModalOpen(true); }}
                 className="w-full bg-white hover:bg-white/90 text-on-primary-container py-3 rounded-xl text-center font-bold text-sm transition-colors"
               >

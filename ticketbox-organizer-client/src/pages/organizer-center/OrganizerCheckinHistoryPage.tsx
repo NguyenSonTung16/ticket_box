@@ -96,7 +96,7 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
   return (
     <div className="flex-grow lg:ml-64 px-4 md:px-6 lg:px-10 pb-36 pt-24 md:pt-28 lg:pt-32 bg-[#0d0d0f] text-white font-sans min-h-screen">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        
+
         {/* Page Title */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div>
@@ -108,7 +108,7 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
               Xem chi tiết toàn bộ lượt quét vé, trạng thái đồng bộ và thông tin thiết bị tại các cổng soát vé.
             </p>
           </div>
-          
+
           {/* Refresh & Select Concert */}
           <div className="flex flex-wrap items-center gap-3">
             <select
@@ -125,7 +125,7 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
                 </option>
               ))}
             </select>
-            
+
             <button
               onClick={fetchLogs}
               disabled={isLoading}
@@ -144,7 +144,7 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
             <strong className="text-2xl font-bold block mt-1">{totalScans}</strong>
             <span className="text-[10px] text-white/30 block mt-0.5">Dữ liệu hiển thị</span>
           </div>
-          
+
           <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-5 shadow-lg">
             <span className="text-xs text-emerald-400 block">Thành công (SUCCESS)</span>
             <strong className="text-2xl font-bold text-emerald-400 block mt-1">{successScans}</strong>
@@ -184,11 +184,10 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
               <button
                 key={filter}
                 onClick={() => setStatusFilter(filter)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  statusFilter === filter
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === filter
                     ? 'bg-primary text-white shadow'
                     : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
+                  }`}
               >
                 {filter === 'ALL' ? 'Tất cả' : filter === 'SUCCESS' ? 'Hợp lệ' : 'Xung đột'}
               </button>
@@ -240,11 +239,10 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
                         {log.deviceId}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          log.isOffline
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${log.isOffline
                             ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
                             : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        }`}>
+                          }`}>
                           {log.isOffline ? 'Offline' : 'Online'}
                         </span>
                       </td>
@@ -252,13 +250,12 @@ export const OrganizerCheckinHistoryPage: React.FC = () => {
                         {new Date(log.scannedAt).toLocaleString('vi-VN')}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold inline-block ${
-                          log.syncStatus === 'SUCCESS'
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold inline-block ${log.syncStatus === 'SUCCESS'
                             ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
                             : log.syncStatus === 'CONFLICT'
-                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
-                            : 'bg-red-500/15 text-red-400 border border-red-500/20'
-                        }`}>
+                              ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                              : 'bg-red-500/15 text-red-400 border border-red-500/20'
+                          }`}>
                           {log.syncStatus}
                         </span>
                       </td>

@@ -28,7 +28,7 @@ export const PaymentPage: React.FC = () => {
   useEffect(() => {
     axiosClient.get(`/info/show/${concert_id}`)
       .then(res => setEventData(res.data))
-      .catch(() => {});
+      .catch(() => { });
   }, [concert_id]);
 
   const fetchConfig = () => {
@@ -156,7 +156,7 @@ export const PaymentPage: React.FC = () => {
           </div>
         </div>
       </header>
-      
+
       <main className="max-w-container-max mx-auto px-6 md:px-margin-desktop py-12 grid grid-cols-1 lg:grid-cols-12 gap-gutter flex-1">
         {/* Left Column: Payment Methods */}
         <div className="lg:col-span-8 flex flex-col gap-10">
@@ -170,7 +170,7 @@ export const PaymentPage: React.FC = () => {
               <div className="bg-surface-container-high rounded-xl p-8 border border-outline-variant shadow-lg">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center p-2">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="w-full object-contain"/>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="w-full object-contain" />
                   </div>
                   <div>
                     <h3 className="font-body-lg font-bold text-on-surface">Thanh toán an toàn qua PayPal</h3>
@@ -181,7 +181,7 @@ export const PaymentPage: React.FC = () => {
                 {paypalClientId ? (
                   <PayPalScriptProvider options={{ clientId: paypalClientId, currency: "USD", intent: "capture" }}>
                     <div className="relative z-0">
-                      <PayPalButtons 
+                      <PayPalButtons
                         style={{ layout: "vertical", color: "gold", shape: "rect", label: "pay" }}
                         createOrder={handleCreateOrder}
                         onApprove={handleApprove}
@@ -195,13 +195,13 @@ export const PaymentPage: React.FC = () => {
                     <span className="material-symbols-outlined text-error text-4xl">error</span>
                     <div className="text-error font-body-lg px-4">{paymentServiceError}</div>
                     <div className="flex gap-4 mt-2">
-                      <button 
+                      <button
                         onClick={fetchConfig}
                         className="px-6 py-2 bg-surface-container-highest hover:bg-surface-bright text-on-surface rounded-full font-label-lg transition-colors border border-outline"
                       >
                         Thử kết nối lại
                       </button>
-                      <button 
+                      <button
                         onClick={() => navigate('/checkout.html', { state: location.state })}
                         className="px-6 py-2 bg-primary hover:bg-primary-dark text-on-primary rounded-full font-label-lg transition-colors"
                       >
@@ -217,7 +217,7 @@ export const PaymentPage: React.FC = () => {
               </div>
             </div>
           </section>
-          
+
           {/* Secure Message */}
           <div className="flex items-center gap-4 p-4 rounded-xl bg-primary-container/10 border border-primary-container/20">
             <span className="material-symbols-outlined text-primary">verified_user</span>
@@ -234,7 +234,7 @@ export const PaymentPage: React.FC = () => {
               </div>
               <button onClick={() => navigate(`/seat.html?id=${concert_id}`)} className="text-primary font-label-md hover:underline">Chọn lại vé</button>
             </div>
-            
+
             <div className="p-6 space-y-6">
               {selectedSeats.length > 0 && (
                 <div className="flex justify-between items-start">
@@ -273,7 +273,7 @@ export const PaymentPage: React.FC = () => {
               ))}
 
               <div className="h-px bg-outline-variant border-dashed border-b"></div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="font-body-md text-body-md font-bold text-on-surface">Tạm tính {totalTickets} vé</span>
                 <span className="font-headline-md text-headline-md text-primary">{totalPrice.toLocaleString('vi-VN')} đ</span>

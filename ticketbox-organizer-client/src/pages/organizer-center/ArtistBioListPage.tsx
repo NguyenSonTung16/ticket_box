@@ -116,13 +116,13 @@ const MOCK_BIOS: ArtistBio[] = [
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   published: { label: 'Đã đăng', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', icon: 'check_circle' },
-  draft:     { label: 'Bản nháp', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30',     icon: 'edit_note' },
-  archived:  { label: 'Lưu trữ', color: 'bg-surface-container-high text-on-surface-variant border-outline-variant', icon: 'archive' },
+  draft: { label: 'Bản nháp', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30', icon: 'edit_note' },
+  archived: { label: 'Lưu trữ', color: 'bg-surface-container-high text-on-surface-variant border-outline-variant', icon: 'archive' },
 };
 
 const CATEGORY_OPTIONS = ['Singer', 'Band', 'DJ', 'Rapper', 'Musician', 'Comedian', 'Speaker', 'Other'];
-const GENRE_OPTIONS    = ['Pop', 'Rock', 'EDM', 'Hip-hop', 'Jazz', 'Indie', 'R&B', 'Ballad', 'Dance', 'Soul'];
-const COUNTRY_OPTIONS  = ['Vietnam', 'USA', 'Korea', 'Japan', 'UK', 'France', 'Australia'];
+const GENRE_OPTIONS = ['Pop', 'Rock', 'EDM', 'Hip-hop', 'Jazz', 'Indie', 'R&B', 'Ballad', 'Dance', 'Soul'];
+const COUNTRY_OPTIONS = ['Vietnam', 'USA', 'Korea', 'Japan', 'UK', 'France', 'Australia'];
 
 function avatarFallback(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -138,24 +138,24 @@ export const ArtistBioListPage: React.FC = () => {
   const navigate = useNavigate();
 
   // View & Filter state
-  const [bios, setBios]               = useState<ArtistBio[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const [bios, setBios] = useState<ArtistBio[]>([]);
+  const [loading, setLoading] = useState(true);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('grid');
-  const [search, setSearch]           = useState('');
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [genreFilter, setGenreFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
-  const [sortKey, setSortKey]         = useState<SortKey>('newest');
-  const [perPage, setPerPage]         = useState(10);
-  const [page, setPage]               = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
+  const [perPage, setPerPage] = useState(10);
+  const [page, setPage] = useState(1);
 
   // Selection state
-  const [selected, setSelected]       = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Dropdown menu state
-  const [openMenuId, setOpenMenuId]   = useState<string | null>(null);
-  const menuRef                       = useRef<HTMLDivElement>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Delete confirmation modal
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -207,17 +207,17 @@ export const ArtistBioListPage: React.FC = () => {
         b.artistName.toLowerCase().includes(q) ||
         b.stageName.toLowerCase().includes(q) ||
         b.shortBio.toLowerCase().includes(q);
-      const matchStatus   = statusFilter === 'all' || b.status === statusFilter;
+      const matchStatus = statusFilter === 'all' || b.status === statusFilter;
       const matchCategory = !categoryFilter || b.category === categoryFilter;
-      const matchGenre    = !genreFilter    || b.genres.includes(genreFilter);
-      const matchCountry  = !countryFilter  || b.country === countryFilter;
+      const matchGenre = !genreFilter || b.genres.includes(genreFilter);
+      const matchCountry = !countryFilter || b.country === countryFilter;
       return matchSearch && matchStatus && matchCategory && matchGenre && matchCountry;
     })
     .sort((a, b) => {
-      if (sortKey === 'newest')  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      if (sortKey === 'oldest')  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sortKey === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortKey === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       if (sortKey === 'updated') return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-      if (sortKey === 'alpha')   return a.artistName.localeCompare(b.artistName);
+      if (sortKey === 'alpha') return a.artistName.localeCompare(b.artistName);
       return 0;
     });
 
@@ -225,10 +225,10 @@ export const ArtistBioListPage: React.FC = () => {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   const stats = {
-    total:     bios.length,
+    total: bios.length,
     published: bios.filter(b => b.status === 'published').length,
-    draft:     bios.filter(b => b.status === 'draft').length,
-    archived:  bios.filter(b => b.status === 'archived').length,
+    draft: bios.filter(b => b.status === 'draft').length,
+    archived: bios.filter(b => b.status === 'archived').length,
   };
 
   // ── Selection helpers ────────────────────────────────────────────────────────
@@ -325,10 +325,10 @@ export const ArtistBioListPage: React.FC = () => {
         {/* ── Stats ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Tổng số nghệ sĩ', value: stats.total,     icon: 'people',       color: 'text-primary',         bg: 'bg-primary/10' },
-            { label: 'Đã đăng',          value: stats.published, icon: 'check_circle', color: 'text-emerald-400',     bg: 'bg-emerald-500/10' },
-            { label: 'Bản nháp',         value: stats.draft,     icon: 'edit_note',    color: 'text-amber-400',       bg: 'bg-amber-500/10' },
-            { label: 'Lưu trữ',          value: stats.archived,  icon: 'archive',      color: 'text-on-surface-variant', bg: 'bg-surface-container-high' },
+            { label: 'Tổng số nghệ sĩ', value: stats.total, icon: 'people', color: 'text-primary', bg: 'bg-primary/10' },
+            { label: 'Đã đăng', value: stats.published, icon: 'check_circle', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+            { label: 'Bản nháp', value: stats.draft, icon: 'edit_note', color: 'text-amber-400', bg: 'bg-amber-500/10' },
+            { label: 'Lưu trữ', value: stats.archived, icon: 'archive', color: 'text-on-surface-variant', bg: 'bg-surface-container-high' },
           ].map(({ label, value, icon, color, bg }) => (
             <div key={label} className="bg-surface-container-low border border-outline-variant rounded-xl p-4 md:p-5 flex items-center gap-4">
               <div className={`${bg} ${color} w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0`}>
@@ -386,11 +386,10 @@ export const ArtistBioListPage: React.FC = () => {
                 <button
                   key={s}
                   onClick={() => { setStatusFilter(s); setPage(1); }}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                    statusFilter === s
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${statusFilter === s
                       ? 'bg-primary text-on-primary border-primary'
                       : 'border-outline-variant text-on-surface-variant hover:border-primary/50 hover:text-white'
-                  }`}
+                    }`}
                 >
                   {s === 'all' ? 'Tất cả' : STATUS_CONFIG[s].label}
                 </button>
@@ -495,12 +494,12 @@ export const ArtistBioListPage: React.FC = () => {
         </div>
 
         {/* ── Loading State ── */}
-  {loading && (
-    <div className="bg-surface-container-low border border-outline-variant rounded-xl py-20 flex flex-col items-center gap-4 justify-center">
-      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      <p className="text-sm text-text-medium-emphasis">Đang tải danh sách nghệ sĩ từ cơ sở dữ liệu...</p>
-    </div>
-  )}
+        {loading && (
+          <div className="bg-surface-container-low border border-outline-variant rounded-xl py-20 flex flex-col items-center gap-4 justify-center">
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-text-medium-emphasis">Đang tải danh sách nghệ sĩ từ cơ sở dữ liệu...</p>
+          </div>
+        )}
 
         {/* ── Empty State ── */}
         {!loading && paged.length === 0 && (
@@ -648,11 +647,10 @@ export const ArtistBioListPage: React.FC = () => {
               <button
                 key={n}
                 onClick={() => setPage(n)}
-                className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
-                  n === page
+                className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${n === page
                     ? 'bg-primary text-on-primary'
                     : 'border border-outline-variant text-on-surface-variant hover:bg-surface-container-high'
-                }`}
+                  }`}
               >
                 {n}
               </button>
@@ -842,9 +840,9 @@ const GridCard: React.FC<GridCardProps> = ({ bio, selected, onSelect, openMenuId
               <div className="absolute right-0 top-9 w-44 bg-surface-container-high border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden animate-[fadeIn_0.15s_ease]">
                 {[
                   { icon: 'open_in_new', label: 'Xem chi tiết', action: onEdit },
-                  { icon: 'edit',        label: 'Chỉnh sửa',    action: onEdit },
-                  { icon: 'content_copy',label: 'Nhân bản',     action: () => setOpenMenuId(null) },
-                  { icon: 'picture_as_pdf', label: 'Xuất PDF',  action: () => setOpenMenuId(null) },
+                  { icon: 'edit', label: 'Chỉnh sửa', action: onEdit },
+                  { icon: 'content_copy', label: 'Nhân bản', action: () => setOpenMenuId(null) },
+                  { icon: 'picture_as_pdf', label: 'Xuất PDF', action: () => setOpenMenuId(null) },
                   { icon: 'auto_awesome', label: 'Tạo lại bằng AI', action: () => setOpenMenuId(null) },
                 ].map(({ icon, label, action }) => (
                   <button

@@ -45,7 +45,7 @@ export const OrganizerDashboard: React.FC = () => {
   const filteredEvents = events.filter((event) => {
     if (activeFilter === 'cancelled') return event.status === 'CANCELLED';
     if (event.status === 'CANCELLED') return false;
-    
+
     if (activeFilter === 'all') return true;
     if (activeFilter === 'published') return event.status === 'selling';
     if (activeFilter === 'draft') return event.status === 'draft';
@@ -85,11 +85,10 @@ export const OrganizerDashboard: React.FC = () => {
             <button
               key={f.key}
               onClick={() => setActiveFilter(f.key)}
-              className={`px-6 py-2 rounded-full text-xs font-bold transition-colors ${
-                activeFilter === f.key
+              className={`px-6 py-2 rounded-full text-xs font-bold transition-colors ${activeFilter === f.key
                   ? 'bg-primary text-on-primary'
                   : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant'
-              }`}
+                }`}
             >
               {f.label}
             </button>
@@ -104,7 +103,7 @@ export const OrganizerDashboard: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {filteredEvents.map((event) => (
-              <EventCard 
+              <EventCard
                 key={event.id}
                 id={event.id}
                 title={event.name}
